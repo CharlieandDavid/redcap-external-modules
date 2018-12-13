@@ -525,6 +525,10 @@ class ExternalModules
 		# Attempt to create an instance of the module before enabling it system wide.
 		# This should catch problems like syntax errors in module code.
 		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+
+		if(!is_subclass_of($instance, 'ExternalModules\AbstractExternalModule')){
+			throw new Exception("This module's main class does not extend AbstractExternalModule!");
+		}
 		
 		// Ensure compatibility with PHP version and REDCap version before instantiating the module class
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
