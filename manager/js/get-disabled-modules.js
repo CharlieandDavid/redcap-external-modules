@@ -63,7 +63,15 @@ $(function(){
 			}
 
 			$.post(url, {prefix: prefix, version: version}, function(data){
-				var jsonAjax = jQuery.parseJSON(data);
+				var jsonAjax
+				try{
+					jsonAjax = jQuery.parseJSON(data);
+				}
+				catch(e){
+					showErrorAlert(data)
+					return
+				}
+
 				if (typeof jsonAjax != 'object') {
 					showErrorAlert(data)
 					return
