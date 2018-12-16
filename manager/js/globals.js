@@ -1141,5 +1141,5 @@ $(function(){
 			modal.find('.modal-body').html(data)
 			modal.modal('show')
 		})
-	});
+	})
 });
