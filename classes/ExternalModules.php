@@ -2516,13 +2516,16 @@ class ExternalModules
 			$moduleData[] = "{$id},{$module['name']},v{$module['version']}";
 		}
 		$moduleData = implode(";", $moduleData);
+		// Output JS resource and div
+		?><script type="text/javascript">var ext_mod_base_url = '<?=self::$BASE_URL?>';</script><?php
+		self::addResource(ExternalModules::getManagerJSDirectory().'update-modules.js');
 		print  "<div class='yellow repo-updates'>
 					<div style='color:#A00000;'>
 						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>
 						<span id='repo-updates-count'>$countModuleUpdates</span>
 						".($countModuleUpdates == 1 ? "External Module</span> has" : "External Modules</span> have")." 
 						updates available for download from the REDCap Repo.
-						<button onclick=\"$(this).hide();$('.repo-updates-list').show();\" class='btn btn-info btn-xs ml-2'>View updates</a>
+						<button onclick=\"$(this).hide();$('.repo-updates-list').show();\" class='btn btn-danger btn-xs ml-2'>View updates</a>
 					</div>
 					<div class='repo-updates-list'>
 						Updates are available for the modules listed below. You may click the button(s) to upgrade them all at once or individually. 
