@@ -525,6 +525,10 @@ class ExternalModules
 		# Attempt to create an instance of the module before enabling it system wide.
 		# This should catch problems like syntax errors in module code.
 		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
+
+		if(!is_subclass_of($instance, 'ExternalModules\AbstractExternalModule')){
+			throw new Exception("This module's main class does not extend AbstractExternalModule!");
+		}
 		
 		// Ensure compatibility with PHP version and REDCap version before instantiating the module class
 		self::isCompatibleWithREDCapPHP($moduleDirectoryPrefix, $version);
@@ -2502,22 +2506,33 @@ class ExternalModules
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
 		$links = "";
+		$moduleData = array();
 		$countModuleUpdates = count($moduleUpdates);
 		foreach ($moduleUpdates as $id=>$module) {
 			$module_name = $module['name']."_v".$module['version'];
 			$links .= "<div id='repo-updates-modid-$id'><button class='btn btn-success btn-xs' onclick=\"window.location.href='".APP_URL_EXTMOD."manager/control_center.php?download_module_id=$id&download_module_title="
 				   .  rawurlencode($module['title']." ($module_name)")."&download_module_name=$module_name';\">"
 				   .  "<span class='fas fa-download'></span> {$lang['global_125']}</button> {$module['title']} v{$module['version']}</div>";
+			$moduleData[] = "{$id},{$module['name']},v{$module['version']}";
 		}
+		$moduleData = implode(";", $moduleData);
+		// Output JS resource and div
+		?><script type="text/javascript">var ext_mod_base_url = '<?=self::$BASE_URL?>';</script><?php
+		self::addResource(ExternalModules::getManagerJSDirectory().'update-modules.js');
 		print  "<div class='yellow repo-updates'>
 					<div style='color:#A00000;'>
 						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>
 						<span id='repo-updates-count'>$countModuleUpdates</span>
 						".($countModuleUpdates == 1 ? "External Module</span> has" : "External Modules</span> have")." 
-						updates available for download from the REDCap Repo. <a href='javascript:;' onclick=\"$(this).hide();$('.repo-updates-list').show();\" style='margin-left:3px;'>View</a>
+						updates available for download from the REDCap Repo.
+						<button onclick=\"$(this).hide();$('.repo-updates-list').show();\" class='btn btn-danger btn-xs ml-2'>View updates</a>
 					</div>
 					<div class='repo-updates-list'>
-						Updates are available for the modules listed below. Click the button for each to upgrade the module. $links
+						Updates are available for the modules listed below. You may click the button(s) to upgrade them all at once or individually. 
+						<div class='mt-3 mb-4'>
+							<button id='update-all-modules' class='btn btn-primary btn-sm' data-module-info=\"$moduleData\"><span class='fas fa-download'></span> Update All</button>
+						</div>
+						$links
 					</div>
 				</div>";
 	}
