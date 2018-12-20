@@ -212,7 +212,11 @@ class ExternalModules
 
 		$saveSql = "";
 		foreach($settings as $key => $values) {
-			$saveSql .= self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
+			$sql = self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
+
+			if(!empty($sql)){
+				$saveSql .= "$sql;\n\n";
+			}
 		}
 		return $saveSql;
 	}
