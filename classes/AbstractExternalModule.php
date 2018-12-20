@@ -633,7 +633,15 @@ class AbstractExternalModule
 	# function to enforce that a pid is required for a particular function
 	private function requireProjectId($pid = null)
 	{
-		return $this->requireParameter('pid', $pid);
+		$pid = self::detectParameter('pid', $pid);
+		if(!isset($pid) && defined('PROJECT_ID')){
+			// As of this writing, this is only required when called inside redcap_every_page_top while using Send-It to send a file from the File Repository.
+			$pid = PROJECT_ID;
+		}
+
+		$pid = $this->requireParameter('pid', $pid);
+
+		return $pid;
 	}
 
 	private function requireEventId($eventId = null)
