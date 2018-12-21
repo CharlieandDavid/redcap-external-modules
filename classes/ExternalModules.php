@@ -210,15 +210,16 @@ class ExternalModules
 	{
 		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
-		$saveSql = "";
+		$saveSqlByField = [];
 		foreach($settings as $key => $values) {
 			$sql = self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
 
 			if(!empty($sql)){
-				$saveSql .= "$sql;\n\n";
+				$saveSqlByField[$key] = $sql;
 			}
 		}
-		return $saveSql;
+
+		return $saveSqlByField;
 	}
 
 	// Allow the addition of further module directories on a server.  For example, you may want to have
