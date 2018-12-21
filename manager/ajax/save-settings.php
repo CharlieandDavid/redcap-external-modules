@@ -18,6 +18,8 @@ if(!empty($saveSqlByField)){
 	// At least one setting changed.  Log this event.
 	$logText = "Modify configuration for external module \"{$moduleDirectoryPrefix}_{$module->VERSION}\" for " . (!empty($_GET['pid']) ? "project" : "system");
 	$changeText = join(', ', array_keys($saveSqlByField));
+
+	// We do NOT include the values of changed settings, since they could contain sensitive data that some users shouldn't see (API keys, etc.).
 	$saveSql = join(";\n\n", array_values($saveSqlByField));
 
 	\REDCap::logEvent($logText, $changeText, $saveSql);
