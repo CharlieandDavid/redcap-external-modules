@@ -1,18 +1,19 @@
 $(function(){
-	$('#update-all-modules').click(function(){		
-		updateEnableModule($(this).data('module-info').split(';'), 0);
+	$('#update-all-modules, .update-single-module').click(function(){		
+		updateEnableModule($(this).data('module-info').split(';'), 0, ($(this).prop('id') == 'update-all-modules'));
 	});
 });
-function updateEnableModule(moduleUpdatesInfo, moduleUpdatesKey) 
+function updateEnableModule(moduleUpdatesInfo, moduleUpdatesKey, updateAll) 
 {
 	if (moduleUpdatesKey == 0) showProgress(1);
 	else if (moduleUpdatesKey >= moduleUpdatesInfo.length) {
 		// The process has finished, so give confirmation
 		showProgress(0,0);
-		var modulesFailedUpdate = $('#repo-updates-count').html()*1;
+		var modulesFailedUpdate = updateAll ? $('#repo-updates-count').html()*1 : 0;
 		if (modulesFailedUpdate == 0) {
 			var title = "SUCCESS";
-			var msg = "All "+moduleUpdatesKey+" modules were successfully updated and enabled.";
+			var msg = (moduleUpdatesKey == 1) ? "The module was" : "All "+moduleUpdatesKey+" modules were";
+			msg += " successfully updated and enabled.";
 		} else {
 			var title = "SUCCESS + ERRORS";
 			var msg = moduleUpdatesKey+" modules were successfully updated and enabled, but "+modulesFailedUpdate+" were not able to be updated for unknown reasons.";

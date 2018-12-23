@@ -2514,11 +2514,9 @@ class ExternalModules
 		$moduleData = array();
 		$countModuleUpdates = count($moduleUpdates);
 		foreach ($moduleUpdates as $id=>$module) {
-			$module_name = $module['name']."_v".$module['version'];
-			$links .= "<div id='repo-updates-modid-$id'><button class='btn btn-success btn-xs' onclick=\"window.location.href='".APP_URL_EXTMOD."manager/control_center.php?download_module_id=$id&download_module_title="
-				   .  rawurlencode($module['title']." ($module_name)")."&download_module_name=$module_name';\">"
+			$moduleData[] = $thisModuleData = "{$id},{$module['name']},v{$module['version']}";
+			$links .= "<div id='repo-updates-modid-$id'><button class='update-single-module btn btn-success btn-xs' data-module-info=\"$thisModuleData\">"
 				   .  "<span class='fas fa-download'></span> {$lang['global_125']}</button> {$module['title']} v{$module['version']}</div>";
-			$moduleData[] = "{$id},{$module['name']},v{$module['version']}";
 		}
 		$moduleData = implode(";", $moduleData);
 		// Output JS resource and div
