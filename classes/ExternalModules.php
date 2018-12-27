@@ -430,6 +430,10 @@ class ExternalModules
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
 		$message .= "Server: " . SERVER_NAME . " (" . gethostname() . ")<br>";
+		
+		if(defined('USERID')){
+			$message .= "User: " . USERID . "<br>";
+		}
 
 		if (self::isVanderbilt()) {
 			$from = 'datacore@vanderbilt.edu';
