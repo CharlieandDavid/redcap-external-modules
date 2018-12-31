@@ -2588,7 +2588,13 @@ class ExternalModules
 			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
 		}
 
-		\REDCap::logEvent("Download external module \"$moduleFolderName\" from repository");
+		$logDescription = "Download external module \"$moduleFolderName\" from repository";
+		// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
+		// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
+		// https://github.com/vanderbilt/redcap-external-modules/issues/136
+		// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
+		self::throttleEvent($logDescription, 2, 3);
+		\REDCap::logEvent($logDescription);
 
 		// First see if the module directory already exists
 		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
@@ -2656,7 +2662,13 @@ class ExternalModules
 	}
 
 	public static function deleteModuleDirectory($moduleFolderName=null, $bypass=false){
-		\REDCap::logEvent("Delete external module \"$moduleFolderName\" from system");
+		$logDescription = "Delete external module \"$moduleFolderName\" from system";
+		// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
+		// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
+		// https://github.com/vanderbilt/redcap-external-modules/issues/136
+		// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
+		self::throttleEvent($logDescription, 2, 15);
+		\REDCap::logEvent($logDescription);
 
 		if(empty($moduleFolderName)){
 			// Prevent the entire modules directory from being deleted.
@@ -3200,5 +3212,29 @@ class ExternalModules
 		self::$hookBeingExecuted = "";
 		
 		return $returnMessage;
+	}
+
+	// Throttles actions by using the redcap_log_event.description.
+	// An exception is thrown if the $description occurs more than $maximumOccurrences within the past specified number of $seconds.
+	private function throttleEvent($description, $maximumOccurrences, $seconds)
+	{
+		$description = db_escape($description);
+
+		$ts = date('YmdHis', time()-$seconds);
+
+		$result = db_query("
+			select count(*) as count
+			from redcap_log_event l
+			where description = '$description'
+			and ts >= $ts
+		");
+
+		$row = $result->fetch_assoc();
+
+		$occurrences = $row['count'];
+
+		if($occurrences > $maximumOccurrences){
+			throw new Exception("The following action has been throttled because it is only allowed to happen $maximumOccurrences times within $seconds seconds, but it happened $occurrences times: $description");
+		}
 	}
 }
