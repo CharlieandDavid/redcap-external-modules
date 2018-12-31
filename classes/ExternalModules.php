@@ -2905,7 +2905,8 @@ class ExternalModules
 		return $to;
 	}
 
-	//When called sends an error email to the specified emails, otherwise it sends it to the datacore team
+	// This method is deprecated, but is still used in a couple of modules at Vandy.
+	// We should likely refactor those modules to use sendAdminEmail() instead, then remove this method.
 	public static function sendErrorEmail($email_error,$subject,$body){
 		global $project_contact_email;
 		$from = $project_contact_email;
