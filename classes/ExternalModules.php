@@ -3163,4 +3163,42 @@ class ExternalModules
 	{
 		return strpos($_SERVER['REQUEST_URI'], APP_PATH_WEBROOT . 'DataEntry') === 0;
 	}
+
+	public static function callCronMethod($moduleId, $cronName)
+	{
+		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
+		self::setActiveModulePrefix($moduleDirectoryPrefix);
+		self::$hookBeingExecuted = "$cronName (cron)";
+
+		$returnMessage = null;
+		try{
+			// Call cron for this External Module
+			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
+			if (!empty($moduleInstance)) {
+				$config = $moduleInstance->getConfig();
+				if (isset($config['crons']) && !empty($config['crons'])) {
+					// Loop through all crons to find the one we're looking for
+					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+						if ($cronAttr['cron_name'] != $cronName) continue;
+						// Find and validate the cron method in the module class
+						$cronMethod = $config['crons'][$cronKey]['method'];
+
+						// Execute the cron method in the module class
+						$returnMessage = $moduleInstance->$cronMethod($cronAttr);
+					}
+				}
+			}
+		}
+		catch(Exception $e){
+			$returnMessage = "Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
+			$emailMessage = "$returnMessage with the following Exception: $e";
+
+			self::sendAdminEmail('External Module Exception in Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+		}
+
+		self::setActiveModulePrefix(null);
+		self::$hookBeingExecuted = "";
+		
+		return $returnMessage;
+	}
 }
