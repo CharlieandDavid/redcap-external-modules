@@ -851,12 +851,20 @@ class ExternalModules
 	private static function areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)
 	{
 		if(self::isReservedSettingKey($key)){
-			// Do not allow modules to disable user based permissions for reserved keys.
+			// Require user based setting permissions for reserved keys.
+			// We don't want modules to be able to override permissions for enabling/disabling/updating modules.
 			return true;
 		}
 		else if(self::isManagerUrl()){
 			// Manager urls should always require user based permissions.
 			return true;
+		}
+
+		if(!empty(self::$hookBeingExecuted)){
+			// We're inside a hook.  Disable user based setting permissions, leaving control up to the module author.
+			// There are many cases where modules might want to use settings to track state based on the actions
+			// of survey respondents or users without design rights.
+			return false;
 		}
 
 		$module = self::getModuleInstance($moduleDirectoryPrefix);

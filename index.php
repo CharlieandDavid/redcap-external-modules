@@ -85,6 +85,11 @@ switch ($pageExtension) {
         // PHP content
 		$module = ExternalModules::getModuleInstance($prefix, $version);
 
+        // Leave setting permissions up to module authors.
+		// The redcap_module_link_check_display() hook already limits access to design rights users by default.
+		// No additional security should be required.
+		$module->disableUserBasedSettingPermissions();
+
 		$checkLinkPermission($module);
 
         require_once $pagePath;
