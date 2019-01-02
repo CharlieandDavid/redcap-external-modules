@@ -594,17 +594,30 @@ class ExternalModulesTest extends BaseTest
 
 	function testAreSettingPermissionsUserBased()
 	{
+		$m = $this->getInstance();
 		$methodName = 'areSettingPermissionsUserBased';
+		$hookName = 'redcap_test_call_function';
+
+		$this->setConfig(['permissions' => [$hookName]]);
+
+		// permissions should not be user based during hook calls
+		$value = null;
+		ExternalModules::callHook($hookName, [function() use ($methodName, &$value){
+			$value = self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY);
+		}]);
+		$this->assertFalse($value);
+
+		// We'd ideally test to ensure permissions were not user based on module pages here,
+		// but we don't have a good way to test that currently.
+
+		// modules should require user based permissions by default in other contexts (like saving settings in the settings dialog)
 		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
 
-		$m = $this->getInstance();
 		$m->disableUserBasedSettingPermissions();
 		$this->assertFalse(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
 
+		// reserved values should always require user based permissions
 		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, ExternalModules::KEY_ENABLED));
-
-		$_SERVER['REQUEST_URI'] = ExternalModules::$BASE_URL . 'manager';
-		$this->assertTrue(self::callPrivateMethod($methodName, TEST_MODULE_PREFIX, TEST_SETTING_KEY));
 	}
 
 	function testGetUrl()

@@ -221,6 +221,10 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		$this->testHookArguments = func_get_args();
 	}
 
+	function redcap_test_call_function($function){
+		$function();
+	}
+	
 	function redcap_every_page_test()
 	{
 		call_user_func_array([$this, 'redcap_test'], func_get_args());
