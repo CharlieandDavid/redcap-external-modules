@@ -855,10 +855,6 @@ class ExternalModules
 			// We don't want modules to be able to override permissions for enabling/disabling/updating modules.
 			return true;
 		}
-		else if(self::isManagerUrl()){
-			// Manager urls should always require user based permissions.
-			return true;
-		}
 
 		if(!empty(self::$hookBeingExecuted)){
 			// We're inside a hook.  Disable user based setting permissions, leaving control up to the module author.
@@ -867,6 +863,8 @@ class ExternalModules
 			return false;
 		}
 
+		// The following might be removed in the future (since disableUserBasedSettingPermissions() has been deprecated).
+		// If that happens, we should make sure to return true here to cover calls within the framework (like setting project settings via the settings dialog).
 		$module = self::getModuleInstance($moduleDirectoryPrefix);
 		return $module->areSettingPermissionsUserBased();
 	}
