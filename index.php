@@ -37,12 +37,27 @@ if($noAuth && !in_array($page, $config['no-auth-pages'])){
 	throw new Exception("The NOAUTH parameter is not allowed on this page.");
 }
 
+$getLink = function () use ($prefix, $version, $page) {
+	$links = ExternalModules::getLinks($prefix, $version);
+	foreach ($links as $link) {
+		if ($link['url'] == ExternalModules::getUrl($prefix, $page)) {
+			return $link;
+		}
+	}
+
+	return null;
+};
+
+$link = $getLink();
+$showHeaderAndFooter = false;
 if($pid != null){
 	$enabledGlobal = ExternalModules::getSystemSetting($prefix,ExternalModules::KEY_ENABLED);
 	$enabled = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::KEY_ENABLED);
 	if(!$enabled && !$enabledGlobal){
 		throw new Exception("The '$prefix' module is not currently enabled on project $pid.");
 	}
+
+	$showHeaderAndFooter = @$link['show-header-and-footer'] === true;
 }
 
 if (preg_match("/^https:\/\//", $page) || preg_match("/^http:\/\//", $page)) {
@@ -55,19 +70,7 @@ if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
 
-$getLink = function () use ($prefix, $version, $page) {
-	$links = ExternalModules::getLinks($prefix, $version);
-	foreach ($links as $link) {
-		if ($link['url'] == ExternalModules::getUrl($prefix, $page)) {
-			return $link;
-		}
-	}
-
-	return null;
-};
-
-$checkLinkPermission = function ($module) use ($getLink) {
-	$link = $getLink();
+$checkLinkPermission = function ($module) use ($link) {
 	if (!$link) {
 		// This url is not defined in config.json.  Allow it to work for backward compatibility.
 		return true;
@@ -92,7 +95,16 @@ switch ($pageExtension) {
 
 		$checkLinkPermission($module);
 
+		if($showHeaderAndFooter){
+			require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
+		}
+
         require_once $pagePath;
+
+		if($showHeaderAndFooter){
+			require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
+		}
+
         break;
     case "md":
         // Markdown Syntax
