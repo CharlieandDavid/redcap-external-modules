@@ -41,7 +41,7 @@ if($pid != null){
 	$enabledGlobal = ExternalModules::getSystemSetting($prefix,ExternalModules::KEY_ENABLED);
 	$enabled = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::KEY_ENABLED);
 	if(!$enabled && !$enabledGlobal){
-		throw new Exception("The requested module is currently disabled on this project.");
+		throw new Exception("The '$prefix' module is not currently enabled on project $pid.");
 	}
 }
 
