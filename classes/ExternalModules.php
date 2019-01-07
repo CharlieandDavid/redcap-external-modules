@@ -2594,6 +2594,28 @@ class ExternalModules
 			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
 		}
 
+		// The following concurrent download detect was added to prevent a download/delete loop that we believe
+		// brought the production server & specific modules down a few times:
+		// https://github.com/vanderbilt/redcap-external-modules/issues/136
+		$tempDir = $modulesDir . $moduleFolderName . '_tmp';
+		if(file_exists($tempDir)){
+			if(filemtime($tempDir) > time()-30){
+				// The temp dir was just created.  Assume another process is still actively downloading this module
+				// Simply tell the user to retry if this request came from the UI.
+				return 4;
+			}
+			else{
+				// The last download process likely failed.  Removed the folder and try again.
+				self::rrmdir($tempDir);
+			}
+		}
+
+		if(!mkdir($tempDir)){
+			// Another process just created this directory and is actively downloading the module.
+			// Simply tell the user to retry if this request came from the UI.
+			return 4;
+		}
+
 		$logDescription = "Download external module \"$moduleFolderName\" from repository";
 		// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
 		// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
@@ -2602,14 +2624,6 @@ class ExternalModules
 		self::throttleEvent($logDescription, 2, 3);
 		\REDCap::logEvent($logDescription);
 
-		// First see if the module directory already exists
-		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
-		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
-			// If directory exists, that means the module wasn't extracted successfully on a previous try, 
-			// so delete the directory so we can replace it.
-			self::deleteModuleDirectory($moduleFolderName, true);
-			return "4";
-		}
 		// Send user info?
 		if ($sendUserInfo) {
 			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
@@ -2645,11 +2659,19 @@ class ExternalModules
 		// Now extract the zip to the modules folder
 		$zip = new \ZipArchive;
 		if ($zip->open($filename) === TRUE) {
-			$zip->extractTo($modulesDir);
+			$zip->extractTo($tempDir);
 			$zip->close();
 		}
 		// Remove temp file
 		unlink($filename);
+
+		// Move the extracted directory to it's final location
+		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
+		rename($tempDir.DS.$moduleFolderName, $moduleFolderDir);
+
+		// Remove temp dir
+		rmdir($tempDir);
+
 		// Now double check that the new module directory got created
 		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
 		   return "3";
