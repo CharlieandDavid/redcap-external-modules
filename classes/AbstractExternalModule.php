@@ -260,7 +260,7 @@ class AbstractExternalModule
 		ExternalModules::removeProjectSetting($this->PREFIX, $pid, $key);
 	}
 
-	function getSubSettings($key)
+	function getSubSettings($key, $pid = null)
 	{
 		$keys = [];
 		$config = $this->getSettingConfig($key);
@@ -268,7 +268,7 @@ class AbstractExternalModule
 			$keys[] = $this->prefixSettingKey($subSetting['key']);
 		}
 
-		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId());
+		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
 
 		$subSettings = [];
 		foreach($keys as $key){

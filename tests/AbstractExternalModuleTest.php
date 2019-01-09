@@ -1031,7 +1031,8 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testGetSubSettings()
 	{
-		$_GET['pid'] = 1;
+		$pid = 1;
+		$_GET['pid'] = $pid;
 		$m = $this->getInstance();
 
 		$settingValues = [
@@ -1064,11 +1065,23 @@ class AbstractExternalModuleTest extends BaseTest
 			]
 		]);
 
-		$subSettingResults = $m->getSubSettings($subSettingsKey);
-		foreach($settingValues as $key=>$values){
-			for($i=0; $i<count($values); $i++){
-				$this->assertSame($settingValues[$key][$i], $subSettingResults[$i][$key]);
+		$assertSubSettings = function($pid) use ($m, $subSettingsKey, $settingValues) {
+			$subSettingResults = $m->getSubSettings($subSettingsKey, $pid);
+			foreach($settingValues as $key=>$values){
+				for($i=0; $i<count($values); $i++){
+					$this->assertSame($settingValues[$key][$i], $subSettingResults[$i][$key]);
+				}
 			}
-		}
+		};
+
+		$assertSubSettings(null);
+
+		unset($_GET['pid']);
+
+		$this->assertThrowsException(function() use ($assertSubSettings) {
+			$assertSubSettings(null);
+		}, 'argument to this method: pid');
+
+		$assertSubSettings($pid);
 	}
 }
