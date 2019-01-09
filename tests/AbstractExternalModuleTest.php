@@ -163,7 +163,7 @@ class AbstractExternalModuleTest extends BaseTest
 			],
 		]);
 
-		// Assert a double nested setting just for kicks.
+		// Assert a double nested sub_settings
 		$assertMultipleSettingException([
 			'project-settings' => [
 				[
@@ -1036,7 +1036,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$m = $this->getInstance();
 
 		$settingValues = [
-			// Make sure the first setting is no longer being used to detect any lengths by simulated a new/empty setting.
+			// Make sure the first setting is no longer being used to detect any lengths by simulating a new/empty setting.
 			'key1' => [],
 
 			// These settings each intentionally have difference lengths to make sure they're still returned appropriately.
