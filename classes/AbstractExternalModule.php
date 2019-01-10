@@ -262,30 +262,20 @@ class AbstractExternalModule
 
 	function getSubSettings($key, $pid = null)
 	{
-		$settingsAsArray = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
+		$keys = [];
+		$config = $this->getSettingConfig($key);
+		foreach($config['sub_settings'] as $subSetting){
+			$keys[] = $this->prefixSettingKey($subSetting['key']);
+		}
 
-		$settingConfig = $this->getSettingConfig($key);
+		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
 
-		return $this->getSubSettings_internal($settingsAsArray, $settingConfig);
-	}
-
-	private function getSubSettings_internal($settingsAsArray, $settingConfig)
-	{
 		$subSettings = [];
-		foreach($settingConfig['sub_settings'] as $subSettingConfig){
-			$subSettingKey = $subSettingConfig['key'];
-
-			if($subSettingConfig['type'] === 'sub_settings'){
-				// Handle nested sub_settings recursively
-				$values = $this->getSubSettings_internal($settingsAsArray, $subSettingConfig);
-			}
-			else{
-				$values = $settingsAsArray[$this->prefixSettingKey($subSettingKey)]['value'];
-			}
-
+		foreach($keys as $key){
+			$values = $rawSettings[$key]['value'];
 			for($i=0; $i<count($values); $i++){
 				$value = $values[$i];
-				$subSettings[$i][$subSettingKey] = $value;
+				$subSettings[$i][$key] = $value;
 			}
 		}
 

@@ -1041,60 +1041,35 @@ class AbstractExternalModuleTest extends BaseTest
 
 			// These settings each intentionally have difference lengths to make sure they're still returned appropriately.
 			'key2' => ['a', 'b', 'c'],
-			'key3' => [1, 2, 3, 4, 5],
-			'key4' => [true, false],
-			'key5' => [6,7,8,9]
+			'key3' => [1,2,3,4,5],
+			'key4' => [true, false]
 		];
 
+		$subSettingsConfig = [];
 		foreach($settingValues as $key=>$values){
 			$m->setProjectSetting($key, $values);
+
+			$subSettingsConfig[] = [
+				'key' => $key
+			];
 		}
 
 		$subSettingsKey = 'sub-settings-key';
-		$nestedSubSettingsKey = 'nested-sub-settings-key';
-
 		$this->setConfig([
 			'project-settings' => [
 				[
 					'key' => $subSettingsKey,
 					'type' => 'sub_settings',
-					'sub_settings' => [
-						[
-							'key' => 'key1'
-						],
-						[
-							'key' => 'key2'
-						],
-						[
-							'key' => 'key3'
-						],
-						[
-							'key' => 'key4'
-						],
-						[
-							'key' => $nestedSubSettingsKey,
-							'type' => 'sub_settings',
-							'sub_settings' => [
-								[
-									'key' => 'key5'
-								]
-							]
-						],
-					]
+					'sub_settings' => $subSettingsConfig
 				]
 			]
 		]);
 
-		$assertSubSettings = function($pid) use ($m, $subSettingsKey, $nestedSubSettingsKey, $settingValues) {
+		$assertSubSettings = function($pid) use ($m, $subSettingsKey, $settingValues) {
 			$subSettingResults = $m->getSubSettings($subSettingsKey, $pid);
 			foreach($settingValues as $key=>$values){
 				for($i=0; $i<count($values); $i++){
-					$actualValues = $subSettingResults[$i];
-					if($key === 'key5'){
-						$actualValues = $actualValues[$nestedSubSettingsKey];
-					}
-					
-					$this->assertSame($settingValues[$key][$i], $actualValues[$key]);
+					$this->assertSame($settingValues[$key][$i], $subSettingResults[$i][$key]);
 				}
 			}
 		};
