@@ -879,121 +879,146 @@ class ExternalModules
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
-		if(self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
-			$errorMessageSuffix = "You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.";
+		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
+		$lockName = db_real_escape_string("external-module-setting-$externalModuleId-$projectId");
 
-			if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
-				if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
-					throw new Exception("You don't have permission to save system settings!  $errorMessageSuffix");
-				}
+		// The natural solution to prevent duplicates would be a unique key.
+		// That unfortunately doesn't work for the settings table since the total length of the appropriate key columns is longer than the maximum unique key length.
+		// Instead, we use GET_LOCK() and check the existing value before inserting/updating to prevent duplicates.
+		// This seems to work better than transactions since it has no risk of deadlock, and allows for limiting mutual exclusion to a per module and project basis (using the lock name).
+		$result = self::query("SELECT GET_LOCK('$lockName', 5)");
+		$row = $result->fetch_row();
+		$releaseLockSql = "SELECT RELEASE_LOCK('$lockName')";
+		if($row[0] !== '1'){
+			throw new Exception("Lock acquisition timed out while setting a setting for module $moduleDirectoryPrefix and project $projectId.  This should not happen under normal circumstances.  However, the following query may be used to manually release the lock if necessary: $releaseLockSql");
+		}
+
+		$releaseLock = function() use ($lockName, $releaseLockSql) {
+			self::query($releaseLockSql);
+		};
+
+		try{
+			if (self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+				$errorMessageSuffix = "You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.";
+
+				if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
+					if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
+						throw new Exception("You don't have permission to save system settings!  $errorMessageSuffix");
+					}
 			}
 			else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-				throw new Exception("You don't have permission to save project settings!  $errorMessageSuffix");
-			}
-		}
-
-		$projectId = db_real_escape_string($projectId);
-		$key = db_real_escape_string($key);
-
-		$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
-
-		$oldType = gettype($oldValue);
-		if($oldType == 'array' || $oldType == 'object') {
-			$oldValue = json_encode($oldValue);
-		}
-
-		# if $value is an array or object, then encode as JSON
-		# else store $value as type specified in gettype(...)
-		if ($type === "") {
-			$type = gettype($value);
-		}
-
-		if ($type == "array" || $type == "object") {
-		    // TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
-            // to clean up existing entries using the non-specific 'json' format.
-			$type = "json-$type";
-			$value = json_encode($value);
-		}
-
-		// Triple equals includes type checking, and even order checking for complex nested arrays!
-		if($value === $oldValue){
-			// Nothing changed, so we don't need to do anything.
-			return;
-		}
-
-		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
-
-		$pidString = $projectId;
-		if (!$projectId || $projectId == "") {
-			$pidString = "NULL";
-		}
-
-		if ($type == "boolean") {
-			$value = ($value) ? 'true' : 'false';
-		}
-
-		if($value === null){
-			$event = "DELETE";
-			$sql = "DELETE FROM redcap_external_module_settings
-					WHERE
-						external_module_id = $externalModuleId
-						AND " . self::getSqlEqualClause('project_id', $pidString) . "
-						AND `key` = '$key'";
-		} else {
-			$value = db_real_escape_string($value);
-
-			if(strlen($key) > self::SETTING_KEY_SIZE_LIMIT){
-				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
-			}
-
-			if(strlen($value) > self::SETTING_SIZE_LIMIT){
-				throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
-			}
-
-			if($oldValue === null) {
-				$event = "INSERT";
-				$sql = "INSERT INTO redcap_external_module_settings
-							(
-								`external_module_id`,
-								`project_id`,
-								`key`,
-								`type`,
-								`value`
-							)
-						VALUES
-						(
-							$externalModuleId,
-							$pidString,
-							'$key',
-							'$type',
-							'$value'
-						)";
-			} else {
-				if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
-					$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
-					self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
+					throw new Exception("You don't have permission to save project settings!  $errorMessageSuffix");
 				}
+			}
 
-				$event = "UPDATE";
-				$sql = "UPDATE redcap_external_module_settings
-						SET value = '$value',
-							type = '$type'
+			$projectId = db_real_escape_string($projectId);
+			$key = db_real_escape_string($key);
+
+			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
+
+			$oldType = gettype($oldValue);
+			if ($oldType == 'array' || $oldType == 'object') {
+				$oldValue = json_encode($oldValue);
+			}
+
+			# if $value is an array or object, then encode as JSON
+			# else store $value as type specified in gettype(...)
+			if ($type === "") {
+				$type = gettype($value);
+			}
+
+			if ($type == "array" || $type == "object") {
+				// TODO: ideally we would also include a sql statement to update all existing type='json' module settings to json-array
+				// to clean up existing entries using the non-specific 'json' format.
+				$type = "json-$type";
+				$value = json_encode($value);
+			}
+
+			// Triple equals includes type checking, and even order checking for complex nested arrays!
+			if ($value === $oldValue) {
+				// Nothing changed, so we don't need to do anything.
+				$releaseLock();
+				return;
+			}
+
+			$pidString = $projectId;
+			if (!$projectId || $projectId == "") {
+				$pidString = "NULL";
+			}
+
+			if ($type == "boolean") {
+				$value = ($value) ? 'true' : 'false';
+			}
+
+			if ($value === null) {
+				$event = "DELETE";
+				$sql = "DELETE FROM redcap_external_module_settings
 						WHERE
 							external_module_id = $externalModuleId
 							AND " . self::getSqlEqualClause('project_id', $pidString) . "
 							AND `key` = '$key'";
+			} else {
+				$value = db_real_escape_string($value);
+
+				if (strlen($key) > self::SETTING_KEY_SIZE_LIMIT) {
+					throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
+				}
+
+				if (strlen($value) > self::SETTING_SIZE_LIMIT) {
+					throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
+				}
+
+				if ($oldValue === null) {
+					$event = "INSERT";
+					$sql = "INSERT INTO redcap_external_module_settings
+								(
+									`external_module_id`,
+									`project_id`,
+									`key`,
+									`type`,
+									`value`
+								)
+							VALUES
+							(
+								$externalModuleId,
+								$pidString,
+								'$key',
+								'$type',
+								'$value'
+							)";
+				} else {
+					if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+						$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
+						self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
+					}
+
+					$event = "UPDATE";
+					$sql = "UPDATE redcap_external_module_settings
+							SET value = '$value',
+								type = '$type'
+							WHERE
+								external_module_id = $externalModuleId
+								AND " . self::getSqlEqualClause('project_id', $pidString) . "
+								AND `key` = '$key'";
+				}
 			}
+
+			self::query($sql);
+
+			$affectedRows = db_affected_rows();
+
+			if ($affectedRows != 1) {
+				throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
+			}
+
+			$releaseLock();
+
+			return $sql;
 		}
-
-		self::query($sql);
-
-		$affectedRows = db_affected_rows();
-
-		if($affectedRows != 1){
-			throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
+		catch(Exception $e){
+			$releaseLock();
+			throw $e;
 		}
-
-		return $sql;
 	}
 
 	# getSystemSettingsAsArray and getProjectSettingsAsArray
