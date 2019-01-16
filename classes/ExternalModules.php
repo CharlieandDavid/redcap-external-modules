@@ -473,7 +473,7 @@ class ExternalModules
 
 		if (!empty(self::$hookBeingExecuted)) {
 			$seconds = time() - self::$hookStartTime;
-			$message .= "Hook Run Time: $seconds seconds<br>";
+			$message .= "Run Time: $seconds seconds<br>";
 		}
 
 		$email = new \Message();
