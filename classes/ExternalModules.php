@@ -325,6 +325,12 @@ class ExternalModules
 				return;
 			}
 
+			if($error && $error['type'] === E_NOTICE){
+				// This is just a notice, which likely means it occurred BEFORE an offending die/exit call.
+				// Ignore this notice and show the general die/exit call warning instead.
+				$error = null;
+			}
+
 			if (empty(self::$hookBeingExecuted)) {
 				// PHP must have died in the middle of getModuleInstance()
 				$message = 'Could not instantiate';
