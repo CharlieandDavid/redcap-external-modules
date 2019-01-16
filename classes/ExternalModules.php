@@ -315,6 +315,9 @@ class ExternalModules
 		self::$INCLUDED_RESOURCES = [];
 
 		register_shutdown_function(function () {
+			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
+			$error = error_get_last();
+
 			$activeModulePrefix = self::getActiveModulePrefix();
 
 			if ($activeModulePrefix == null) {
@@ -332,7 +335,6 @@ class ExternalModules
 			$message .= " the '$activeModulePrefix' module";
 
 			$sendAdminEmail = true;
-			$error = error_get_last();
 			if($error){
 				$message .= " because of the following error:\n\n";
 				$message .= 'Error Message: ' . $error['message'] . "\n";
