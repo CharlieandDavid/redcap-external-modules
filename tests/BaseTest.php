@@ -48,13 +48,9 @@ abstract class BaseTest extends TestCase
 		$this->setConfig([]);
 		$this->getInstance()->testHookArguments = null;
 
-		$this->removeSystemSetting();
-		$this->removeProjectSetting();
-
 		$m = self::getInstance();
-		$m->removeSystemSetting(ExternalModules::KEY_VERSION, TEST_SETTING_PID);
-		$m->removeSystemSetting(ExternalModules::KEY_ENABLED, TEST_SETTING_PID);
-		$m->removeProjectSetting(ExternalModules::KEY_ENABLED, TEST_SETTING_PID);
+		$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+		$m->query("delete from redcap_external_module_settings where external_module_id = $moduleId");
 
 		$_GET = [];
 		$_POST = [];
