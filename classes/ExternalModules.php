@@ -3273,4 +3273,25 @@ class ExternalModules
 			throw new Exception("The following action has been throttled because it is only allowed to happen $maximumOccurrences times within $seconds seconds, but it happened $occurrences times: $description");
 		}
 	}
+
+	// Copied from the first comment here:
+	// http://php.net/manual/en/function.array-merge-recursive.php
+	function array_merge_recursive_distinct ( array &$array1, array &$array2 )
+	{
+	  $merged = $array1;
+
+	  foreach ( $array2 as $key => &$value )
+	  {
+	    if ( is_array ( $value ) && isset ( $merged [$key] ) && is_array ( $merged [$key] ) )
+	    {
+	      $merged [$key] = self::array_merge_recursive_distinct ( $merged [$key], $value );
+	    }
+	    else
+	    {
+	      $merged [$key] = $value;
+	    }
+	  }
+
+	  return $merged;
+	}
 }
