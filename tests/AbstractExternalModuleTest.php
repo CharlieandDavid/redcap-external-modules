@@ -1084,4 +1084,61 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$assertSubSettings($pid);
 	}
+
+	function testSetSetting_concurrency()
+	{
+		// This test spins off a second phpunit process in order to test concurrency and locking in setSetting().
+		// If you comment out the GET_LOCK call in setSetting(), an exception should occur within a fraction of $maxIterations.
+		$iterations = 0;
+		$maxIterations = 1000;
+
+		$concurrentOperations = function(){
+			$this->setProjectSetting('some value');
+			$this->removeProjectSetting();
+		};
+
+		// The parenthesis are included in the argument and check below so we can still filter for this function manually (WITHOUT the parenthesis)  when testing for testing and avoid triggering the recursion.
+		$functionName = __FUNCTION__ . '()';
+
+		global $argv;
+		if(end($argv) === $functionName){
+			// This is the child process.
+
+			while($iterations < $maxIterations){
+				$concurrentOperations();
+				$iterations++;
+			}
+
+			$this->assertSame($iterations, $maxIterations);
+		}
+		else{
+			// This is the parent process.
+
+			$cmd = "vendor/phpunit/phpunit/phpunit --filter " . escapeshellarg($functionName);
+			$process = proc_open(
+				$cmd, [
+					0 => ['pipe', 'r'],
+					1 => ['pipe', 'w'],
+					2 => ['pipe', 'w'],
+				],
+				$pipes
+			);
+
+			do{
+				$concurrentOperations();
+				$status = proc_get_status($process);
+				$iterations++;
+			}
+			while($status["running"]);
+
+			$exitCode = $status['exitcode'];
+			if($exitCode !== 0){
+				$output = stream_get_contents($pipes[1]);
+				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
+			}
+
+			// The number of $iterations won't be exact in the parent, but should be greater due to the time to spin up the child process.
+			$this->assertGreaterThan($maxIterations, $iterations);
+		}
+	}
 }
