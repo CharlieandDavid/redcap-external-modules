@@ -134,6 +134,21 @@
 	width: 850px;
 }
 
+#external-modules-configure-modal .modal-header {
+	border-bottom-color: lightgray;
+	box-shadow: -8px 5px 15px -12px #b9b9b9;
+}
+
+#external-modules-configure-modal .modal-body {
+	max-height: calc(100vh - 185px);
+	overflow-y: scroll;
+}
+
+#external-modules-configure-modal .modal-footer {
+	border-top-color: lightgray;
+	box-shadow: -8px -5px 15px -12px #b9b9b9;
+}
+
 /* Modify jQuery UI modal z-index since it conflicts with Bootstrap modal */
 .ui-dialog { 
 	z-index: 1060;
