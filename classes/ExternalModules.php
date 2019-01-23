@@ -883,12 +883,17 @@ class ExternalModules
 		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
 	}
 
+	public static function getLockName($moduleId, $projectId)
+	{
+		return db_real_escape_string("external-module-setting-$moduleId-$projectId");
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
-		$lockName = db_real_escape_string("external-module-setting-$externalModuleId-$projectId");
+		$lockName = self::getLockName($externalModuleId, $projectId);
 
 		// The natural solution to prevent duplicates would be a unique key.
 		// That unfortunately doesn't work for the settings table since the total length of the appropriate key columns is longer than the maximum unique key length.
