@@ -1211,6 +1211,10 @@ class AbstractExternalModule
 			throw new Exception("A message is required for log entries.");
 		}
 
+		if(!is_array($parameters)){
+			throw new Exception("The second argument to the log() method must be an array of parameters. A '" . gettype($parameters) . "' was given instead.");
+		}
+
 		foreach ($parameters as $name => $value) {
 			if (isset(self::$RESERVED_LOG_PARAMETER_NAMES_FLIPPED[$name])) {
 				throw new Exception("The '$name' parameter name is set automatically and cannot be overridden.");
