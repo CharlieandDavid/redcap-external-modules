@@ -883,12 +883,17 @@ class ExternalModules
 		return strpos($currentUrl, self::$BASE_URL . 'manager') !== false;
 	}
 
+	public static function getLockName($moduleId, $projectId)
+	{
+		return db_real_escape_string("external-module-setting-$moduleId-$projectId");
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
 	{
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
-		$lockName = db_real_escape_string("external-module-setting-$externalModuleId-$projectId");
+		$lockName = self::getLockName($externalModuleId, $projectId);
 
 		// The natural solution to prevent duplicates would be a unique key.
 		// That unfortunately doesn't work for the settings table since the total length of the appropriate key columns is longer than the maximum unique key length.
@@ -3297,5 +3302,26 @@ class ExternalModules
 		if($occurrences > $maximumOccurrences){
 			throw new Exception("The following action has been throttled because it is only allowed to happen $maximumOccurrences times within $seconds seconds, but it happened $occurrences times: $description");
 		}
+	}
+
+	// Copied from the first comment here:
+	// http://php.net/manual/en/function.array-merge-recursive.php
+	function array_merge_recursive_distinct ( array &$array1, array &$array2 )
+	{
+	  $merged = $array1;
+
+	  foreach ( $array2 as $key => &$value )
+	  {
+	    if ( is_array ( $value ) && isset ( $merged [$key] ) && is_array ( $merged [$key] ) )
+	    {
+	      $merged [$key] = self::array_merge_recursive_distinct ( $merged [$key], $value );
+	    }
+	    else
+	    {
+	      $merged [$key] = $value;
+	    }
+	  }
+
+	  return $merged;
 	}
 }
