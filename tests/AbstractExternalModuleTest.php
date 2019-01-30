@@ -1157,7 +1157,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$m->setProjectSetting('state-name', [["Tennessee","Alabama"],["Ontario"]]);
 		$m->setProjectSetting('cities', [[["true","true"],["true"]],[["true"]]]);
 		$m->setProjectSetting('city-name', [[["Nashville","Franklin"],["Huntsville"]],[["Toronto"]]]);
-		$m->setProjectSetting('city-size', [[["large","small"],["medium"]],[["large"]]]);
+		$m->setProjectSetting('city-size', [[["large","small"],["medium"]],[[null]]]); // The null is an important scenario to test here, as it can change output behavior.
 
 		$expectedCountries = [
 			[
@@ -1194,7 +1194,7 @@ class AbstractExternalModuleTest extends BaseTest
 						"cities" => [
 							[
 								"city-name" => "Toronto",
-								"city-size" => "large"
+								"city-size" => null
 							]
 						]
 					]

@@ -297,7 +297,8 @@ class AbstractExternalModule
 				$recursionCheck = function($value){
 					// Only recurse if this is an array, and not a leaf.
 					// If index '0' is not defined, we know it's a leaf since only setting key names will be used as array keys (not numeric indexes).
-					return is_array($value) && isset($value[0]);
+					// Using array_key_exists() instead of isset() is important since there could be a null value set.
+					return is_array($value) && array_key_exists(0, $value);
 				};
 			}
 
