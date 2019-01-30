@@ -1,6 +1,8 @@
 <?php
 namespace ExternalModules\FrameworkVersion2;
 
+require_once __DIR__ . '/Records.php';
+
 use Exception;
 use ExternalModules\AbstractExternalModule;
 
@@ -12,6 +14,8 @@ class Framework
 		}
 
 		$this->module = $module;
+
+		$this->records = new Records($module);
 	}
 
 	function getProjectsWithModuleEnabled(){
