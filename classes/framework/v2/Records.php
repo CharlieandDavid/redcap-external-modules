@@ -52,7 +52,7 @@ class Records
 				$instance = 1;
 			}
 
-			$lockValuesSql .= "($pid, $record, $eventId, '$formName', $instance , now())";
+			$lockValuesSql .= "($pid, '$record', $eventId, '$formName', $instance , now())";
 		}
 
 		$this->module->query("
