@@ -713,11 +713,11 @@ class AbstractExternalModule
 	{
 		if($value == null){
 			$value = @$_GET[$parameterName];
+		}
 
-			if(!empty($value)){
-				// Use intval() to prevent SQL injection.
-				$value = intval($value);
-			}
+		if(!empty($value)){
+			// Use intval() to prevent SQL injection.
+			$value = intval($value);
 		}
 
 		return $value;
