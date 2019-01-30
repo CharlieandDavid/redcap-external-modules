@@ -8,6 +8,11 @@ class Records
 	}
 
 	function lock($recordIds){
+		if(empty($recordIds)){
+			// do nothing
+			return;
+		}
+
 		$recordIdSql = '';
 		foreach($recordIds as $recordId){
 			if(!empty($recordIdSql)){
