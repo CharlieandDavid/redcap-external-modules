@@ -1,6 +1,8 @@
 <?php
 namespace ExternalModules;
 
+use ExternalModules\FrameworkVersion2;
+
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
@@ -3323,5 +3325,20 @@ class ExternalModules
 	  }
 
 	  return $merged;
+	}
+
+	public static function initializeFramework($module)
+	{
+		$config = $module->getConfig();
+		$version = @$config['framework-version'];
+		$framework = null;
+		if($version === 2){
+			require_once __DIR__ . '/framework/v2/Framework.php';
+			$framework = new FrameworkVersion2\Framework($module);
+		}
+
+		if($framework){
+			$module->framework = $framework;
+		}
 	}
 }

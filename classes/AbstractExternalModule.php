@@ -44,6 +44,8 @@ class AbstractExternalModule
 
 		// Disallow illegal configuration options at module instantiation (and enable) time.
 		self::checkSettings();
+
+		ExternalModules::initializeFramework($this);
 	}
 
 	# checks the config.json settings for validity of syntax
