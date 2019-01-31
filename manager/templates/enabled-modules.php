@@ -296,7 +296,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 							<button class='external-modules-disable-button'>Disable</button>
 						<?php } ?>
 						<?php if(!isset($_GET['pid'])) { ?>
-							<button class='external-modules-usage-button' style="min-width: 90px">View Usage</button>
+							<button class='external-modules-usage-button'>View Usage</button>
 						<?php } ?>
 					</td>
 				</tr>
