@@ -561,10 +561,10 @@ class ExternalModules
 
 			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 
-			self::initializeSettingDefaults($instance);
 			self::setSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION, $version);
-
 			self::cacheAllEnableData();
+			self::initializeSettingDefaults($instance);
+
 			if ($old_version) {
 				self::callHook('redcap_module_system_change_version', array($version, $old_version), $moduleDirectoryPrefix);
 			}
