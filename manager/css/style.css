@@ -102,8 +102,8 @@
 	padding: 15px;
 }
 
-.external-modules-action-buttons {
-	text-align: right;
+.external-modules-action-buttons button{
+	min-width: 90px;
 }
 
 /* Only display one backdrop, no matter how many modals are open. */
