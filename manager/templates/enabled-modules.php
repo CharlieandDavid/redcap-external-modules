@@ -260,21 +260,21 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 							<?php
 								if (SUPER_USER && !isset($_GET['pid'])) {
 									if ($config['authors']) {
-											$names = array();
-											foreach ($config['authors'] as $author) {
-													$name = $author['name'];
-													$institution = empty($author['institution']) ? "" : " <span class='author-institution'>({$author['institution']})</span>";
-													if ($name) {
-															if ($author['email']) {
-																	$names[] = "<a href='mailto:".$author['email']."?subject=".rawurlencode($config['name']." - ".$version)."'>".$name."</a>$institution";
-															} else {
-																	$names[] = $name . $institution;
-															}
-													}
+										$names = array();
+										foreach ($config['authors'] as $author) {
+											$name = $author['name'];
+											$institution = empty($author['institution']) ? "" : " <span class='author-institution'>({$author['institution']})</span>";
+											if ($name) {
+												if ($author['email']) {
+													$names[] = "<a href='mailto:".$author['email']."?subject=".rawurlencode($config['name']." - ".$version)."'>".$name."</a>$institution";
+												} else {
+													$names[] = $name . $institution;
+												}
 											}
-											if (count($names) > 0) {
-													echo "by ".implode($names, ", ");
-											}
+										}
+										if (count($names) > 0) {
+											echo "by ".implode($names, ", ");
+										}
 									}
 								}
 
