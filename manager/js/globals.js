@@ -1,6 +1,6 @@
 var ExternalModules = {
 	sortModuleTable: function(table){
-		table.find('tr').sort(function(a, b){
+		table.find('tbody tr').sort(function(a, b){
 			a = $(a).find('.external-modules-title').text()
 			b = $(b).find('.external-modules-title').text()
 

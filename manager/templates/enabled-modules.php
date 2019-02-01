@@ -213,6 +213,15 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	if (empty($versionsByPrefix)) {
 		echo 'None';
 	} else {
+		?>
+		<thead>
+			<tr>
+				<th></th>
+				<th style="width: 90px">Support End Date</th>
+				<th style="width: 115px">Actions</th>
+			</tr>
+		</thead>
+		<?php
 		foreach ($versionsByPrefix as $prefix => $version) {
 			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
 
@@ -286,6 +295,9 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 								$module_instance = ExternalModules::getModuleInstance($prefix);
 							?>
 						</div>
+					</td>
+					<td>
+						##/##/##
 					</td>
 					<td class="external-modules-action-buttons">
 						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
