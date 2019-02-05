@@ -2627,9 +2627,10 @@ class ExternalModules
 		// Validate module_id
 		if (empty($module_id) || !is_numeric($module_id)) return "0";
 		$module_id = (int)$module_id;
-		// Also obtain the folder name of the module
-		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 
+		$moduleDetails = json_decode(http_get(APP_URL_EXTMOD_LIB . "details.php?module_id=$module_id"), true);
+
+		$moduleFolderName = $moduleDetails['directory_name'];
 		if(empty($moduleFolderName)){
 			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
 		}
@@ -2724,6 +2725,8 @@ class ExternalModules
 		db_query($sql);
 		// Remove module_id from external_modules_updates_available config variable		
 		self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
+
+		self::updateSupportEndDates([$moduleDetails]);
 
 		// Give success message
 		return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
@@ -3355,5 +3358,30 @@ class ExternalModules
 		}
 
 		return $detailsByPrefix;
+	}
+
+	public static function updateSupportEndDates($modules)
+	{
+		foreach($modules as $module){
+			$directoryPrefix = db_real_escape_string($module['directory_prefix']);
+
+			$supportEndDate = db_real_escape_string($module['support_end_date']);
+			if(empty($supportEndDate)){
+				$supportEndDate = 'null';
+			}
+			else{
+				$supportEndDate = "STR_TO_DATE('$supportEndDate','%Y-%m-%d')";
+			}
+
+			$sql = "
+				update redcap_external_modules
+				set support_end_date = $supportEndDate
+				where directory_prefix = '$directoryPrefix'
+			";
+
+			if(db_query($sql) === FALSE){
+				throw new Exception("Module support date update failed for the '$directoryPrefix' module with the following error:" . db_error());
+			}
+		}
 	}
 }
