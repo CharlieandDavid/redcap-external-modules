@@ -1,5 +1,12 @@
 <?php namespace ExternalModules; ?>
 
+<input type='hidden' name='version' value='<?= $version ?>'>
+
+<div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
+	<?php if ($system_enabled) print "<span class='label label-warning badge badge-warning'>Enabled for All Projects</span>" ?>
+	<?php if ($isDiscoverable) print "<span class='label label-info badge badge-info'>Discoverable</span>" ?>
+
+</div>
 <div class='external-modules-description'>
 	<?php echo $config['description'] ? $config['description'] : '';?>
 </div>

@@ -251,10 +251,6 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td>
-						<div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
-                            <?php if ($system_enabled && SUPER_USER) print "<span class='label label-warning badge badge-warning'>Enabled for All Projects</span>" ?>
-                            <?php if ($isDiscoverable && SUPER_USER) print "<span class='label label-info badge badge-info'>Discoverable</span>" ?>
-                        </div>
 						<?php require __DIR__ . '/module-table.php'; ?>
 					</td>
 					<td class="external-modules-action-buttons">

@@ -96,12 +96,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			if (!$enabled) {
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
-					<td><div class='external-modules-title'>
-                            <?= $name ?> <?= $version ?>
-                            <?php if ($system_enabled) print "<span class='label label-warning badge badge-warning' title='This module is normally enabled globally for all projects'>Global Module</span>" ?>
-                            <input type='hidden' name='version' value='<?= $version ?>'>
-							<?php if ($isDiscoverable && SUPER_USER) { ?><span class="label label-info badge badge-info">Discoverable</span><?php } ?>
-                        </div>
+					<td>
 						<?php require __DIR__ . '/../templates/module-table.php'; ?>
 					</td>
 					<td class="external-modules-action-buttons">
