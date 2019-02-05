@@ -233,11 +233,13 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	} else {
 		?>
 		<thead>
-			<tr>
-				<th></th>
-				<th>Support<br>End Date<br>(if supported)</th>
-				<th>Actions</th>
-			</tr>
+			<?php if(!isset($_GET['pid'])) { ?>
+				<tr>
+					<th></th>
+					<th>Support<br>End Date<br>(if supported)</th>
+					<th>Actions</th>
+				</tr>
+			<?php } ?>
 		</thead>
 		<?php
 		foreach ($versionsByPrefix as $prefix => $version) {
@@ -315,7 +317,9 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 							?>
 						</div>
 					</td>
-					<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>
+					<?php if(!isset($_GET['pid'])) { ?>
+						<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>
+					<?php } ?>
 					<td class="external-modules-action-buttons">
 						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
 							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){?>
