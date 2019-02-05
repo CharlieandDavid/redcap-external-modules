@@ -3365,6 +3365,10 @@ class ExternalModules
 		foreach($modules as $module){
 			$directoryPrefix = db_real_escape_string($module['directory_prefix']);
 
+			// The following method is called solely to ensure that an entry exists in the redcap_external_modules table
+			// so that support end dates can be set at module download time.
+			self::getIdForPrefix($directoryPrefix);
+
 			$supportEndDate = db_real_escape_string($module['support_end_date']);
 			if(empty($supportEndDate)){
 				$supportEndDate = 'null';
