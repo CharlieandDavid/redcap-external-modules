@@ -3341,4 +3341,19 @@ class ExternalModules
 			$module->framework = $framework;
 		}
 	}
+
+	public static function getModuleDetailsByPrefix($prefixes)
+	{
+		$results = self::query("
+		  	select * from redcap_external_modules
+			where " . self::getSQLInClause('directory_prefix', $prefixes) . "
+		");
+
+		$detailsByPrefix = [];
+		while($row = $results->fetch_assoc()){
+			$detailsByPrefix[$row['directory_prefix']] = $row;
+		}
+
+		return $detailsByPrefix;
+	}
 }
