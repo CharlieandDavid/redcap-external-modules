@@ -1,5 +1,8 @@
 <?php namespace ExternalModules; ?>
 
+<div class='external-modules-description'>
+	<?php echo $config['description'] ? $config['description'] : '';?>
+</div>
 <div class='external-modules-byline'>
 	<?php
 		if (SUPER_USER && !isset($_GET['pid'])) {

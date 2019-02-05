@@ -102,9 +102,6 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
                             <input type='hidden' name='version' value='<?= $version ?>'>
 							<?php if ($isDiscoverable && SUPER_USER) { ?><span class="label label-info badge badge-info">Discoverable</span><?php } ?>
                         </div>
-                        <div class='external-modules-description'>
-                            <?php echo $config['description'] ? $config['description'] : '';?>
-                        </div>
 						<?php require __DIR__ . '/../templates/module-table.php'; ?>
 					</td>
 					<td class="external-modules-action-buttons">
