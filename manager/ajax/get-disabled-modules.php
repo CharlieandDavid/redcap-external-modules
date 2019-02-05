@@ -105,29 +105,8 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
                         <div class='external-modules-description'>
                             <?php echo $config['description'] ? $config['description'] : '';?>
                         </div>
-                        <div class='external-modules-byline'>
-					<?php
-						if (SUPER_USER && !isset($_GET['pid'])) {
-							if ($config['authors']) {
-								$names = array();
-								foreach ($config['authors'] as $author) {
-									$name = $author['name'];
-									$institution = empty($author['institution']) ? "" : " <span class='author-institution'>({$author['institution']})</span>";
-									if ($name) {
-										if ($author['email']) {
-											$names[] = "<a href='mailto:".$author['email']."'>".$name."</a> $institution";
-										} else {
-											$names[] = $name .  $institution;
-										}
-									}
-								}
-								if (count($names) > 0) {
-									echo "by ".implode($names, ", ");
-								}
-							}
-						}
-					?>
-					</div></td>
+						<?php require __DIR__ . '/../templates/module-table.php'; ?>
+					</td>
 					<td class="external-modules-action-buttons">
 						<?php if (SUPER_USER) { ?><button class='enable-button'>Enable</button><?php } ?>
 					</td>
