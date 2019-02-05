@@ -91,6 +91,7 @@
 	vertical-align: bottom;
 	font-size: 13px;
 	color: #444444;
+	min-width: 115px;
 }
 
 #external-modules-enabled td:nth-child(2){
@@ -112,6 +113,10 @@
 #external-modules-disabled-table td:first-child,
 #external-modules-enabled td:first-child {
 	padding: 15px;
+}
+
+#external-modules-enabled .support-end-date .not-supported{
+	color: #ea0000;
 }
 
 .external-modules-action-buttons button{

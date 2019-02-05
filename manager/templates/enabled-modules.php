@@ -208,6 +208,24 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	<?php
 
 	$versionsByPrefix = ExternalModules::getEnabledModules($_GET['pid']);
+	$detailsByPrefix = ExternalModules::getModuleDetailsByPrefix(array_keys($versionsByPrefix));
+
+	$formatSupportEndDate = function($supportEndDate){
+		if(!$supportEndDate){
+			return '';
+		}
+
+		$supportEndTime = strtotime($supportEndDate);
+		$supportEndDateString = date('m/d/Y', $supportEndTime);
+
+		if($supportEndTime < time()){
+			// The support end date has past.
+			$supportEndDateString = "<div class='not-supported'>$supportEndDateString</div>";
+		}
+
+		return $supportEndDateString;
+	};
+
 	$configsByPrefix = array();
 
 	if (empty($versionsByPrefix)) {
@@ -217,18 +235,19 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 		<thead>
 			<tr>
 				<th></th>
-				<th style="width: 90px">Support End Date</th>
-				<th style="width: 115px">Actions</th>
+				<th>Support<br>End Date<br>(if supported)</th>
+				<th>Actions</th>
 			</tr>
 		</thead>
 		<?php
 		foreach ($versionsByPrefix as $prefix => $version) {
 			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
-
 			if(empty($config)){
 				// This module's directory may have been removed while it was still enabled.
 				continue;
 			}
+
+			$details = $detailsByPrefix[$prefix];
 
 			## Add resources for custom javascript fields
 			foreach(array_merge($config['project-settings'],$config['system-settings']) as $configRow) {
@@ -296,9 +315,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 							?>
 						</div>
 					</td>
-					<td>
-						##/##/##
-					</td>
+					<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>
 					<td class="external-modules-action-buttons">
 						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
 							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){?>
