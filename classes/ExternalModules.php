@@ -634,15 +634,18 @@ class ExternalModules
 		// Get external module ID
 		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
 		if (empty($externalModuleId) || empty($moduleInstance)) return false;
-		// Add to table
-		$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
-				('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
-				'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
-		if (!db_query($sql)) {
-			// If fails on one cron, then delete any added so far for this module
-			self::removeCronJobs($moduleInstance->PREFIX);
-			// Return error
-			throw new Exception("One or more cron jobs for this module failed to be created.");
+
+		if (isset($cron['cron_frequency']) && isset($cron['cron_max_run_time'])) {
+			// Add to table
+			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
+					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
+					'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
+			if (!db_query($sql)) {
+				// If fails on one cron, then delete any added so far for this module
+				self::removeCronJobs($moduleInstance->PREFIX);
+				// Return error
+				throw new Exception("One or more cron jobs for this module failed to be created.");
+			}
 		}
 	}
 
@@ -658,6 +661,7 @@ class ExternalModules
 		{
 			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
 		}
+
 		// Name must be no more than 100 characters
 		if (strlen($cron['cron_name']) > 100) {
 			throw new Exception("Cron job 'name' must be no more than 100 characters.");
@@ -666,11 +670,17 @@ class ExternalModules
 		if (!preg_match("/^([a-z0-9_-]+)$/", $cron['cron_name'])) {
 			throw new Exception("Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).");
 		}
+
 		// Make sure integer attributes are integers
-		if (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0)
-		{
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero.");
+		$isValidFrequencyCron = (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0);
+		$isValidTimedCron = self::isValidTimedCron($cron);
+		if ($isValidFrequencyCron && $isValidTimedCron) { 
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'hour' and 'minute'. Please choose one timing setting or the other, but not both.");
 		}
+		if (!$isValidFrequencyCron && !$isValidTimedCron) {
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'hour' and 'minute' must be specified and numeric.");
+		}
+
 		// If method does not exist, then disable module
 		if (!empty($moduleInstance) && !method_exists($moduleInstance, $cron['method'])) {
 			throw new Exception("The external module \"{$moduleInstance->PREFIX}_{$moduleInstance->VERSION}\" has a cron job named \"{$cron['cron_name']}\" that is trying to call a method \"{$cron['method']}\", which does not exist in the module class.");
@@ -3250,6 +3260,108 @@ class ExternalModules
 	private function isDataEntryPage()
 	{
 		return strpos($_SERVER['REQUEST_URI'], APP_PATH_WEBROOT . 'DataEntry') === 0;
+	}
+
+	private static function isValidTimedCron($cronAttr) {
+		$hour = $cronAttr['hour'];
+		$minute = $cronAttr['minute'];
+		$weekday = $cronAttr['weekday'];
+		$monthday = $cronAttr['monthday'];
+
+		if (!empty($cronAttr['cron_frequency']) || !empty($cronAttr['cron_max_run_time'])) {
+			return FALSE;
+		}
+
+		if(empty($hour) || empty($minute)){
+			return FALSE;
+		}
+		if(!is_numeric($hour) || !is_numeric($minute)) {
+			return FALSE;
+		}
+		if($weekday && !is_numeric($weekday)) {
+			return FALSE;
+		}
+		if ($monthday && !is_numeric($monthday)) {
+			return FALSE;
+		}
+
+		return TRUE;
+	}
+
+	private static function isTimeToRun($cronAttr) {
+		$hour = $cronAttr['hour'];
+		$minute = $cronAttr['minute'];
+		$weekday = $cronAttr['weekday'];
+		$monthday = $cronAttr['monthday'];
+
+		if(empty($hour) || empty($minute)){
+			return FALSE;
+		}
+
+		$hour = (int) $hour;
+		$minute = (int) $minute;
+		$weekday = (int) $weekday;
+		$monthday = (int) $monthday;
+
+		// We check the cron start time instead of the current time
+		// in case another module's cron job ran us into the next minute.
+		$cronStartTime = $_SERVER["REQUEST_TIME_FLOAT"];
+		$currentHour = (int) date('G', $cronStartTime);
+		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
+		$currentWeekday = (int) date('w', $cronStartTime);
+		$currentMonthday = (int) date('j', $cronStartTime);
+
+		$proceed = TRUE;
+		if (!empty($weekday)) {
+			if ($currentWeekday != $weekday) {
+				$proceed = FALSE;
+			}
+		}
+
+		if (!empty($monthday)) {
+			if ($currentMonthday != $monthday) {
+				$proceed = FALSE;
+			}
+		}
+		
+		return $proceed && ($hour === $currentHour) && ($minute === $currentMinute);
+	}
+
+	public static function callTimedCronMethods() {
+		# get array of modules
+		$enabledModules = self::getEnabledModules();
+		$returnMessages = array();
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			try{
+				$cronName = "unnamed";
+				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
+				if (!empty($moduleInstance)) {
+					$config = $moduleInstance->getConfig();
+					if (isset($config['crons']) && !empty($config['crons'])) {
+						foreach ($config['crons'] as $cronKey=>$cronAttr) {
+							$cronName = $cronAttr['cron_name'];
+							if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
+								# if isTimeToRun, run method
+								$cronMethod = $config['crons'][$cronKey]['method'];
+								array_push($returnMessages, $moduleInstance->$cronMethod($cronAttr));
+							}
+						}
+					}
+				}
+			}
+			catch(Exception $e) {
+				$currentReturnMessage = "Timed Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
+				$emailMessage = "$currentReturnMessage with the following Exception: $e";
+
+				self::sendAdminEmail('External Module Exception in Timed Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+				array_push($returnMessages, $currentReturnMessage);
+			}
+		}
+
+		self::setActiveModulePrefix(null);
+		self::$hookBeingExecuted = "";
+		
+		return implode("\n", $returnMessages)."\n";
 	}
 
 	public static function callCronMethod($moduleId, $cronName)
