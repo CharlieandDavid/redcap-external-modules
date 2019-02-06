@@ -611,6 +611,7 @@ class ExternalModules
 	}
 
 	# initializes any crons contained in the config, and adds them to the redcap_crons table
+	# timed crons are read from the config, so they are not entered into any table
 	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
 		// First, try and remove any crons that exist for this module (just in case)
@@ -635,7 +636,7 @@ class ExternalModules
 		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
 		if (empty($externalModuleId) || empty($moduleInstance)) return false;
 
-		if (isset($cron['cron_frequency']) && isset($cron['cron_max_run_time'])) {
+		if (self::isValidTabledCron($cron)) {
 			// Add to table
 			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
 					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
@@ -656,10 +657,11 @@ class ExternalModules
 		$cron['cron_frequency'] = (int)$cron['cron_frequency'];
 		$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
 		// Make sure we have what we need
-		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) 
-			|| !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time']))
-		{
+		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method'])) {
 			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
+		}
+		if ((!isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time'])) && (!isset($cron['cron_hour']) && !isset($cron['cron_minute']))) {
+			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing (cron_frequency/cron_max_run_time or hour/minute).");
 		}
 
 		// Name must be no more than 100 characters
@@ -672,13 +674,13 @@ class ExternalModules
 		}
 
 		// Make sure integer attributes are integers
-		$isValidFrequencyCron = (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0);
+		$isValidTabledCron = self::isValidTabledCron($cron);
 		$isValidTimedCron = self::isValidTimedCron($cron);
-		if ($isValidFrequencyCron && $isValidTimedCron) { 
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'hour' and 'minute'. Please choose one timing setting or the other, but not both.");
+		if ($isValidTabledCron && $isValidTimedCron) { 
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'cron_hour' and 'cron_minute'. Please choose one timing setting or the other, but not both.");
 		}
-		if (!$isValidFrequencyCron && !$isValidTimedCron) {
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'hour' and 'minute' must be specified and numeric.");
+		if (!$isValidTabledCron && !$isValidTimedCron) {
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'cron_hour' and 'cron_minute' must be numeric and valid.");
 		}
 
 		// If method does not exist, then disable module
@@ -729,21 +731,23 @@ class ExternalModules
 				foreach ($config['crons'] as $cron) {
 					// Validate the cron's attributes
 					self::validateCronAttributes($cron, $moduleInstance);
-					// Ensure the cron job's info in the db table are all correct
-					$cronInfoTable = self::getCronJobFromTable($cron['cron_name'], $externalModuleId);
-					if (empty($cronInfoTable)) {
-						// If this cron is somehow missing, then add it to the redcap_crons table
-						self::addCronJobToTable($cron, $moduleInstance);
-					}
-					// If any info is different, then correct it in table
-					foreach ($cronAttrCheck as $attr) {
-						if ($cron[$attr] != $cronInfoTable[$attr]) {
-							// Fix the cron
-							if (self::updateCronJobInTable($cron, $externalModuleId)) {
-								$fixedModules[] = "\"$moduleDirectoryPrefix\"";
+					if (self::isValidTabledCron($cron)) {
+						// Ensure the cron job's info in the db table are all correct
+						$cronInfoTable = self::getCronJobFromTable($cron['cron_name'], $externalModuleId);
+						if (empty($cronInfoTable)) {
+							// If this cron is somehow missing, then add it to the redcap_crons table
+							self::addCronJobToTable($cron, $moduleInstance);
+						}
+						// If any info is different, then correct it in table
+						foreach ($cronAttrCheck as $attr) {
+							if ($cron[$attr] != $cronInfoTable[$attr]) {
+								// Fix the cron
+								if (self::updateCronJobInTable($cron, $externalModuleId)) {
+									$fixedModules[] = "\"$moduleDirectoryPrefix\"";
+								}
+								// Go to next cron
+								continue;
 							}
-							// Go to next cron
-							continue;
 						}
 					}
 				}
@@ -772,10 +776,13 @@ class ExternalModules
 	static function updateCronJobInTable($cron=array(), $externalModuleId)
 	{
 		if (empty($cron) || empty($externalModuleId)) return false;
-		$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
-				cron_description = '".db_escape($cron['cron_description'])."'
-				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
-		return db_query($sql);
+		if (self::isValidTabledCron($cron)) {
+			$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
+					cron_description = '".db_escape($cron['cron_description'])."'
+					where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
+			return db_query($sql);
+		}
+		return false;
 	}
 
 	# initializes the system settings
@@ -3262,11 +3269,12 @@ class ExternalModules
 		return strpos($_SERVER['REQUEST_URI'], APP_PATH_WEBROOT . 'DataEntry') === 0;
 	}
 
+	# for crons specified to run at a specific time
 	private static function isValidTimedCron($cronAttr) {
-		$hour = $cronAttr['hour'];
-		$minute = $cronAttr['minute'];
-		$weekday = $cronAttr['weekday'];
-		$monthday = $cronAttr['monthday'];
+		$hour = $cronAttr['cron_hour'];
+		$minute = $cronAttr['cron_minute'];
+		$weekday = $cronAttr['cron_weekday'];
+		$monthday = $cronAttr['cron_monthday'];
 
 		if (!empty($cronAttr['cron_frequency']) || !empty($cronAttr['cron_max_run_time'])) {
 			return FALSE;
@@ -3285,16 +3293,68 @@ class ExternalModules
 			return FALSE;
 		}
 
+		if (($hour < 0) || ($hour >= 24)) {
+			return FALSE;
+		}
+		if (($minute < 0) || ($minute >= 60)) { 
+			return FALSE;
+		}
+
 		return TRUE;
 	}
 
-	private static function isTimeToRun($cronAttr) {
-		$hour = $cronAttr['hour'];
-		$minute = $cronAttr['minute'];
-		$weekday = $cronAttr['weekday'];
-		$monthday = $cronAttr['monthday'];
+	# for all generic crons; all must have the following attributes
+	private static function isValidCron($cronAttr) {
+		$name = $cronAttr['cron_name'];
+		$descr = $cronAttr['cron_description'];
+		$method = $cronAttr['method'];
 
-		if(empty($hour) || empty($minute)){
+		if (!isset($name) || !isset($descr) || !isset($method)) {
+			return FALSE; 
+		}
+
+		return TRUE;
+	}
+
+	# only for crons stored in redcap_crons table
+	private static function isValidTabledCron($cronAttr) {
+		$frequency = $cronAttr['cron_frequency'];
+		$maxRunTime = $cronAttry['cron_max_run_time'];
+
+		if (!self::isValidCron($cronAttr)) {
+			return FALSE;
+		}
+
+		if (!isset($frequency) || !isset($maxRunTime)) {
+			return FALSE;
+		}
+
+		if (isset($cronAttr['cron_hour']) || isset($cronAttr['cron_minute'])) {
+			return FALSE;
+		}
+
+		if (!is_numeric($frequency) || !is_numeric($maxRunTime)) {
+			return FALSE;
+		}
+
+		if ($frequency <= 0) {
+			return FALSE;
+		}
+		if ($maxRunTime <= 0) {
+			return FALSE;
+		}
+
+		return TRUE;
+	}
+
+	# only for timed crons
+	private static function isTimeToRun($cronAttr) {
+		$hour = $cronAttr['cron_hour'];
+		$minute = $cronAttr['cron_minute'];
+		$weekday = $cronAttr['cron_weekday'];
+		$monthday = $cronAttr['cron_monthday'];
+
+		if(!self::isValidTimedCron($cronAttr)){
 			return FALSE;
 		}
 
@@ -3333,17 +3393,19 @@ class ExternalModules
 		$returnMessages = array();
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 			try{
-				$cronName = "unnamed";
+				$cronName = "";
 				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
-				if (!empty($moduleInstance)) {
-					$config = $moduleInstance->getConfig();
+				$config = $moduleInstance->getConfig();
+				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config)) {
 					if (isset($config['crons']) && !empty($config['crons'])) {
 						foreach ($config['crons'] as $cronKey=>$cronAttr) {
 							$cronName = $cronAttr['cron_name'];
 							if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 								# if isTimeToRun, run method
 								$cronMethod = $config['crons'][$cronKey]['method'];
-								array_push($returnMessages, $moduleInstance->$cronMethod($cronAttr));
+								$mssg = callCronMethod($moduleId, $cronName);
+								array_push($returnMessages, $mssg);
 							}
 						}
 					}
@@ -3361,7 +3423,7 @@ class ExternalModules
 		self::setActiveModulePrefix(null);
 		self::$hookBeingExecuted = "";
 		
-		return implode("\n", $returnMessages)."\n";
+		return $returnMessages;
 	}
 
 	public static function callCronMethod($moduleId, $cronName)
