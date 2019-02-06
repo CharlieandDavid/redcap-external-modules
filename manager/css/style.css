@@ -1,3 +1,7 @@
+#pagecontainer{
+	max-width: 1260px;
+}
+
 #external-modules-enabled{
 	max-width: 800px;
 }
@@ -127,8 +131,15 @@
 	font-weight: bold;
 }
 
-.external-modules-description, .external-modules-description a, .external-modules-byline, .external-modules-byline a {
+.external-modules-description,
+.external-modules-description a,
+.external-modules-byline *,
+.external-modules-byline a {
 	font-size: 11px;
+}
+
+.external-modules-byline p{
+	margin: 5px 0px;
 }
 
 .external-modules-action-buttons button{

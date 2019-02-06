@@ -26,7 +26,7 @@
 		$supportOverrideEntity = $supportOverrideInfo['entity'];
 		$supportOverrideEmail = $supportOverrideInfo['email'];
 		if($supportOverrideEntity){
-			echo '<br>Supported by ' . $renderContact($supportOverrideEntity, $supportOverrideEmail, null) . '<br>';
+			echo '<p>Supported by ' . $renderContact($supportOverrideEntity, $supportOverrideEmail, null) . '</p>';
 		}
 		else if ($details['support_end_date']){
 			$authorRole .= ' & Supported';
@@ -41,7 +41,7 @@
 			$names[] = $renderContact($name, $email, $institution);
 		}
 
-		echo "<br>$authorRole by ".implode($names, ", ");
+		echo "<p>$authorRole by " . implode($names, ", ") . "</p>";
 	}
 
 	$documentationUrl = ExternalModules::getDocumentationUrl($prefix);
