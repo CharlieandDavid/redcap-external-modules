@@ -37,6 +37,11 @@ class ExternalModules
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
+	const KEY_RESERVED_SUPPORT_OVERRIDE_HEADER = 'reserved-support-override-header';
+	const KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE = 'reserved-supporting-entity-override';
+	const KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE = 'reserved-support-email-address';
+	const KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE = 'reserved-support-end-date-override';
+	const KEY_RESERVED_SETTINGS_DEFINED_BY_MODULE_SEPARATOR = 'reserved-settings-defined-by-module-separator';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -123,6 +128,31 @@ class ExternalModules
 				array("value" => "", "name" => "Require Project Setup/Design privilege"),
 				array("value" => "true", "name" => "Require module-specific user privilege")
 			)
+		),
+		array(
+			'key' => self::KEY_RESERVED_SUPPORT_OVERRIDE_HEADER,
+			'name' => '<b style="display: block; margin: 20px 0px">Support Override Settings:</b>',
+			'type' => 'descriptive'
+		),
+		array(
+			'key' => self::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE,
+			'name' => 'Override the supporting party with another individual/department/grant/project/etc.',
+			'type' => 'text'
+		),
+		array(
+			'key' => self::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE,
+			'name' => 'Override the support email address',
+			'type' => 'text'
+		),
+		array(
+			'key' => self::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE,
+			'name' => 'Override the support end date',
+			'type' => 'date'
+		),
+		array(
+			'key' => self::KEY_RESERVED_SETTINGS_DEFINED_BY_MODULE_SEPARATOR,
+			'name' => '<b style="display: block; margin: 20px 0px">Settings defined by this module:</b>',
+			'type' => 'descriptive'
 		)
 	);
 
@@ -3366,6 +3396,42 @@ class ExternalModules
 		}
 
 		return $detailsByPrefix;
+	}
+
+	public static function getSupportOverrideInfo($prefixes)
+	{
+		$results = self::getSettings($prefixes, null, [
+			self::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE,
+			self::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE,
+			self::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE
+		]);
+
+		$infoByPrefix = [];
+		foreach($prefixes as $prefix){
+			// Make sure at least an empty array exists, mainly to prevent extra error checking
+			// against the return value from this function.
+			$infoByPrefix[$prefix] = [];
+		}
+
+		while($row = $results->fetch_assoc()){
+			$prefix = $row['directory_prefix'];
+			$key = $row['key'];
+			$value = $row['value'];
+
+			$info = &$infoByPrefix[$prefix];
+
+			if($key === self::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE){
+				$info['entity'] = $value;
+			}
+			else if($key === self::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE){
+				$info['email'] = $value;
+			}
+			else if($key === self::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE){
+				$info['support_end_date'] = $value;
+			}
+		}
+
+		return $infoByPrefix;
 	}
 
 	public static function updateSupportEndDates($modules)

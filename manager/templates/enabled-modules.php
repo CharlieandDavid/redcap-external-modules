@@ -208,11 +208,18 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	<?php
 
 	$versionsByPrefix = ExternalModules::getEnabledModules($_GET['pid']);
-	$detailsByPrefix = ExternalModules::getModuleDetailsByPrefix(array_keys($versionsByPrefix));
+	$prefixes = array_keys($versionsByPrefix);
+	$detailsByPrefix = ExternalModules::getModuleDetailsByPrefix($prefixes);
+	$supportOverrideInfoByPrefix = ExternalModules::getSupportOverrideInfo($prefixes);
 
-	$formatSupportEndDate = function($supportEndDate){
+	$renderSupportEndDate = function($details, $supportOverrideInfo){
+		$supportEndDate = @$supportOverrideInfo['support_end_date'];
 		if(!$supportEndDate){
-			return '';
+			$supportEndDate = @$details['support_end_date'];
+
+			if(!$supportEndDate){
+				return '';
+			}
 		}
 
 		$supportEndTime = strtotime($supportEndDate);
@@ -250,6 +257,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 			}
 
 			$details = $detailsByPrefix[$prefix];
+			$supportOverrideInfo = $supportOverrideInfoByPrefix[$prefix];
 
 			## Add resources for custom javascript fields
 			foreach(array_merge($config['project-settings'],$config['system-settings']) as $configRow) {
@@ -284,7 +292,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 						<?php require __DIR__ . '/module-table.php'; ?>
 					</td>
 					<?php if(!isset($_GET['pid'])) { ?>
-						<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>
+						<td class="support-end-date"><?=$renderSupportEndDate($details, $supportOverrideInfo)?></td>
 					<?php } ?>
 					<td class="external-modules-action-buttons">
 						<?php
