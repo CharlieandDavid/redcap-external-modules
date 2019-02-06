@@ -281,41 +281,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td>
-						<div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
-                            <?php if ($system_enabled && SUPER_USER) print "<span class='label label-warning badge badge-warning'>Enabled for All Projects</span>" ?>
-                            <?php if ($isDiscoverable && SUPER_USER) print "<span class='label label-info badge badge-info'>Discoverable</span>" ?>
-                        </div>
-						<div class='external-modules-description'><?php echo $config['description'] ? $config['description'] : ''; ?></div>
-						<div class='external-modules-byline'>
-							<?php
-								if (SUPER_USER && !isset($_GET['pid'])) {
-									if ($config['authors']) {
-										$names = array();
-										foreach ($config['authors'] as $author) {
-											$name = $author['name'];
-											$institution = empty($author['institution']) ? "" : " <span class='author-institution'>({$author['institution']})</span>";
-											if ($name) {
-												if ($author['email']) {
-													$names[] = "<a href='mailto:".$author['email']."?subject=".rawurlencode($config['name']." - ".$version)."'>".$name."</a>$institution";
-												} else {
-													$names[] = $name . $institution;
-												}
-											}
-										}
-										if (count($names) > 0) {
-											echo "by ".implode($names, ", ");
-										}
-									}
-								}
-
-								$documentationUrl = ExternalModules::getDocumentationUrl($prefix);
-								if(!empty($documentationUrl)){
-									?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='fas fa-file' style="margin-right: 5px"></i>View Documentation</a><?php
-								}
-
-								$module_instance = ExternalModules::getModuleInstance($prefix);
-							?>
-						</div>
+						<?php require __DIR__ . '/module-table.php'; ?>
 					</td>
 					<?php if(!isset($_GET['pid'])) { ?>
 						<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>

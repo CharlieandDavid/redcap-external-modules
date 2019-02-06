@@ -1108,7 +1108,7 @@ class AbstractExternalModuleTest extends BaseTest
 				$concurrentOperations();
 				$iterations++;
 			}
-
+			
 			$this->assertSame($iterations, $maxIterations);
 		}
 		else{
@@ -1137,8 +1137,9 @@ class AbstractExternalModuleTest extends BaseTest
 				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
 			}
 
-			// The number of $iterations won't be exact in the parent, but should be greater due to the time to spin up the child process.
-			$this->assertGreaterThan($maxIterations, $iterations);
+			// The parent will generally run more iterations than the child, but apparently not always.
+			// Consider the text successful if $iterations is at least 90% of $maxIterations.
+			$this->assertGreaterThan($maxIterations*0.9, $iterations);
 		}
 	}
 

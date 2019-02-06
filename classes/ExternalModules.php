@@ -2956,7 +2956,15 @@ class ExternalModules
 		if(is_file(self::getModuleDirectoryPath($prefix) . "/$documentation")){
 			// Use the module url function so that raw URLs can be returned (for PDFs, etc.).
 			$module = self::getModuleInstance($prefix);
-			return $module->getUrl($documentation);
+
+			// Temporarily remove the PID while getting the URL so that the URL
+			// return will still work even if the module is not yet enabled.
+			$originalPid = @$_GET['pid'];
+			$_GET['pid'] = null;
+			$url = $module->getUrl($documentation);
+			$_GET['pid'] = $originalPid;
+
+			return $url;
 		}
 
 		return null;
