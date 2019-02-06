@@ -49,35 +49,42 @@ var ExternalModules = {
 				return
 			}
 
-			var date = new Date(value)
+			var parts = value.split('/')
+			if(parts.length === 3) {
+				// parseInt() to remove leading zeros and make the types match
+				var monthIndex = parseInt(parts[0]) - 1 // subtract one since Date's months are zero based
+				var day = parseInt(parts[1])
+				var year = parseInt(parts[2])
 
-			if(!ExternalModules.isValidDate(date)){
-				errorMessage = "Dates must be specified in MM/DD/YYYY format.  The following value is not a valid date:<br><br>" + value
-				return
-			}
+				var date = new Date(year, monthIndex, day)
 
-			var month = date.getMonth()+1
-			if(month < 10){
-				month = '0' + month
-			}
+				if (
+					date.getFullYear() === year &&
+					date.getMonth() === monthIndex &&
+					date.getDate() === day
+				) {
+					// The date is valid.  Let's make sure leading zeros are included just for normalization purposes.
 
-			var day = date.getDate()
-			if(day < 10){
-				day = '0' + day
+					var month = monthIndex+1
+					if(month < 10){
+						month = '0' + month
+					}
+
+					if(day < 10){
+						day = '0' + day
+					}
+
+					$(input).val(month + '/' + day + '/' + year)
+
+					return
+				}
 			}
 
 			// Only support the jquery UI datepicker's default date format for now.
-			var validatedDate = month + '/' + day + '/' + date.getFullYear()
-
-			$(input).val(validatedDate)
+			errorMessage = "Dates must be specified in MM/DD/YYYY format.  The following value is not a valid date:<br><br>" + value
 		})
 
 		return errorMessage
-	},
-
-	// Taken from https://stackoverflow.com/questions/1353684/detecting-an-invalid-date-date-instance-in-javascript
-	isValidDate: function (d) {
-	  return d instanceof Date && !isNaN(d);
 	}
 };
 
