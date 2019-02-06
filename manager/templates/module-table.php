@@ -35,7 +35,5 @@
 		if(!empty($documentationUrl)){
 			?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='fas fa-file' style="margin-right: 5px"></i>View Documentation</a><?php
 		}
-
-		$module_instance = ExternalModules::getModuleInstance($prefix);
 	?>
 </div>
