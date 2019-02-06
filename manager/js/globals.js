@@ -6,6 +6,78 @@ var ExternalModules = {
 
 			return a.localeCompare(b)
 		}).appendTo(table)
+	},
+
+	validateSettings: function(configureModal) {
+		var errorMessages = [
+			this.validateDateSettings(configureModal),
+			this.validateEmailSettings(configureModal)
+		].filter(function(message){
+			// Exclude any value that's not truthy from the array.
+			return message
+		})
+
+		// Just return the first message, or null if there aren't any.
+		return errorMessages[0]
+	},
+
+	validateEmailSettings: function(configureModal){
+		var errorMessage = null
+		configureModal.find('input.external-modules-input-element[type=email]').each(function(index, input){
+			input = $(input)
+			var value = input.val();
+			if(value && !ExternalModules.validateEmail(value)){
+				var label = input.closest('tr').find('label').text()
+				errorMessage = "The email address entered for the following field is not valid:<br><br>" + label
+			}
+		})
+
+		return errorMessage
+	},
+
+	// Taken from https://stackoverflow.com/questions/46155/how-to-validate-an-email-address-in-javascript
+	validateEmail: function(email){
+		var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+		return re.test(String(email).toLowerCase());
+	},
+
+	validateDateSettings: function(configureModal){
+		var errorMessage = null
+		configureModal.find('input.external-modules-input-element.datepicker').each(function(index, input){
+			var value = $(input).val().trim()
+			if(value === ''){
+				return
+			}
+
+			var date = new Date(value)
+
+			if(!ExternalModules.isValidDate(date)){
+				errorMessage = "Dates must be specified in MM/DD/YYYY format.  The following value is not a valid date:<br><br>" + value
+				return
+			}
+
+			var month = date.getMonth()+1
+			if(month < 10){
+				month = '0' + month
+			}
+
+			var day = date.getDate()
+			if(day < 10){
+				day = '0' + day
+			}
+
+			// Only support the jquery UI datepicker's default date format for now.
+			var validatedDate = month + '/' + day + '/' + date.getFullYear()
+
+			$(input).val(validatedDate)
+		})
+
+		return errorMessage
+	},
+
+	// Taken from https://stackoverflow.com/questions/1353684/detecting-an-invalid-date-date-instance-in-javascript
+	isValidDate: function (d) {
+	  return d instanceof Date && !isNaN(d);
 	}
 };
 
@@ -117,14 +189,7 @@ ExternalModules.Settings.prototype.configureSettings = function() {
 		}
 	});
 
-	var settings = this;
-
-	// Reset the instances so that things will be saved correctly
-	// This has to run before initializing rich text fields so that the names are correct
-	settings.resetConfigInstances();
-
-	// Set up other functions that need configuration
-	settings.initializeRichTextFields();
+	this.initializeSettingsFields();
 }
 
 ExternalModules.Settings.prototype.processBranchingLogicCondition = function(condition) {
@@ -478,7 +543,15 @@ ExternalModules.Settings.prototype.getInputElement = function(type, name, value,
 			return this.getSystemFileFieldElement(name, value, inputAttributes);
 		}
 	} else {
-		var input = '<input type="' + type + '" name="' + name + '" ' + this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes) + '>';
+		var classes = 'external-modules-input-element'
+		if(type === 'date'){
+			// Switch the type back to text so that built-in browser date pickers aren't used.
+			// We use jquery UI's datepicker instead, since it supports IE.
+			type = 'text'
+			classes += ' datepicker'
+		}
+
+		var input = '<input type="' + type + '" name="' + name + '" ' + this.getElementAttributes({"class":classes},inputAttributes) + '>';
 		input = this.addEscapedAttribute(input, 'value', value)
 		return input
 	}
@@ -618,6 +691,17 @@ ExternalModules.Settings.prototype.getEndOfSub = function(startTr) {
 ExternalModules.Settings.prototype.getPrefix = function() {
 	return $('#external-modules-configure-modal').data('module');
 };
+
+ExternalModules.Settings.prototype.initializeSettingsFields = function() {
+	// Reset the instances so that things will be saved correctly
+	// This has to run before initializing rich text fields so that the names are correct
+	this.resetConfigInstances();
+
+	// Set up other functions that need configuration
+	this.initializeRichTextFields();
+
+	$('input.external-modules-input-element.datepicker').datepicker()
+}
 
 ExternalModules.Settings.prototype.resetConfigInstances = function() {
 	var currentInstance = [];
@@ -809,10 +893,7 @@ $(function(){
 			thisTr.after(html);
 		}
 
-		// This has to run before initializing rich text fields so that the names are correct
-		settings.resetConfigInstances();
-
-		settings.initializeRichTextFields();
+		settings.initializeSettingsFields();
 	});
 
 	/**
@@ -1046,6 +1127,12 @@ $(function(){
 	configureModal.on('click', 'button.save', function(){
 		var moduleDirectoryPrefix = configureModal.data('module');
 		var version = ExternalModules.versionsByPrefix[moduleDirectoryPrefix];
+
+		var errorMessage = ExternalModules.validateSettings(configureModal)
+		if(errorMessage){
+			simpleDialog(errorMessage, 'Error')
+			return
+		}
 
 		var data = {};
 		var files = {};
