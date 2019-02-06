@@ -11,7 +11,8 @@ var ExternalModules = {
 	validateSettings: function(configureModal) {
 		var errorMessages = [
 			this.validateDateSettings(configureModal),
-			this.validateEmailSettings(configureModal)
+			this.validateEmailSettings(configureModal),
+			this.validateSupportOverrideSettings(configureModal)
 		].filter(function(message){
 			// Exclude any value that's not truthy from the array.
 			return message
@@ -33,6 +34,29 @@ var ExternalModules = {
 		})
 
 		return errorMessage
+	},
+
+	validateSupportOverrideSettings: function(configureModal){
+		var getValue = function(name){
+			return configureModal.find('[name=' + name + ']').val()
+		}
+
+		var entity = getValue(ExternalModules.KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE)
+		var email = getValue(ExternalModules.KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE)
+		var endDate = getValue(ExternalModules.KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE)
+
+		if(!(entity || email || endDate)){
+			// None of the values were entered (or we're saving project settings).
+			return
+		}
+
+		if(entity && email && endDate){
+			// All values were entered.
+			return
+		}
+		else{
+			return "The support override fields are partially completed.  You must either enter a value for all three support override fields, or remove the values for all three of them.";
+		}
 	},
 
 	// Taken from https://stackoverflow.com/questions/46155/how-to-validate-an-email-address-in-javascript

@@ -26,6 +26,9 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
     ExternalModules.SUPER_USER = <?=SUPER_USER?>;
     ExternalModules.KEY_ENABLED = <?=json_encode(ExternalModules::KEY_ENABLED)?>;
+	ExternalModules.KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE = <?=json_encode(ExternalModules::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE)?>;
+	ExternalModules.KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE = <?=json_encode(ExternalModules::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE)?>;
+	ExternalModules.KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE = <?=json_encode(ExternalModules::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE)?>;
     ExternalModules.OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS = <?=json_encode(ExternalModules::OVERRIDE_PERMISSION_LEVEL_DESIGN_USERS)?>;
     ExternalModules.OVERRIDE_PERMISSION_LEVEL_SUFFIX = <?=json_encode(ExternalModules::OVERRIDE_PERMISSION_LEVEL_SUFFIX)?>;
     ExternalModules.BASE_URL = <?=json_encode(ExternalModules::$BASE_URL)?>;

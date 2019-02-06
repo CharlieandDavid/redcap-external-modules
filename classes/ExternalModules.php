@@ -142,7 +142,7 @@ class ExternalModules
 		array(
 			'key' => self::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE,
 			'name' => 'Override the support email address',
-			'type' => 'text'
+			'type' => 'email'
 		),
 		array(
 			'key' => self::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE,
