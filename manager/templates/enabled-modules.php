@@ -287,16 +287,21 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 						<td class="support-end-date"><?=$formatSupportEndDate($details['support_end_date'])?></td>
 					<?php } ?>
 					<td class="external-modules-action-buttons">
-						<?php if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
-							&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){?>
-							<button class='external-modules-configure-button'>Configure</button>
-						<?php } ?>
-						<?php if(SUPER_USER) { ?>
-							<button class='external-modules-disable-button'>Disable</button>
-						<?php } ?>
-						<?php if(!isset($_GET['pid'])) { ?>
-							<button class='external-modules-usage-button'>View Usage</button>
-						<?php } ?>
+						<?php
+						$module_instance = ExternalModules::getModuleInstance($prefix);
+						if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
+						&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){
+							?><button class='external-modules-configure-button'>Configure</button><?php
+						}
+
+						if(SUPER_USER) {
+							?><button class='external-modules-disable-button'>Disable</button><?php
+						}
+
+						if(!isset($_GET['pid'])) {
+							?><button class='external-modules-usage-button'>View Usage</button><?php
+						}
+						?>
 					</td>
 				</tr>
 			<?php
