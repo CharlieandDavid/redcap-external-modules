@@ -342,9 +342,9 @@ Modules can actually have their own cron jobs that are run at a given interval b
 
 Module cron jobs must be defined in the config.json as seen below, in which each has a `cron_name` (alphanumeric name that is unique within the module), a `cron_description` (text that describes what the cron does), and a `method` (refers to a PHP method in the module class that will be executed when the cron is run). The `cron_frequency` and `cron_max_run_time` must be defined as integers (in units of seconds). The cron_max_run_time refers to the maximum time that the cron job is expected to run (once that time is passed, if the cron is still listed in the state of "processing", it assumes it has failed/crashed and thus will automatically enable it to run again at the next scheduled interval).
 
-A `cron_frequency` and a `cron_max_run_time` can be specified, --OR-- an `hour` and a `minute` can be specified, but not both. In additioin to an hour and a minute, a `weekday` (0 [Sundays] - 6 [Saturdays]) or a `monthday` (day of the month) can be specified.
+A `cron_frequency` and a `cron_max_run_time` can be specified, --OR-- an `cron_hour` and a `cron_minute` can be specified, but not both. In addition to an cron_hour and a cron_minute, a `cron_weekday` (0 [Sundays] - 6 [Saturdays]) or a `cron_monthday` (day of the month) can be specified.
 
-Note: If any of the cron attributes (including cron_frequency/cron_max_run_time or hour/minute, but not both) are missing, it will prevent the module from being enabled.
+Note: If any of the cron attributes (including cron_frequency/cron_max_run_time or cron_hour/cron_minute, but not both) are missing, it will prevent the module from being enabled.
 
 ``` json
 {
@@ -367,24 +367,24 @@ Note: If any of the cron attributes (including cron_frequency/cron_max_run_time 
          "cron_name": "cron3",
          "cron_description": "Cron that runs daily at 1:15 am to do YYY",
          "method": "some_other_method_3",
-         "hour": 1,
-         "minute": 15
+         "cron_hour": 1,
+         "cron_minute": 15
       },
       {
          "cron_name": "cron4",
          "cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
          "method": "some_other_method_4",
-         "hour": 14,
-         "minute": 25,
-         "weekday": 1
+         "cron_hour": 14,
+         "cron_minute": 25,
+         "cron_weekday": 1
       },
       {
          "cron_name": "cron5",
          "cron_description": "Cron that runs on the second of each month at 4:30 pm to do YYYYY",
          "method": "some_other_method_5",
-         "hour": 16,
-         "minute": 30,
-         "monthday": 2
+         "cron_hour": 16,
+         "cron_minute": 30,
+         "cron_monthday": 2
       }
    ]
 }
@@ -676,18 +676,39 @@ For reference, below is a nearly comprehensive example of the types of things th
    "crons": [
       {
          "cron_name": "cron1",
-         "cron_description": "Cron that runs every 30 minutes to do X",
+         "cron_description": "Cron that runs every 30 minutes to do Y",
          "method": "cron1",
          "cron_frequency": "1800",
          "cron_max_run_time": "60"
        },
       {
          "cron_name": "cron2",
-         "cron_description": "Cron that runs daily to do Y",
+         "cron_description": "Cron that runs daily to do YY",
          "method": "some_other_method",
          "cron_frequency": "86400",
          "cron_max_run_time": "1200"
-      }
+      },
+      {
+         "cron_name": "cron3",
+         "cron_description": "Cron that runs daily at 1:15 am to do YYY",
+         "method": "some_other_method_3",
+         "cron_hour": 1,
+         "cron_minute": 15
+      },
+      {
+         "cron_name": "cron4",
+         "cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
+         "method": "some_other_method_4",
+         "cron_hour": 14,
+         "cron_minute": 25,
+         "cron_weekday": 1
+      },
+      {
+         "cron_name": "cron5",
+         "cron_description": "Cron that runs on the second of each month at 4:30 pm to do YYYYY",
+         "method": "some_other_method_5",
+         "cron_hour": 16,
+         "cron_minute": 30,
    ],
    "compatibility": {
       "php-version-min": "5.4.0",
