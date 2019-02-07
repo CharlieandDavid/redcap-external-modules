@@ -37,6 +37,9 @@
 
 .external-modules-action-buttons {
 	text-align: right;
+}
+
+.modal-dialog .external-modules-action-buttons {
 	min-width: 260px;
 }
 
