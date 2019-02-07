@@ -209,17 +209,12 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 
 	$versionsByPrefix = ExternalModules::getEnabledModules($_GET['pid']);
 	$prefixes = array_keys($versionsByPrefix);
-	$detailsByPrefix = ExternalModules::getModuleDetailsByPrefix($prefixes);
-	$supportOverrideInfoByPrefix = ExternalModules::getSupportOverrideInfo($prefixes);
+	$supportInfoByPrefix = ExternalModules::getSupportInfo();
 
-	$renderSupportEndDate = function($details, $supportOverrideInfo){
-		$supportEndDate = @$supportOverrideInfo['support_end_date'];
+	$renderSupportEndDate = function($supportInfo){
+		$supportEndDate = @$supportInfo['support_end_date'];
 		if(!$supportEndDate){
-			$supportEndDate = @$details['support_end_date'];
-
-			if(!$supportEndDate){
-				return '';
-			}
+			return '';
 		}
 
 		$supportEndTime = strtotime($supportEndDate);
@@ -256,9 +251,6 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 				continue;
 			}
 
-			$details = $detailsByPrefix[$prefix];
-			$supportOverrideInfo = $supportOverrideInfoByPrefix[$prefix];
-
 			## Add resources for custom javascript fields
 			foreach(array_merge($config['project-settings'],$config['system-settings']) as $configRow) {
 				if($configRow['source']) {
@@ -286,13 +278,14 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 				$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			}
 			if ((isset($_GET['pid']) && $enabled) || (!isset($_GET['pid']) && isset($config['system-settings']))) {
-			?>
+				$supportInfo = $supportInfoByPrefix[$prefix];
+				?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
 					<td>
 						<?php require __DIR__ . '/module-table.php'; ?>
 					</td>
 					<?php if(!isset($_GET['pid'])) { ?>
-						<td class="support-end-date"><?=$renderSupportEndDate($details, $supportOverrideInfo)?></td>
+						<td class="support-end-date"><?=$renderSupportEndDate($supportInfo)?></td>
 					<?php } ?>
 					<td class="external-modules-action-buttons">
 						<?php

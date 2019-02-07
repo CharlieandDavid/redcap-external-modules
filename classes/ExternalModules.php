@@ -3389,35 +3389,22 @@ class ExternalModules
 		}
 	}
 
-	public static function getModuleDetailsByPrefix($prefixes)
+	public static function getSupportInfo()
 	{
 		$results = self::query("
-		  	select * from redcap_external_modules
-			where " . self::getSQLInClause('directory_prefix', $prefixes) . "
+		  	select directory_prefix, support_end_date from redcap_external_modules
 		");
 
-		$detailsByPrefix = [];
+		$infoByPrefix = [];
 		while($row = $results->fetch_assoc()){
-			$detailsByPrefix[$row['directory_prefix']] = $row;
+			$infoByPrefix[$row['directory_prefix']] = $row;
 		}
 
-		return $detailsByPrefix;
-	}
-
-	public static function getSupportOverrideInfo($prefixes)
-	{
-		$results = self::getSettings($prefixes, null, [
+		$results = self::getSettings(null, null, [
 			self::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE,
 			self::KEY_RESERVED_SUPPORT_EMAIL_OVERRIDE,
 			self::KEY_RESERVED_SUPPORT_END_DATE_OVERRIDE
 		]);
-
-		$infoByPrefix = [];
-		foreach($prefixes as $prefix){
-			// Make sure at least an empty array exists, mainly to prevent extra error checking
-			// against the return value from this function.
-			$infoByPrefix[$prefix] = [];
-		}
 
 		while($row = $results->fetch_assoc()){
 			$prefix = $row['directory_prefix'];
@@ -3425,6 +3412,9 @@ class ExternalModules
 			$value = $row['value'];
 
 			$info = &$infoByPrefix[$prefix];
+
+			// This will get set multiple times (one for each setting), but that's OK.
+			$info['overridden'] = true;
 
 			if($key === self::KEY_RESERVED_SUPPORTING_ENTITY_OVERRIDE){
 				$info['entity'] = $value;

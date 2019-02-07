@@ -23,12 +23,10 @@
 		};
 
 		$authorRole = 'Created';
-		$supportOverrideEntity = $supportOverrideInfo['entity'];
-		$supportOverrideEmail = $supportOverrideInfo['email'];
-		if($supportOverrideEntity){
-			echo '<p>Supported by ' . $renderContact($supportOverrideEntity, $supportOverrideEmail, null) . '</p>';
+		if($supportInfo['overridden']){
+			echo '<p>Supported by ' . $renderContact($supportInfo['entity'], $supportInfo['email'], null) . '</p>';
 		}
-		else if ($details['support_end_date']){
+		else if ($supportInfo['support_end_date']){
 			$authorRole .= ' & Supported';
 		}
 
