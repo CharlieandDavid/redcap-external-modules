@@ -515,7 +515,6 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		html += "<td class='external-modules-add-remove-column'>";
 		html += "<button class='external-modules-add-instance' setting='" + setting.key + "'>+</button>";
 		html += "<button class='external-modules-remove-instance' >-</button>";
-		//html += "<span class='external-modules-original-instance'>original</span>";
 		html += "</td>";
 
 		trClass += ' repeatable';
