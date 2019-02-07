@@ -34,26 +34,6 @@ ExternalModules::storeREDCapRepoUpdatesInConfig(@$_GET['module_updates'], !isset
 ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>
 
-<div id="external-modules-enable-modal" class="modal fade" role="dialog" data-backdrop="static">
-	<div class="modal-dialog modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h4 class="modal-title">Enable Module: <span class="module-name"></span></h4>
-				<button type="button" class="close close-button" data-dismiss="modal">&times;</button>
-			</div>
-			<div class="modal-body">
-				<div id="external-modules-enable-modal-error"></div>
-				<p>This module requests the following permissions:</p>
-				<ul></ul>
-			</div>
-			<div class="modal-footer">
-				<button class="close-button" data-dismiss="modal">Cancel</button>
-				<button class="enable-button"></button>
-			</div>
-		</div>
-	</div>
-</div>
-
 <div id="external-modules-configure-modal" class="modal fade" role="dialog" data-backdrop="static">
 	<div class="modal-dialog modal-lg">
 		<div class="modal-content">

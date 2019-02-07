@@ -87,19 +87,8 @@ var ExternalModules = {
 					date.getMonth() === monthIndex &&
 					date.getDate() === day
 				) {
-					// The date is valid.  Let's make sure leading zeros are included just for normalization purposes.
-
-					var month = monthIndex+1
-					if(month < 10){
-						month = '0' + month
-					}
-
-					if(day < 10){
-						day = '0' + day
-					}
-
-					$(input).val(month + '/' + day + '/' + year)
-
+					// The date is valid.  Format it to make sure leading zeros are included (just for normalization purposes).
+					$(input).val(ExternalModules.formatDate(date))
 					return
 				}
 			}
@@ -109,6 +98,24 @@ var ExternalModules = {
 		})
 
 		return errorMessage
+	},
+
+	formatDate: function(date){
+		if(typeof date === 'string'){
+			date = new Date(date)
+		}
+
+		var month = date.getMonth()+1 // add one since the return value is zero based
+		if(month < 10){
+			month = '0' + month
+		}
+
+		var day = date.getDate()
+		if(day < 10){
+			day = '0' + day
+		}
+
+		return month + '/' + day + '/' + date.getFullYear()
 	}
 };
 

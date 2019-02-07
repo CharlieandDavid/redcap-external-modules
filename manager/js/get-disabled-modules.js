@@ -96,13 +96,19 @@ $(function(){
 			});
 		}
 
-		if (!pid) {
-			enableButton.html('Enable');
-			enableModal.find('button').attr('disabled', false);
+		var renderPermissions = function(){
+			var permissions = enableModal.find('.permissions')
 
-			var list = enableModal.find('.modal-body ul');
+			if(pid){
+				permissions.hide()
+				return
+			}
+
+			permissions.show()
+
+			var list = permissions.find('ul')
 			list.html('');
-			
+
 			var permissionCount = 0;
 			disabledModules[prefix][version].permissions.forEach(function(permission){
 				if (permission != "") {
@@ -110,22 +116,41 @@ $(function(){
 					permissionCount++;
 				}
 			});
+
 			if (permissionCount == 0) {
 				list.append("<li><i>None (no permissions requested)</i></li>");
 			}
-
-			enableButton.off('click'); // disable any events attached from other modules
-			enableButton.click(function(){
-				enableButton.html('Enabling...');
-				enableModal.find('button').attr('disabled', true);
-
-				enableModule()
-			});
-			enableButton.show();
-			enableModal.modal('show');
-		} else {   // pid
-			enableModule()
 		}
+
+		var renderSupportMessage = function(){
+			var supportEndDate = ExternalModules.supportInfo[prefix]['support_end_date']
+
+			var message = "may require funding and/or a software developer to add support for additional scenarios, support new REDCap versions, fix bugs, etc.  Please make sure you and your users consider this before using this module."
+			if(supportEndDate){
+				message = "<b>This module will be supported until " + ExternalModules.formatDate(supportEndDate) + ".</b>  After that date, this module " + message
+			}
+			else{
+				message = "<b>This module is not actively supported.</b>  It " + message + "<br><br>If a software developer at your institution is able to support this module, you can prevent additional warnings by completing the support override fields in the module’s system settings."
+			}
+
+			enableModal.find('.support-message').html(message)
+		}
+
+		enableButton.html('Enable');
+		enableModal.find('button').attr('disabled', false);
+
+		renderPermissions()
+		renderSupportMessage()
+
+		enableButton.off('click'); // disable any events attached from other modules
+		enableButton.click(function(){
+			enableButton.html('Enabling...');
+			enableModal.find('button').attr('disabled', true);
+
+			enableModule()
+		});
+		enableButton.show();
+		enableModal.modal('show');
 	});
 
 	if (enableModal) {

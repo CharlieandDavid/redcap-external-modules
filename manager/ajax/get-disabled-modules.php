@@ -122,5 +122,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 		}
 	}
 	?>
+
+	ExternalModules.supportInfo = <?=json_encode(ExternalModules::getSupportInfo());?>;
 </script>
 <?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); ?>
