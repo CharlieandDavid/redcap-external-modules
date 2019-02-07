@@ -3335,6 +3335,12 @@ class ExternalModules
 	  return $merged;
 	}
 
+	public static function dump($o){
+		echo "<pre>";
+		var_dump($o);
+		echo "</pre>";
+	}
+
 	public static function initializeFramework($module)
 	{
 		$config = $module->getConfig();
