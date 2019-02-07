@@ -7,8 +7,14 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 <table id='external-modules-disabled-table' class="table table-no-top-row-border">
 	<?php
 
-	if (!isset($_GET['pid'])) {
+	// Only get modules that have been made discoverable (but if a super user, display all)
+	if (SUPER_USER) {
 		$enabledModules = ExternalModules::getEnabledModules();
+	} else {
+		$enabledModules = ExternalModules::getDiscoverableModules();
+	}
+
+	if (!isset($_GET['pid'])) {
 		$disabledModuleConfigs = ExternalModules::getDisabledModuleConfigs($enabledModules);
 
 		if (empty($disabledModuleConfigs)) {
@@ -68,12 +74,6 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			}
 		}
 	} else {
-		// Only get modules that have been made discoverable (but if a super user, display all)
-		if (SUPER_USER) {
-			$enabledModules = ExternalModules::getEnabledModules();
-		} else {
-			$enabledModules = ExternalModules::getDiscoverableModules();
-		}
 		// Sort modules by title
 		$moduleTitles = array();
 		foreach ($enabledModules as $prefix => $version) {
