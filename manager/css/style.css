@@ -21,6 +21,7 @@
 
 .external-modules-action-buttons {
 	text-align: right;
+	min-width: 260px;
 }
 
 /* Only display one backdrop, no matter how many modals are open. */
