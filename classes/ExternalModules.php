@@ -3284,20 +3284,20 @@ class ExternalModules
 			return FALSE;
 		}
 
-		if(empty($hour) || empty($minute)){
+		if (empty($minute)) {
 			return FALSE;
 		}
-		if(!is_numeric($hour) || !is_numeric($minute)) {
+		if (!is_numeric($hour) || !is_numeric($minute)) {
 			return FALSE;
 		}
-		if($weekday && !is_numeric($weekday)) {
+		if ($weekday && !is_numeric($weekday)) {
 			return FALSE;
 		}
 		if ($monthday && !is_numeric($monthday)) {
 			return FALSE;
 		}
 
-		if (($hour < 0) || ($hour >= 24)) {
+		if (!empty($hour) && (($hour < 0) || ($hour >= 24))) {
 			return FALSE;
 		}
 		if (($minute < 0) || ($minute >= 60)) { 
