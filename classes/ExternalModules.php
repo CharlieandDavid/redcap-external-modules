@@ -38,6 +38,8 @@ class ExternalModules
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
+	const KEY_RESERVED_CRON_LAST_RUN = 'reserved-cron-last-run';
+
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
 	const DISABLE_EXTERNAL_MODULE_HOOKS = 'disable-external-module-hooks';
@@ -95,6 +97,8 @@ class ExternalModules
 	private static $deletedModules;
 
 	private static $configs = array();
+
+	
 
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
@@ -3371,47 +3375,77 @@ class ExternalModules
 		$currentWeekday = (int) date('w', $cronStartTime);
 		$currentMonthday = (int) date('j', $cronStartTime);
 
-		$proceed = TRUE;
 		if (!empty($weekday)) {
 			if ($currentWeekday != $weekday) {
-				$proceed = FALSE;
+				return FALSE;
 			}
 		}
 
 		if (!empty($monthday)) {
 			if ($currentMonthday != $monthday) {
-				$proceed = FALSE;
+				return FALSE;
 			}
 		}
-		
-		return $proceed && ($hour === $currentHour) && ($minute === $currentMinute);
+
+		return ($hour === $currentHour) && ($minute === $currentMinute);
+	}
+
+	# param 1 is a timestamp
+	private static function runInLastMinute($lastStartTime) {
+		$lastHour = (int) date('G', $lastStartTime);
+		$lastMinute = (int) date('i', $lastStartTime);  // The cast is especially important here to get rid of a possible leading zero.
+		$lastWeekday = (int) date('w', $lastStartTime);
+		$lastMonthday = (int) date('j', $lastStartTime);
+
+		$cronStartTime = self::getLastTimeRun();
+		$currentHour = (int) date('G', $cronStartTime);
+		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
+		$currentWeekday = (int) date('w', $cronStartTime);
+		$currentMonthday = (int) date('j', $cronStartTime);
+
+		return ($currentHour == $lastHour) && ($currentMinute == $lastMinute) && ($currentWeekday == $lastWeekday) && ($lastMonthday == $currentMonthday);
+	}
+
+	private static function getLastTimeRun() {
+		return $_SERVER["REQUEST_TIME_FLOAT"];
+	}
+
+	private static function makeTimestamp() {
+		return date("Y-m-d h:i:s");
 	}
 
 	public static function callTimedCronMethods() {
 		# get array of modules
 		$enabledModules = self::getEnabledModules();
 		$returnMessages = array();
+
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 			try{
 				$cronName = "";
 				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
-				$config = $moduleInstance->getConfig();
-				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
-				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config)) {
-					if (isset($config['crons']) && !empty($config['crons'])) {
+
+				# do not run twice in the same minute
+				$lastRun = $moduleInstance->getSystemSetting(KEY_RESERVED_CRON_LAST_RUN);
+				if (!self::runInLastMinute($lastRun)) {
+					$config = $moduleInstance->getConfig();
+					$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+					if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
 						foreach ($config['crons'] as $cronKey=>$cronAttr) {
 							$cronName = $cronAttr['cron_name'];
 							if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 								# if isTimeToRun, run method
+								$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, self::getLastTimeRun());
 								$cronMethod = $config['crons'][$cronKey]['method'];
-								$mssg = callCronMethod($moduleId, $cronName);
-								array_push($returnMessages, $mssg);
+								array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
+								$mssg = self::callCronMethod($moduleId, $cronName);
+								if ($mssg) {
+									array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
+								}
 							}
 						}
 					}
 				}
-			}
-			catch(Exception $e) {
+			} catch(Exception $e) {
 				$currentReturnMessage = "Timed Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
 				$emailMessage = "$currentReturnMessage with the following Exception: $e";
 
@@ -3419,7 +3453,6 @@ class ExternalModules
 				array_push($returnMessages, $currentReturnMessage);
 			}
 		}
-
 		self::setActiveModulePrefix(null);
 		self::$hookBeingExecuted = "";
 		
