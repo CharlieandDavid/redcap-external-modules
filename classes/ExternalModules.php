@@ -3411,7 +3411,7 @@ class ExternalModules
 	}
 
 	private static function makeTimestamp() {
-		return date("Y-m-d h:i:s");
+		return date("Y-m-d H:i:s");
 	}
 
 	public static function callTimedCronMethods() {
