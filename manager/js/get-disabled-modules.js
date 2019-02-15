@@ -124,9 +124,13 @@ $(function(){
 
 		var renderSupportMessage = function(){
 			var supportEndDate = ExternalModules.supportInfo[prefix]['support_end_date']
+			var supported = false
+			if(supportEndDate){
+				supported = new Date(supportEndDate) > new Date();
+			}
 
 			var message = "may require funding and/or a software developer to add support for additional scenarios, support new REDCap versions, fix bugs, etc.  Please make sure you and your users consider this before using this module."
-			if(supportEndDate){
+			if(supported){
 				message = "<b>This module will be supported until " + ExternalModules.formatDate(supportEndDate) + ".</b>  After that date, this module " + message
 			}
 			else{
