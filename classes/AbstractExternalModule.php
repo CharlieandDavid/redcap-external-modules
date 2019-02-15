@@ -158,7 +158,7 @@ class AbstractExternalModule
 		return '';
 	}
 
-	private function prefixSettingKey($key){
+	public function prefixSettingKey($key){
 		return $this->getSettingKeyPrefix() . $key;
 	}
 
@@ -264,64 +264,21 @@ class AbstractExternalModule
 
 	function getSubSettings($key, $pid = null)
 	{
-		$settingsAsArray = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
+		$keys = [];
+		$config = $this->getSettingConfig($key);
+		foreach($config['sub_settings'] as $subSetting){
+			$keys[] = $this->prefixSettingKey($subSetting['key']);
+		}
 
-		$settingConfig = $this->getSettingConfig($key);
+		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
 
-		return $this->getSubSettings_internal($settingsAsArray, $settingConfig);
-	}
-
-	private function getSubSettings_internal($settingsAsArray, $settingConfig)
-	{
 		$subSettings = [];
-		foreach($settingConfig['sub_settings'] as $subSettingConfig){
-			$subSettingKey = $subSettingConfig['key'];
-
-			if($subSettingConfig['type'] === 'sub_settings'){
-				// Handle nested sub_settings recursively
-				$values = $this->getSubSettings_internal($settingsAsArray, $subSettingConfig);
-				
-				$recursionCheck = function($value){
-					// We already know the value must be an array.
-					// Recurse until we're two levels away from the leaves, then wrap in $subSettingKey.
-					// If index '0' is not defined, we know it's a leaf since only setting key names will be used as array keys (not numeric indexes).
-					return isset($value[0][0]);
-				};
+		foreach($keys as $key){
+			$values = $rawSettings[$key]['value'];
+			for($i=0; $i<count($values); $i++){
+				$value = $values[$i];
+				$subSettings[$i][$key] = $value;
 			}
-			else{
-				$values = $settingsAsArray[$this->prefixSettingKey($subSettingKey)]['value'];
-				if($values === null){
-					continue;
-				}
-
-				$recursionCheck = function($value){
-					// Only recurse if this is an array, and not a leaf.
-					// If index '0' is not defined, we know it's a leaf since only setting key names will be used as array keys (not numeric indexes).
-					// Using array_key_exists() instead of isset() is important since there could be a null value set.
-					return is_array($value) && array_key_exists(0, $value);
-				};
-			}
-
-			$formatValues = function($values) use ($subSettingKey, $recursionCheck, &$formatValues){
-				for($i=0; $i<count($values); $i++){
-					$value = $values[$i];
-
-					if($recursionCheck($value)){
-						$values[$i] = $formatValues($value);
-					}
-					else{
-						$values[$i] = [
-							$subSettingKey => $value
-						];
-					}
-				}
-
-				return $values;
-			};
-
-			$values = $formatValues($values);
-
-			$subSettings = ExternalModules::array_merge_recursive_distinct($subSettings, $values);
 		}
 
 		return $subSettings;
@@ -676,7 +633,7 @@ class AbstractExternalModule
 	}
 
 	# function to enforce that a pid is required for a particular function
-	private function requireProjectId($pid = null)
+	public function requireProjectId($pid = null)
 	{
 		$pid = self::detectParameter('pid', $pid);
 		if(!isset($pid) && defined('PROJECT_ID')){
