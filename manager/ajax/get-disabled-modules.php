@@ -7,8 +7,14 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 <table id='external-modules-disabled-table' class="table table-no-top-row-border">
 	<?php
 
-	if (!isset($_GET['pid'])) {
+	// Only get modules that have been made discoverable (but if a super user, display all)
+	if (SUPER_USER) {
 		$enabledModules = ExternalModules::getEnabledModules();
+	} else {
+		$enabledModules = ExternalModules::getDiscoverableModules();
+	}
+
+	if (!isset($_GET['pid'])) {
 		$disabledModuleConfigs = ExternalModules::getDisabledModuleConfigs($enabledModules);
 
 		if (empty($disabledModuleConfigs)) {
@@ -68,12 +74,6 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			}
 		}
 	} else {
-		// Only get modules that have been made discoverable (but if a super user, display all)
-		if (SUPER_USER) {
-			$enabledModules = ExternalModules::getEnabledModules();
-		} else {
-			$enabledModules = ExternalModules::getDiscoverableModules();
-		}
 		// Sort modules by title
 		$moduleTitles = array();
 		foreach ($enabledModules as $prefix => $version) {
@@ -96,38 +96,9 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			if (!$enabled) {
 			?>
 				<tr data-module='<?= $prefix ?>' data-version='<?= $version ?>'>
-					<td><div class='external-modules-title'>
-                            <?= $name ?> <?= $version ?>
-                            <?php if ($system_enabled) print "<span class='label label-warning badge badge-warning' title='This module is normally enabled globally for all projects'>Global Module</span>" ?>
-                            <input type='hidden' name='version' value='<?= $version ?>'>
-							<?php if ($isDiscoverable && SUPER_USER) { ?><span class="label label-info badge badge-info">Discoverable</span><?php } ?>
-                        </div>
-                        <div class='external-modules-description'>
-                            <?php echo $config['description'] ? $config['description'] : '';?>
-                        </div>
-                        <div class='external-modules-byline'>
-					<?php
-						if (SUPER_USER && !isset($_GET['pid'])) {
-							if ($config['authors']) {
-								$names = array();
-								foreach ($config['authors'] as $author) {
-									$name = $author['name'];
-									$institution = empty($author['institution']) ? "" : " <span class='author-institution'>({$author['institution']})</span>";
-									if ($name) {
-										if ($author['email']) {
-											$names[] = "<a href='mailto:".$author['email']."'>".$name."</a> $institution";
-										} else {
-											$names[] = $name .  $institution;
-										}
-									}
-								}
-								if (count($names) > 0) {
-									echo "by ".implode($names, ", ");
-								}
-							}
-						}
-					?>
-					</div></td>
+					<td>
+						<?php require __DIR__ . '/../templates/module-table.php'; ?>
+					</td>
 					<td class="external-modules-action-buttons">
 						<?php if (SUPER_USER) { ?><button class='enable-button'>Enable</button><?php } ?>
 					</td>
