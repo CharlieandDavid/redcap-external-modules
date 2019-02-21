@@ -457,6 +457,8 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 
 			inputHtml += this.getInputElement(type, key, choice.value, inputAttributes) + '<label>' + choice.name + '</label><br>';
 		}
+	}else if(type == 'button'){
+         inputHtml = this.getButtonElement(type, key, setting.url[0].name,setting.url[0].value,setting.url[0].message, inputAttributes);
 	}
 	else if(type == 'custom') {
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
@@ -591,6 +593,25 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		attributeString = this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes);
 		return '<input type="' + type + '" name="' + name + '" ' + attributeString + '>';
 	}
+}
+
+ExternalModules.Settings.prototype.getButtonElement = function(name, value, btnname,btnvalue, message, inputAttributes){
+	var btn = '<a name="' + value + '" class="btn btn-primary btn-sm" style="color:#fff" onclick="">'+btnname+'</a>';
+    $.post('ajax/get-url.php', { pid:pid,moduleDirectoryPrefix: this.getPrefix(),page:btnvalue}, function(result){
+    	var data = jQuery.parseJSON(result)
+        if(data.status != 'success'){
+            return;
+        }
+
+        var url = data.url;
+        if(message != "" && message !=undefined){
+            message = '<div class="alert alert-success" style="border-color: #d6e9c6 !important;margin-bottom:0">'+message+'</div>';
+    		url = "javascript:$.post('"+data.url+"','',function(result){$('[name ="+value+"]').parent().html('"+message+"')});";
+		}
+        $('[name ='+value+']').attr('onclick',url);
+    });
+	return btn;
+
 }
 
 ExternalModules.Settings.prototype.getTextareaElement = function(name, value, inputAttributes){
