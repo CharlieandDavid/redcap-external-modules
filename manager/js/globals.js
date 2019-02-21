@@ -607,8 +607,12 @@ ExternalModules.Settings.prototype.getButtonElement = function(name, value, btnn
         if(message != "" && message !=undefined){
             message = '<div class="alert alert-success" style="border-color: #d6e9c6 !important;margin-bottom:0">'+message+'</div>';
     		url = "javascript:$.post('"+data.url+"','',function(result){$('[name ="+value+"]').parent().html('"+message+"')});";
-		}
-        $('[name ='+value+']').attr('onclick',url);
+            $('[name ='+value+']').attr('onclick',url);
+		}else{
+            $('[name ='+value+']').attr('href',url);
+            $('[name ='+value+']').attr('target','_blank');
+        }
+
     });
 	return btn;
 
