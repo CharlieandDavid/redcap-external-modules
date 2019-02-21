@@ -99,6 +99,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* dag-list
 		* dropdown
 		* checkbox
+		* button
 		* project-id
 		* form-list
 		* event-list
@@ -118,6 +119,18 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
 	* **DEPRECATED (for now): Default values do NOT currently work consistently, and will likely need to be re-implemented.** Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
+
+#### Examples of button
+A basic case.
+
+``` json
+"url": {
+    "name": "Check information",
+    "value": "check.php?data=1",
+    "message":"The information has been checked"
+}
+			
+```
 
 #### Examples of branching logic
 

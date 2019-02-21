@@ -458,7 +458,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 			inputHtml += this.getInputElement(type, key, choice.value, inputAttributes) + '<label>' + choice.name + '</label><br>';
 		}
 	}else if(type == 'button'){
-         inputHtml = this.getButtonElement(type, key, setting.url[0].name,setting.url[0].value,setting.url[0].message, inputAttributes);
+         inputHtml = this.getButtonElement(type, key, setting.url.name,setting.url.value,setting.url.message, inputAttributes);
 	}
 	else if(type == 'custom') {
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
