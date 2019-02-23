@@ -94,6 +94,8 @@ class ExternalModules
 	
 	private static $deletedModules;
 
+	private static $allowExit;
+	
 	private static $configs = array();
 
 	# two reserved settings that are there for each project
@@ -327,6 +329,11 @@ class ExternalModules
 				return;
 			}
 
+			if (self::$allowExit) {
+                		// Ignore the shutdown function if this module is allowed to exit()
+            			return;
+            		}
+			
 			if($error && $error['type'] === E_NOTICE){
 				// This is just a notice, which likely means it occurred BEFORE an offending die/exit call.
 				// Ignore this notice and show the general die/exit call warning instead.
@@ -1384,6 +1391,10 @@ class ExternalModules
 			if(method_exists($instance, $thisHook)){
 				self::setActiveModulePrefix($prefix);
 
+			    	// Check if we should allow exit in the shutdown function for this hook
+		                $config = self::getConfig($prefix,$version);
+                		self::$allowExit = (isset($config['allow-exit']) && in_array($thisHook, $config['allow-exit']));
+				
 				// Buffer output so we can access for killed query detection using register_shutdown_function().
 				ob_start();
 
