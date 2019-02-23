@@ -217,6 +217,11 @@ By default, every page hooks will only execute on project specific pages (and on
 
 `"enable-every-page-hooks-on-system-pages": true`
 
+##### Exiting From a Hook Method
+In general, hook functions should `return;` when complete.  If you leave a hook with an `exit();` statement an error will be thrown as this prevents other external modules that might use this hook method from being called.  There are two alternate methods for exiting either after or during a hook.  First, you can call `$this->exitAfterHook();` from your module which will wait until all EMs running that hook have completed and will then exit, preventing further downstream hooks from being called.  This can be useful, for example, when trying to suppress normal output with an `every_page_before_render` hook.  A second option is to add the `allow-exit` key to your config.json and supply an array of hook functions where exit will be permitted for this external module.  This method is potentially dangerous as it will prevent other external modules that might use the same method from running if they came after the method calling exit.  An example is below that would permit you to call `exit();` from the redcap_custom_verify_username hook to prevent the normal display of user rights information:
+
+`"allow-exit": [ 'redcap_custom_verify_username' ]`
+
 ##### Extra hooks provided by External Modules
 There are a few extra hooks dedicated for modules use:
 
