@@ -367,7 +367,7 @@ class AbstractExternalModule
 			$firstSubmitDate = "'".date('Y-m-d h:m:s')."'";
 
 			$sql = "INSERT INTO redcap_surveys_response (participant_id, record, first_submit_time, return_code)
-					VALUES ($participantId, ".prep($recordId).", $firstSubmitDate,'$returnCode')";
+					VALUES ($participantId, '".prep($recordId)."', $firstSubmitDate,'$returnCode')";
 
 			if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
 			$responseId = db_insert_id();
