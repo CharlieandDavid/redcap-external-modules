@@ -96,8 +96,6 @@ class ExternalModules
 
 	private static $configs = array();
 
-	private static $returnValues = array();
-
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
 	# KEY_ENABLED is present when enabled for each project
