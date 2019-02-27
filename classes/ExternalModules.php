@@ -96,6 +96,8 @@ class ExternalModules
 
 	private static $configs = array();
 
+	private static $returnValues = array();
+
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
 	# KEY_ENABLED is present when enabled for each project
@@ -1342,10 +1344,18 @@ class ExternalModules
 		return "(" . implode(" OR ", $parts) . ")";
 	}
 
-	# begins the execution of a hook
-	# helper method
-	# should call callHook
-	private static function startHook($prefix, $version, $arguments) {	
+    /**
+     * begins execution of hook
+     * helper method
+     * should call callHook
+     *
+     * @param $prefix
+     * @param $version
+     * @param $arguments
+     * @return mixed|void|null  result from hook or null
+     * @throws Exception
+     */
+    private static function startHook($prefix, $version, $arguments) {
 		
 		// Get the hook's root name
 		if (substr(self::$hookBeingExecuted, 0, 5) == 'hook_') {
@@ -1379,7 +1389,9 @@ class ExternalModules
 
 		$instance = self::getModuleInstance($prefix, $version);
 		$instance->setRecordId($recordId);
-		
+
+		$result = null; // Default result value
+
 		foreach ($hookNames as $thisHook) {
 			if(method_exists($instance, $thisHook)){
 				self::setActiveModulePrefix($prefix);
@@ -1388,7 +1400,7 @@ class ExternalModules
 				ob_start();
 
 				try{
-					call_user_func_array(array($instance,$thisHook), $arguments);
+					$result = call_user_func_array(array($instance,$thisHook), $arguments);
 				}
 				catch(Exception $e){
 					$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".$thisHook."':\n\n" . $e;
@@ -1404,6 +1416,8 @@ class ExternalModules
 		}
 
 		$instance->setRecordId(null);
+
+        return $result;
 	}
 
 	private static function getProjectIdFromHookArguments($arguments)
@@ -1443,6 +1457,9 @@ class ExternalModules
 		 */
 		self::getSystemwideEnabledVersions();
 
+		# Hold results for hooks that return a value
+		$resultsByPrefix = array();
+
 		try {
 			if(!defined('PAGE')){
 				$page = ltrim($_SERVER['REQUEST_URI'], '/');
@@ -1476,7 +1493,14 @@ class ExternalModules
 			}
 
 			foreach($versionsByPrefix as $prefix=>$version){
-				self::startHook($prefix, $version, $arguments);
+				$result = self::startHook($prefix, $version, $arguments);
+			    if (!empty($result) && is_array($result)) {
+                    // Lets preserve order of execution by order entered into the results array
+			        $resultsByPrefix[] = array(
+                        "prefix" => $prefix,
+                        "result" => $result
+                    );
+                }
 			}
 
 			$callDelayedHooks = function($lastRun) use ($arguments){
@@ -1484,7 +1508,13 @@ class ExternalModules
 				self::$delayed[self::$hookBeingExecuted] = array();
 				self::$delayedLastRun = $lastRun;
 				foreach ($prevDelayed as $prefix=>$version) {
-					self::startHook($prefix, $version, $arguments);
+					$result = self::startHook($prefix, $version, $arguments);
+    			    if (!empty($result) && is_array($result)) {
+    			        $resultsByPrefix[] = array(
+                            "prefix" => $prefix,
+                            "result" => $result
+                        );
+                    }
 				}
 			};
 	
@@ -1511,10 +1541,48 @@ class ExternalModules
 			}
 		}
 
+        // As this is currently written, any function that returns a value cannot also exit.
+        // TODO: Should we move this to a shutdown function for this hook so we can return a value?
 		if(self::$exitAfterHook){
 			exit();
 		}
+
+		// We must resolve cases where there are multiple return values.
+        // We can assume we only support a single return value (easier) or we can expand our definition of hooks
+        // to handle multiple return values as an array of values.  For now, let's shoot simple and just take
+        // the latest one and throw a warning to the admin
+		return self::filterHookResults($resultsByPrefix, $name);
 	}
+
+    /**
+     * Handle cases where there are multiple results for a hook
+     * @param $results     | An array where each element is a result array from an EM with keys 'result' and 'prefix'
+     * @param $hookName    | The hook where the results were generated.
+     * @return array|null
+     */
+	private static function filterHookResults($results, $hookName) {
+        if (empty($results)) return null;
+
+        // Take the last result
+        end($results);
+        $last_result = current($results);
+
+        // Throw a warning if there is more than one result
+        if (count($results) > 1) {
+            $message =  "<p>" . count($results) . " return values were generated from hook $hookName " .
+                "by the following external modules:</p>";
+            foreach ($results as $result) {
+                $message .= "<p><b><u>{$result['prefix']}</u></b> => <code>" . htmlentities(json_encode($result['result'])) . "</code></div></p>";
+            }
+            $message .= "<p>Only the last result from <b><u>" . $last_result['prefix'] . "</u></b> will be used " .
+                "by REDCap.  Consider disabling or refactoring the other external modules so this does not occur.</p>";
+
+            ExternalModules::sendAdminEmail("REDCap External Module Results Warning", $message);
+        }
+
+        return $last_result['result'];
+    }
+
 
 	public static function exitAfterHook(){
 		self::$exitAfterHook = true;
