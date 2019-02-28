@@ -1490,29 +1490,31 @@ class ExternalModules
 				$versionsByPrefix = self::getEnabledModules($pid);
 			}
 
-			foreach($versionsByPrefix as $prefix=>$version){
+			$startHook = function($prefix, $version) use ($arguments, &$resultsByPrefix){
 				$result = self::startHook($prefix, $version, $arguments);
-			    if (!empty($result) && is_array($result)) {
-                    // Lets preserve order of execution by order entered into the results array
-			        $resultsByPrefix[] = array(
-                        "prefix" => $prefix,
-                        "result" => $result
-                    );
-                }
+
+				// The following check assumes hook return values will always be arrays.
+				// That's totally fine for now since our only hook that returns a value does return an array.
+				// There may come a day when we'd want to support other types as well.
+				if (!empty($result) && is_array($result)) {
+					// Lets preserve order of execution by order entered into the results array
+					$resultsByPrefix[] = array(
+						"prefix" => $prefix,
+						"result" => $result
+					);
+				}
+			};
+
+			foreach($versionsByPrefix as $prefix=>$version){
+				$startHook($prefix, $version);
 			}
 
-			$callDelayedHooks = function($lastRun) use ($arguments){
+			$callDelayedHooks = function($lastRun) use ($startHook){
 				$prevDelayed = self::$delayed[self::$hookBeingExecuted];
 				self::$delayed[self::$hookBeingExecuted] = array();
 				self::$delayedLastRun = $lastRun;
 				foreach ($prevDelayed as $prefix=>$version) {
-					$result = self::startHook($prefix, $version, $arguments);
-    			    if (!empty($result) && is_array($result)) {
-    			        $resultsByPrefix[] = array(
-                            "prefix" => $prefix,
-                            "result" => $result
-                        );
-                    }
+					$startHook($prefix, $version);
 				}
 			};
 	
