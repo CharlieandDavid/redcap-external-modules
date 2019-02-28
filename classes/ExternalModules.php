@@ -1514,6 +1514,9 @@ class ExternalModules
 				self::$delayed[self::$hookBeingExecuted] = array();
 				self::$delayedLastRun = $lastRun;
 				foreach ($prevDelayed as $prefix=>$version) {
+					// Modules that call delayModuleExecution() normally just "return;" afterward, effectively returning null.
+					// However, they could potentially return a value after delaying, which would result in multiple entries in $resultsByPrefix for the same module.
+					// This could cause filterHookResults() to trigger unnecessary warning emails, but likely won't be an issue in practice.
 					$startHook($prefix, $version);
 				}
 			};
