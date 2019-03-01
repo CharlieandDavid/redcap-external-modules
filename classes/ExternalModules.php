@@ -658,8 +658,21 @@ class ExternalModules
 	static function validateCronAttributes(&$cron=array(), $moduleInstance=null)
 	{
 		// Ensure certain attributes are integers
-		$cron['cron_frequency'] = (int)$cron['cron_frequency'];
-		$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		if (self::isValidTabledCron($cron)) {
+			$cron['cron_frequency'] = (int)$cron['cron_frequency'];
+			$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		} else if (self::isValidTimedCron($cron)) {
+			$cron['cron_minute'] = (int) $cron['cron_minute'];
+			if (isset($cron['cron_hour'])) {
+				$cron['cron_hour'] = (int) $cron['cron_hour'];
+			}
+			if (isset($cron['cron_weekday'])) {
+				$cron['cron_weekday'] = (int) $cron['cron_weekday'];
+			}
+			if (isset($cron['cron_monthday'])) {
+				$cron['cron_monthday'] = (int) $cron['cron_monthday'];
+			}
+		}
 		// Make sure we have what we need
 		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method'])) {
 			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
