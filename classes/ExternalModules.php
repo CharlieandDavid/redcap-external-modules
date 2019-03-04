@@ -3336,7 +3336,7 @@ class ExternalModules
 	# only for crons stored in redcap_crons table
 	private static function isValidTabledCron($cronAttr) {
 		$frequency = $cronAttr['cron_frequency'];
-		$maxRunTime = $cronAttry['cron_max_run_time'];
+		$maxRunTime = $cronAttr['cron_max_run_time'];
 
 		if (!self::isValidCron($cronAttr)) {
 			return FALSE;
