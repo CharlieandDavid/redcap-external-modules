@@ -120,18 +120,6 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* **DEPRECATED (for now): Default values do NOT currently work consistently, and will likely need to be re-implemented.** Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
 * If your JSON is not properly specified, an Exception will be thrown.
 
-#### Examples of button
-A basic case.
-
-``` json
-"url": {
-    "name": "Check information",
-    "value": "check.php?data=1",
-    "message":"The information has been checked"
-}
-			
-```
-
 #### Examples of branching logic
 
 A basic case.

@@ -208,6 +208,16 @@
 			"repeatable": false
 		},
 		{
+			"key": "button",
+			"name": "Test Button",
+			"type": "button",
+			"url":
+			{
+				"name": "Click here",
+				"value": "url-button-page.php"
+			}
+		},
+		{
 			"key": "project",
 			"name": "Other Project",
 			"required": false,
