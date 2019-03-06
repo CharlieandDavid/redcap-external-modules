@@ -457,6 +457,8 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 
 			inputHtml += this.getInputElement(type, key, choice.value, inputAttributes) + '<label>' + choice.name + '</label><br>';
 		}
+	}else if(type == 'button'){
+		inputHtml = this.getButtonElement(type, key, setting.url.name,setting.url.value, inputAttributes);
 	}
 	else if(type == 'custom') {
 		inputHtml = this.getInputElement(type, key, value, inputAttributes);
@@ -591,6 +593,31 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		attributeString = this.getElementAttributes({"class":"external-modules-input-element"},inputAttributes);
 		return '<input type="' + type + '" name="' + name + '" ' + attributeString + '>';
 	}
+}
+
+ExternalModules.Settings.prototype.getButtonElement = function(name, value, btnname,btnvalue, inputAttributes){
+	var btn = '<a name="' + value + '" class="btn btn-primary btn-sm" style="color:#fff" onclick="">'+btnname+'</a>';
+    $.post('ajax/get-url.php', { pid:pid,moduleDirectoryPrefix: this.getPrefix(),page:btnvalue}, function(result){
+    	var data = jQuery.parseJSON(result);
+        var url = data.url;
+        if(data.status == 'success'){
+                url = "javascript:$.post('"+data.url+"',''," + "function(result){" +
+                		"var mdata = jQuery.parseJSON(result);"+
+						"if(mdata.status == 'success' || mdata.status == 'warning' || mdata.status == 'danger'){"+
+							"var border = '';"+
+							"if(mdata.status == 'success'){border = 'border-color:#d0e9c6 !important';}"+
+							"else if(mdata.status == 'warning'){border = 'border-color:#faebcc !important';}"+
+							"if(mdata.message != '' && mdata.message != undefined){"+
+								"$('[name ="+value+"]').parent().html( '<div class=\"alert alert-'+mdata.status+'\" style=\"margin-bottom:0;'+border+'\">'+mdata.message+'</div>')" +
+							"}"+
+						"}"+
+					"});";
+                $('[name ='+value+']').attr('onclick',url);
+        }else{
+        	return;
+		}
+    });
+    return btn;
 }
 
 ExternalModules.Settings.prototype.getTextareaElement = function(name, value, inputAttributes){

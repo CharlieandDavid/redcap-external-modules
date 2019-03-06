@@ -99,6 +99,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* dag-list
 		* dropdown
 		* checkbox
+		* button
 		* project-id
 		* form-list
 		* event-list
