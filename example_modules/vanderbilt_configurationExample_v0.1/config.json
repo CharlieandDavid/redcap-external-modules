@@ -119,10 +119,20 @@
 					"type": "event-list"
 				},
 				{
-				"key": "test-text",
-				"name": "Text Field",
-				"required": true,
-				"type": "text"
+					"key": "test-text",
+					"name": "Text Field",
+					"required": true,
+					"type": "text"
+				},
+				{
+					"key": "test-date",
+					"name": "Date Field",
+					"type": "date"
+				},
+				{
+					"key": "test-email",
+					"name": "Email Field",
+					"type": "email"
 				}
 			]
 		},

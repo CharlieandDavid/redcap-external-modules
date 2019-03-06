@@ -14,89 +14,6 @@
 	font-weight: normal;
 }
 
-.external-modules-action-buttons {
-	text-align: right;
-}
-
-/* Only display one backdrop, no matter how many modals are open. */
-.modal-backdrop + .modal-backdrop {
-	opacity: 0;
-}
-
-.table-no-top-row-border tr:first-child td,
-.table-no-top-row-border tr:first-child th {
-	border-top: none;
-}
-
-.table td {
-	vertical-align: middle !important;
-}
-
-.table td label {
-	margin-bottom: 0px;
-	font-weight: normal;
-}
-
-.table th {
-	font-size: 110%;
-	font-weight: bold;
-}
-
-#external-modules-configure-modal .modal-dialog {
-	width: 850px;
-}
-
-/* Modify jQuery UI modal z-index since it conflicts with Bootstrap modal */
-.ui-dialog { 
-	z-index: 1060;
-}
-
-#external-modules-configure-modal input[type=radio] {
-	vertical-align: -2px;
-	margin-right: 5px;
-}
-
-#external-modules-configure-modal select:disabled {
-	/* match text input disabled backgrounds */
-	background-color: rgb(235, 235, 228);
-}
-
-#external-modules-configure-modal select {
-	max-width: 275px;
-}
-
-.external-modules-use-system-setting {
-	font-size: 10px;
-}
-
-.external-modules-add-remove-column {
-	 width: 40px;
-	 text-align: center;
-}
-
-.external-modules-add-instance, .external-modules-remove-instance, .external-modules-add-instance-subsettings, .external-modules-remove-instance-subsettings{
-	 width: 30px;
-}
-
-.external-modules-original-instance, .external-modules-original-instance-subsettings {
-	 font-size: 10px;
-}
-#external-modules-enabled{
-	max-width: 800px;
-}
-
-#external-modules-disabled-modal .loading-indicator {
-	padding: 50px;
-}
-
-#external-modules-disabled-modal input[type=checkbox] {
-	vertical-align: -3px;
-}
-
-#external-modules-disabled-modal label {
-	font-weight: normal;
-}
-
 #external-modules-disabled-table td:first-child,
 #external-modules-enabled td:first-child {
 	padding: 15px;
@@ -104,6 +21,10 @@
 
 .external-modules-action-buttons {
 	text-align: right;
+}
+
+.modal-dialog .external-modules-action-buttons {
+	min-width: 260px;
 }
 
 /* Only display one backdrop, no matter how many modals are open. */
@@ -181,68 +102,10 @@
 	 width: 30px;
 }
 
-.external-modules-original-instance, .external-modules-original-instance-subsettings {
-	 font-size: 10px;
-}
-
-.external-modules-title {
-	font-weight: bold;
-}
-
-.external-modules-description, .external-modules-description a, .external-modules-byline, .external-modules-byline a {
-	font-size: 11px;
-}
-
-.external-modules-action-buttons button{
-	margin-bottom: 5px;
-}
-
 .external-modules-input-td > textarea, .external-modules-input-td > input:not([type=checkbox]):not([type=radio]) {
 	width: 100%;
 }
 
-.external-modules-input-td .mce-statusbar {
-	border: none;
-}
-
-.external-modules-input-td .mce-path {
-	display: none;
-}
-
-.btn-group-sm>.btn, .btn-sm {
-	font-size: 13px;
-}
-
-#external-modules-enable-modal-error {
-	word-wrap: break-word;
-	display: none;
-	color: red;
-	font-weight: bold;
-}
-
-.author-institution {
-	color: #777;
-}
-
-.download-new-mod-form {
-	display: none;	
-}
-
-input.quicksearch {
-	width: 180px;
-	padding: 3px 5px;
-	font-size: 13px;	
-	color: #555;
-	border: 1px solid #ccc;
-}
-
-input.quicksearchsm {
-	width: 160px;
-	padding: 2px 5px;
-	font-size: 12px;	
-	color: #555;
-	border: 1px solid #ccc;
-}
 .external-modules-title {
 	font-weight: bold;
 }
@@ -252,12 +115,9 @@ input.quicksearchsm {
 }
 
 .external-modules-action-buttons button{
+	display: block; /* force buttons onto separate lines when descriptions don't take up the whole width, like when searching for a single module */
+	margin-left: auto;
 	margin-bottom: 5px;
-}
-
-
-.external-modules-input-td > textarea {
-	width: 100%;
 }
 
 .external-modules-input-td .mce-statusbar {

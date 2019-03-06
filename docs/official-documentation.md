@@ -105,6 +105,10 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* sub_settings
 		* radio
 		* file
+		* date
+			* Date fields currently use jQuery UI's datepicker and include validation to ensure that dates entered follows datepicker's default date format (MM/DD/YYYY).  This could be expanded to include other date formats in the future.
+		* email
+			* Includes validation to ensure that the value specified is a valid email address.
 	* **choices** consist of a **value** and a **name** for selecting elements (dropdowns, radios).
 	* **super-users-only** can be set to **true** to only allow super users to access a given setting.
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**

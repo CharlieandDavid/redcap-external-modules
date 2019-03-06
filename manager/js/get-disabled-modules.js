@@ -130,13 +130,9 @@ $(function(){
 
 	if (enableModal) {
 		enableModal.on('hide.bs.modal', function(){
-			if($('#external-modules-disabled-table tr').length === 0){
-				// Reload since there aren't any more disabled modules to enable.
-				reloadThisPage();
-			}
-			else{
-				disabledModal.show();
-			}
+			// We used to try to display the previous dialog again here, but it caused some odd edge cases related to multiple dialogs.
+			// Simply reloading is cleaner.
+			reloadThisPage();
 		});
 	}
 });
