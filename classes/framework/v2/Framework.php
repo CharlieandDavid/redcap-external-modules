@@ -2,6 +2,7 @@
 namespace ExternalModules\FrameworkVersion2;
 
 require_once __DIR__ . '/Records.php';
+require_once __DIR__ . '/User.php';
 
 use Exception;
 use ExternalModules\AbstractExternalModule;
@@ -112,5 +113,21 @@ class Framework
 		}
 
 		return $subSettings;
+	}
+
+	function getSQLInClause($columnName, $values){
+		return ExternalModules::getSQLInClause($columnName, $values);
+	}
+
+	function getUser($username = null){
+		if(empty($username)){
+			if(!defined('USERID')){
+				throw new Exception('A username was not specified and could not be automatically detected.');
+			}
+
+			$username = USERID;
+		}
+
+		return new User($this, $username);
 	}
 }
