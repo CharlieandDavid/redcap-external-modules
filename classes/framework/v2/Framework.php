@@ -1,6 +1,7 @@
 <?php
 namespace ExternalModules\FrameworkVersion2;
 
+require_once __DIR__ . '/Project.php';
 require_once __DIR__ . '/Records.php';
 require_once __DIR__ . '/User.php';
 
@@ -129,5 +130,19 @@ class Framework
 		}
 
 		return new User($this, $username);
+	}
+
+	function getProject($project_id = null){
+		$project_id = $this->requireProjectId($project_id);
+		return new Project($this, $project_id);
+	}
+
+	function requireInteger($mixed){
+		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
+		if($integer === false){
+			throw new Exception("An integer was required but the following value was specified instead: $mixed");
+		}
+
+		return $integer;
 	}
 }
