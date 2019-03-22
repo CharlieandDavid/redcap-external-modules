@@ -963,9 +963,12 @@ class ExternalModules
 				return;
 			}
 
-			$pidString = "'$projectId'"; // wrap in single quotes to prevent SQL injection
-			if (!$projectId || $projectId == "") {
+			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
 				$pidString = "NULL";
+			}
+			else{
+				// Require an integer to prevent sql injection.
+				$pidString = self::requireInteger($projectId);
 			}
 
 			if ($type == "boolean") {
@@ -3432,5 +3435,14 @@ class ExternalModules
 		if($framework){
 			$module->framework = $framework;
 		}
+	}
+
+	public static function requireInteger($mixed){
+		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
+		if($integer === false){
+			throw new Exception("An integer was required but the following value was specified instead: $mixed");
+		}
+
+		return $integer;
 	}
 }

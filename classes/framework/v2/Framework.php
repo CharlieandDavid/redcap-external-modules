@@ -138,11 +138,6 @@ class Framework
 	}
 
 	function requireInteger($mixed){
-		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
-		if($integer === false){
-			throw new Exception("An integer was required but the following value was specified instead: $mixed");
-		}
-
-		return $integer;
+		return ExternalModules::requireInteger($mixed);
 	}
 }
