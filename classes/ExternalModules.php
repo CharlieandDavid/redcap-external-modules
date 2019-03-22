@@ -2332,9 +2332,14 @@ class ExternalModules
 			];
 
 			while($row = db_fetch_assoc($result)) {
+				$projectName = utf8_encode($row["app_title"]);
+
+				// Required to display things like single quotes correctly
+				$projectName = htmlspecialchars_decode($projectName, ENT_QUOTES);
+
 				$matchingProjects[] = [
 					"id" => $row["project_id"],
-					"text" => "(" . $row["project_id"] . ") " . utf8_encode($row["app_title"]),
+					"text" => "(" . $row["project_id"] . ") " . $projectName,
 				];
 			}
 			$configRow['choices'] = $matchingProjects;
