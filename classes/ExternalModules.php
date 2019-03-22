@@ -963,7 +963,7 @@ class ExternalModules
 				return;
 			}
 
-			$pidString = $projectId;
+			$pidString = "'$projectId'"; // wrap in single quotes to prevent SQL injection
 			if (!$projectId || $projectId == "") {
 				$pidString = "NULL";
 			}
