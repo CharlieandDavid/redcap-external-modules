@@ -980,7 +980,8 @@ class AbstractExternalModule
 		$fieldName = \Records::getTablePK($pid);
 		$recordId = $this->getNextAutoNumberedRecordId($pid);
 
-		$this->query("insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)");
+		$insertSql = "insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)";
+		$this->query($insertSql);
 		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
 		$count = $result->fetch_assoc()['count'];
 		if($count > 1){
@@ -998,6 +999,9 @@ class AbstractExternalModule
 			$arm = db_result(db_query("select arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = $eventId"), 0);
 			\Records::addRecordToRecordListCache($pid, $recordId, $arm);
 		}
+
+		// Simulate the "Create record" log entry that is normally added by REDCap core.
+		\Logging::logEvent($insertSql, "redcap_data", "INSERT", $recordId, "$fieldName = '$recordId'", "Create record", "", "", $pid, true, $eventId);
 
 		return $recordId;
 	}
