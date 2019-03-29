@@ -1933,29 +1933,12 @@ class ExternalModules
 		}
 		else {
 			$localFile = true;
-			if(empty($cdnUrl)){
-				// This is a local resource.
-				$path = "manager/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
-			}
-			else{
-				// This is a third party resource.  We check for the node module, then fall back to the CDN url if it doesn't exist.
-				// These local Yarn (node_module) dependencies were added only for PMI (which doesn't allow CDNs).
-				// Running 'yarn install' is currently only required prior to deploying to the PMI REDCap instance.
-				$path = "node_modules/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
+			$path = "manager/$path";
+			$fullLocalPath = __DIR__ . "/../$path";
 
-				if(!file_exists($fullLocalPath)){
-					$localFile = false;
-					$url = $cdnUrl;
-				}
-			}
-
-			if($localFile){
-				// Add the filemtime to the url for cache busting.
-				clearstatcache(true, $fullLocalPath);
-				$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
-			}
+			// Add the filemtime to the url for cache busting.
+			clearstatcache(true, $fullLocalPath);
+			$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
 		}
 
 		if(in_array($url, self::$INCLUDED_RESOURCES)) return;
