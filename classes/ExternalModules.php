@@ -1924,7 +1924,7 @@ class ExternalModules
 	}
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
-	static function addResource($path, $cdnUrl = null, $integrity = null)
+	static function addResource($path)
 	{
 		$extension = pathinfo($path, PATHINFO_EXTENSION);
 
@@ -1932,7 +1932,6 @@ class ExternalModules
 			$url = $path;
 		}
 		else {
-			$localFile = true;
 			$path = "manager/$path";
 			$fullLocalPath = __DIR__ . "/../$path";
 
@@ -1943,16 +1942,11 @@ class ExternalModules
 
 		if(in_array($url, self::$INCLUDED_RESOURCES)) return;
 
-		$integrityAttributes = '';
-		if(!empty($integrity)){
-			$integrityAttributes = "integrity='$integrity' crossorigin='anonymous'";
-		}
-
 		if ($extension == 'css') {
-			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
+			echo "<link rel='stylesheet' type='text/css' href='" . $url . "'>";
 		}
 		else if ($extension == 'js') {
-			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "'></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
