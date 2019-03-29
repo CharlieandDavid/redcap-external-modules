@@ -1288,6 +1288,12 @@ class AbstractExternalModule
 		$logValues['record'] = $recordId;
 		$logValues['message'] = "'" . db_real_escape_string($message) . "'";
 
+		// Remove parameter values that will be stored on the main log table,
+		// so they are not also stored in the parameter table
+		foreach(AbstractExternalModule::$OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE as $paramName){
+			unset($parameters[$paramName]);
+		}
+
 		$this->query("
 			insert into redcap_external_modules_log
 				(
