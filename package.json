@@ -1,0 +1,8 @@
+{
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vanderbilt/redcap-external-modules.git"
+  },
+  "dependencies": {}
+}
