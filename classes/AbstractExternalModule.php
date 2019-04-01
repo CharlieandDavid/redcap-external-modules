@@ -1131,15 +1131,7 @@ class AbstractExternalModule
 
 	public function initializeJavascriptModuleObject()
 	{
-		$jsObjectParts = explode('\\', get_class($this));
-
-		// Remove the class name, since it's always the same as it's parent namespace.
-		array_pop($jsObjectParts);
-
-		// Prepend "ExternalModules" to contain all module namespaces.
-		array_unshift($jsObjectParts, 'ExternalModules');
-
-		$jsObject = implode('.', $jsObjectParts);
+		$jsObject = ExternalModules::getJavascriptModuleObjectName($this);
 
 		$pid = $this->getProjectId();
 		$logUrl = APP_URL_EXTMOD . "manager/ajax/log.php?prefix=" . $this->PREFIX . "&pid=$pid";
@@ -1156,7 +1148,7 @@ class AbstractExternalModule
 			(function(){
 				// Create the module object, and any missing parent objects.
 				var parent = window
-				;<?=json_encode($jsObjectParts)?>.forEach(function(part){
+				;<?=json_encode($jsObject)?>.split('.').forEach(function(part){
 					if(parent[part] === undefined){
 						parent[part] = {}
 					}
@@ -1197,6 +1189,63 @@ class AbstractExternalModule
 							}
 						}
 					})
+				}
+
+				<?=$jsObject?>.getUrlParameters = function(){
+					var search = location.search
+					if(location.search[0] !== '?'){
+						// There aren't any URL parameters
+						return null
+					}
+
+					// Remove the leading question mark
+					search = search.substring(1)
+
+					var params = []
+					var parts = search.split('&')
+					$.each(parts, function(index, part){
+						var innerParts = part.split('=')
+						var name = innerParts[0]
+						var value = null
+
+						if(innerParts.length === 2){
+							value = innerParts[1]
+						}
+
+						params[name] = value
+					})
+
+					return params
+				}
+
+				<?=$jsObject?>.getUrlParameter = function(name){
+					var params = this.getUrlParameters()
+					return params[name]
+				}
+
+				<?=$jsObject?>.isRoute = function(routeName){
+					return this.getUrlParameter('route') === routeName
+				}
+
+				<?=$jsObject?>.isImportPage = function(){
+					return this.isRoute('DataImportController:index')
+				}
+
+				<?=$jsObject?>.isImportReviewPage = function(){
+					if(!this.isImportPage()){
+						return false
+					}
+
+					return $('table#comptable').length === 1
+				}
+
+				<?=$jsObject?>.isImportSuccessPage = function(){
+					if(!this.isImportPage()){
+						return false
+					}
+
+					var successMessage = $('#center > .green > b').text()
+					return successMessage === 'Import Successful!'
 				}
 			})()
 		</script>

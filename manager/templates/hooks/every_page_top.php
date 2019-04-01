@@ -89,3 +89,9 @@ $getIcon = function ($icon){
 		}
 	})
 </script>
+
+<?php
+
+if(ExternalModules::isRoute('DataImportController:index')){
+	ExternalModules::callHook('redcap_module_import_page_top', [$project_id]);
+}

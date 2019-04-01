@@ -140,4 +140,12 @@ class Framework
 	function requireInteger($mixed){
 		return ExternalModules::requireInteger($mixed);
 	}
+
+	function getJavascriptModuleObjectName(){
+		return ExternalModules::getJavascriptModuleObjectName($this->module);
+	}
+
+	function isRoute($routeName){
+		return ExternalModules::isRoute($routeName);
+	}
 }

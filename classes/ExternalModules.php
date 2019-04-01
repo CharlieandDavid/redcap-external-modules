@@ -3427,4 +3427,20 @@ class ExternalModules
 
 		return $integer;
 	}
+
+	public static function getJavascriptModuleObjectName($moduleInstance){
+		$jsObjectParts = explode('\\', get_class($moduleInstance));
+
+		// Remove the class name, since it's always the same as it's parent namespace.
+		array_pop($jsObjectParts);
+
+		// Prepend "ExternalModules" to contain all module namespaces.
+		array_unshift($jsObjectParts, 'ExternalModules');
+
+		return implode('.', $jsObjectParts);
+	}
+
+	public static function isRoute($routeName){
+		return $_GET['route'] === $routeName;
+	}
 }
