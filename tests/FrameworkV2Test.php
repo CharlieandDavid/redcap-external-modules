@@ -5,9 +5,12 @@ require_once __DIR__ . '/../classes/framework/v2/Framework.php';
 
 class FrameworkV2Test extends BaseTest
 {
-	function __construct()
-	{
-		$this->framework = new FrameworkVersion2\Framework(new BaseTestExternalModule());
+	public function setUp(){
+		parent::setUp();
+
+		if(!$this->framework){
+			$this->framework = new FrameworkVersion2\Framework(new BaseTestExternalModule());
+		}
 	}
 
 	protected function getReflectionClass()
