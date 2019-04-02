@@ -83,25 +83,18 @@ class Framework
 					continue;
 				}
 
-				$recursionCheck = function($value){
+				$recursionCheck = function($value) use ($subSettingConfig){
 					// Only recurse if this is an array, and not a leaf.
 					// If index '0' is not defined, we know it's a leaf since only setting key names will be used as array keys (not numeric indexes).
 					// Using array_key_exists() instead of isset() is important since there could be a null value set.
-					return is_array($value) && array_key_exists(0, $value);
+					return !@$subSettingConfig['repeatable'] && is_array($value) && array_key_exists(0, $value);
 				};
 			}
 
 			$formatValues = function($values) use ($subSettingConfig, $subSettingKey, $recursionCheck, &$formatValues){
-				if($subSettingConfig['repeatable'] && $subSettingConfig['type'] !== 'sub_settings'){
-					return [
-						// Replace the zero index with the key name
-						$subSettingKey => $values[0]
-					];
-				}
-
 				for($i=0; $i<count($values); $i++){
 					$value = $values[$i];
-
+					
 					if($recursionCheck($value)){
 						$values[$i] = $formatValues($value);
 					}

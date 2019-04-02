@@ -112,8 +112,10 @@ class FrameworkV2Test extends BaseTest
 
 		$this->assertEquals(
 			[
-				'two' => [
-					'value'
+				[
+					'two' => [
+						'value'
+					]
 				]
 			],
 			$this->framework->getSubSettings('one')
