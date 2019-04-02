@@ -91,7 +91,14 @@ class Framework
 				};
 			}
 
-			$formatValues = function($values) use ($subSettingKey, $recursionCheck, &$formatValues){
+			$formatValues = function($values) use ($subSettingConfig, $subSettingKey, $recursionCheck, &$formatValues){
+				if($subSettingConfig['repeatable'] && $subSettingConfig['type'] !== 'sub_settings'){
+					return [
+						// Replace the zero index with the key name
+						$subSettingKey => $values[0]
+					];
+				}
+
 				for($i=0; $i<count($values); $i++){
 					$value = $values[$i];
 
