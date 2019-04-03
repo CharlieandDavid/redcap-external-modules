@@ -3408,10 +3408,18 @@ class ExternalModules
 	{
 		$config = $module->getConfig();
 		$version = @$config['framework-version'];
-		$framework = null;
 		if($version === 2){
 			require_once __DIR__ . '/framework/v2/Framework.php';
 			$framework = new FrameworkVersion2\Framework($module);
+		}
+		else if($version === null){
+			$framework = null;
+		}
+		else if(gettype($version) != 'integer'){
+			throw new Exception("The framework version must be specified as an integer (not a string) for the {$module->getModuleName()} module.");
+		}
+		else if($version !== null){
+			throw new Exception("The {$module->getModuleName()} module requires framework version '$version', which is not available on your REDCap instance.");
 		}
 
 		if($framework){
