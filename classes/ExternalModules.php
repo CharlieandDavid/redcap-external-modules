@@ -2910,19 +2910,12 @@ class ExternalModules
 		}
 
 		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (file_exists($connectPath)) {
-			require_once $connectPath;
-		} else {
+		if (!file_exists($connectPath)) {
+		    // We must be using the "external_modules" folder to override the version of the framework bundled with REDCap.
 			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-			if (file_exists($connectPath)) {
-				require_once $connectPath;
-			} else {
-				$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-				if (file_exists($connectPath)) {
-					require_once $connectPath;
-				}
-			}
-		}	
+		}
+
+		require_once $connectPath;
 	}
 	
 	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
