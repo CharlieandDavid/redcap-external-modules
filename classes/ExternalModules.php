@@ -963,9 +963,12 @@ class ExternalModules
 				return;
 			}
 
-			$pidString = $projectId;
-			if (!$projectId || $projectId == "") {
+			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
 				$pidString = "NULL";
+			}
+			else{
+				// Require an integer to prevent sql injection.
+				$pidString = self::requireInteger($projectId);
 			}
 
 			if ($type == "boolean") {
@@ -1921,7 +1924,7 @@ class ExternalModules
 	}
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
-	static function addResource($path, $cdnUrl = null, $integrity = null)
+	static function addResource($path)
 	{
 		$extension = pathinfo($path, PATHINFO_EXTENSION);
 
@@ -1929,44 +1932,21 @@ class ExternalModules
 			$url = $path;
 		}
 		else {
-			$localFile = true;
-			if(empty($cdnUrl)){
-				// This is a local resource.
-				$path = "manager/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
-			}
-			else{
-				// This is a third party resource.  We check for the node module, then fall back to the CDN url if it doesn't exist.
-				// These local Yarn (node_module) dependencies were added only for PMI (which doesn't allow CDNs).
-				// Running 'yarn install' is currently only required prior to deploying to the PMI REDCap instance.
-				$path = "node_modules/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
+			$path = "manager/$path";
+			$fullLocalPath = __DIR__ . "/../$path";
 
-				if(!file_exists($fullLocalPath)){
-					$localFile = false;
-					$url = $cdnUrl;
-				}
-			}
-
-			if($localFile){
-				// Add the filemtime to the url for cache busting.
-				clearstatcache(true, $fullLocalPath);
-				$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
-			}
+			// Add the filemtime to the url for cache busting.
+			clearstatcache(true, $fullLocalPath);
+			$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
 		}
 
 		if(in_array($url, self::$INCLUDED_RESOURCES)) return;
 
-		$integrityAttributes = '';
-		if(!empty($integrity)){
-			$integrityAttributes = "integrity='$integrity' crossorigin='anonymous'";
-		}
-
 		if ($extension == 'css') {
-			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
+			echo "<link rel='stylesheet' type='text/css' href='" . $url . "'>";
 		}
 		else if ($extension == 'js') {
-			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "'></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
@@ -2329,9 +2309,14 @@ class ExternalModules
 			];
 
 			while($row = db_fetch_assoc($result)) {
+				$projectName = utf8_encode($row["app_title"]);
+
+				// Required to display things like single quotes correctly
+				$projectName = htmlspecialchars_decode($projectName, ENT_QUOTES);
+
 				$matchingProjects[] = [
 					"id" => $row["project_id"],
-					"text" => "(" . $row["project_id"] . ") " . utf8_encode($row["app_title"]),
+					"text" => "(" . $row["project_id"] . ") " . $projectName,
 				];
 			}
 			$configRow['choices'] = $matchingProjects;
@@ -3432,5 +3417,30 @@ class ExternalModules
 		if($framework){
 			$module->framework = $framework;
 		}
+	}
+
+	public static function requireInteger($mixed){
+		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
+		if($integer === false){
+			throw new Exception("An integer was required but the following value was specified instead: $mixed");
+		}
+
+		return $integer;
+	}
+
+	public static function getJavascriptModuleObjectName($moduleInstance){
+		$jsObjectParts = explode('\\', get_class($moduleInstance));
+
+		// Remove the class name, since it's always the same as it's parent namespace.
+		array_pop($jsObjectParts);
+
+		// Prepend "ExternalModules" to contain all module namespaces.
+		array_unshift($jsObjectParts, 'ExternalModules');
+
+		return implode('.', $jsObjectParts);
+	}
+
+	public static function isRoute($routeName){
+		return $_GET['route'] === $routeName;
 	}
 }

@@ -60,10 +60,6 @@ if($pid != null){
 	$showHeaderAndFooter = @$link['show-header-and-footer'] === true;
 }
 
-if (preg_match("/^https:\/\//", $page) || preg_match("/^http:\/\//", $page)) {
-	header( 'Location: '.$page ) ;
-}
-
 $pageExtension = strtolower(pathinfo($page, PATHINFO_EXTENSION));
 $pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page" . ($pageExtension == '' ? ".php" : "");
 if(!file_exists($pagePath)){

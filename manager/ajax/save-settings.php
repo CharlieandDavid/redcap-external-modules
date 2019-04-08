@@ -6,6 +6,10 @@ $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
 
 $rawSettings = json_decode(file_get_contents('php://input'), true);
+if($rawSettings === null){
+	throw new \Exception('Unable to parse module settings!');
+}
+
 $module = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
 $validationErrorMessage = $module->validateSettings(ExternalModules::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings));
 if(!empty($validationErrorMessage)){

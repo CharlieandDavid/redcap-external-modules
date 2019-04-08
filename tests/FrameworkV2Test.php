@@ -5,9 +5,12 @@ require_once __DIR__ . '/../classes/framework/v2/Framework.php';
 
 class FrameworkV2Test extends BaseTest
 {
-	function __construct()
-	{
-		$this->framework = new FrameworkVersion2\Framework(new BaseTestExternalModule());
+	public function setUp(){
+		parent::setUp();
+
+		if(!$this->framework){
+			$this->framework = new FrameworkVersion2\Framework(new BaseTestExternalModule());
+		}
 	}
 
 	protected function getReflectionClass()
@@ -77,5 +80,45 @@ class FrameworkV2Test extends BaseTest
 		];
 
 		$this->assertEquals($expectedCountries, $this->framework->getSubSettings('countries'));
+	}
+
+	function testGetSubSettings_plainOldRepeatableInsideSubSettings(){
+		$m = $this->getInstance();
+		$_GET['pid'] = 1;
+
+		$this->setConfig('
+			{
+				"project-settings": [
+					{
+						"key": "one",
+						"name": "one",
+						"type": "sub_settings",
+						"repeatable": true,
+						"sub_settings": [
+							{
+								"key": "two",
+								"name": "two",
+								"type": "text",
+								"repeatable": true
+							}
+						]
+					}
+				]
+			}
+		');
+
+		$m->setProjectSetting('one', ["true"]);
+		$m->setProjectSetting('two', [["value"]]);
+
+		$this->assertEquals(
+			[
+				[
+					'two' => [
+						'value'
+					]
+				]
+			],
+			$this->framework->getSubSettings('one')
+		);
 	}
 }
