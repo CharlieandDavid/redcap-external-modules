@@ -52,7 +52,7 @@ class Framework
 
 	function getSubSettings($key, $pid = null)
 	{
-		$settingsAsArray = ExternalModules::getProjectSettingsAsArray($this->PREFIX, $this->requireProjectId($pid));
+		$settingsAsArray = ExternalModules::getProjectSettingsAsArray($this->module->PREFIX, $this->requireProjectId($pid));
 
 		$settingConfig = $this->getSettingConfig($key);
 
