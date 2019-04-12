@@ -104,6 +104,14 @@ abstract class BaseTest extends TestCase
 
 	protected function setConfig($config)
 	{
+
+		if(gettype($config) === 'string'){
+			$config = json_decode($config, true);
+			if($config === null){
+				throw new Exception("Error parsing json configuration (it's likely not valid json).");
+			}
+		}
+
 		$this->setExternalModulesProperty('configs', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => $config]]);
 		$this->setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);
 	}

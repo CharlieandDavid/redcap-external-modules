@@ -146,6 +146,8 @@
 }
 
 .external-modules-action-buttons button{
+	display: block; /* force buttons onto separate lines when descriptions don't take up the whole width, like when searching for a single module */
+	margin-left: auto;
 	margin-bottom: 5px;
 }
 
