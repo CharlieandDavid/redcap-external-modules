@@ -36,7 +36,8 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
     ExternalModules.versionsByPrefixJSON = <?=$versionsByPrefixJSON?>;
 	ExternalModules.LIB_URL = '<?=APP_URL_EXTMOD_LIB?>login.php?referer=<?=urlencode(APP_URL_EXTMOD)."manager/control_center.php"?>'
 		+ '&php_version=<?=urlencode(PHP_VERSION)?>&redcap_version=<?=urlencode(REDCAP_VERSION)?>';
-    
+    ExternalModules.SHARED_SUPPORT_MESSAGE = <?=json_encode(self::SHARED_SUPPORT_MESSAGE)?>;
+
     $(function () {
 		// Inform IE 8-9 users that this page won't work for them
 		if (isIE && IEv <= 9) {

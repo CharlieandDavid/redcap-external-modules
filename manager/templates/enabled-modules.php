@@ -116,7 +116,7 @@ on the left-hand menu of a given project to enable it there for that project. So
 may also need to set on the project page.</p>
 
 <?php 
-// Display alert message in Control Center if any modules have updates in the REDCap Repo
+// Display module alert messages on the External Modules Control Center page.
 ExternalModules::renderREDCapRepoUpdatesAlert();
 ?>
 

@@ -60,6 +60,8 @@ class ExternalModules
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
 
+	const SHARED_SUPPORT_MESSAGE = "may require funding and/or a software developer to add support for additional scenarios, support new REDCap versions, fix bugs, etc.  Please make sure you and your users consider this before";
+
 	private static $SERVER_NAME;
 
 	# base URL for external modules
@@ -92,6 +94,7 @@ class ExternalModules
 	private static $activeModulePrefix;
 	private static $instanceCache = array();
 	private static $idsByPrefix;
+	private static $supportInfo;
 
 	private static $systemwideEnabledVersions;
 	private static $projectEnabledDefaults;
@@ -2647,9 +2650,12 @@ class ExternalModules
 		self::query($sql);
 	}
 	
-	// Display alert message in Control Center if any modules have updates in the REDCap Repo
+	// Display module alert messages.
+	// This method is also called from within REDCap core on the Control Center index page.
 	public static function renderREDCapRepoUpdatesAlert()
 	{
+		self::renderModuleSupportAlerts();
+
 		global $lang, $external_modules_updates_available;
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
@@ -2681,6 +2687,69 @@ class ExternalModules
 						$links
 					</div>
 				</div>";
+	}
+
+	private static function renderModuleSupportAlerts()
+	{
+		$supportInfo = self::getSupportInfo();
+
+		$expired = [];
+		$expiring = [];
+
+		foreach($supportInfo as $prefix => $info){
+			$supportEndDate = $info['support_end_date'];
+			if(!$supportEndDate){
+				continue;
+			}
+
+			$supportEndTime = strtotime($supportEndDate);
+			$threeMonthsAgo = time()-60*60*24*90;
+			if($supportEndDate < time()){
+				$expired[] = $info;
+			}
+			else if($supportEndTime < $threeMonthsAgo){
+				$expiring[] = $info;
+			}
+		}
+
+		$render = function($color, $message, $modules, $details){
+			$count = count($modules);
+			if($count == 0){
+				return;
+			}
+
+			$details = "$details  They " . self::SHARED_SUPPORT_MESSAGE . " continuing to use them.<br><br>";
+
+			$details .= '<ul>';
+			foreach($modules as $module){
+				$config = self::getConfig($module['directory_prefix']);
+				$details .= "<li><b>" . $config['name'] . "</b></li>";
+			}
+			$details .= '</ul>';
+
+			// extract the following inline styles to shared classes
+			print "
+				<div class='$color repo-updates'>
+					<div style='color:#A00000;'>
+						<i class='fas fa-bell'></i>
+						<span style='margin-left:3px;font-weight:bold;'>
+							<span id='repo-updates-count'>$count</span>
+							External Module(s)
+						</span>
+						are $message.
+						<button id='show-external-module-support-details' class='btn btn-danger btn-xs ml-2'>Details</a>
+						<script>
+							$('button#show-external-module-support-details').click(function(){
+								simpleDialog(" . json_encode($details) . ", 'External Module Support Warning')
+							})
+						</script>
+					</div>
+				</div>
+			";
+		};
+
+		$render('red', 'no longer supported', $expired, "The following modules are no longer actively supported.");
+		$render('yellow', 'expiring soon', $expiring, "The following modules will not be actively supported for much longer.");
 	}
 	
 	// Store any json-encoded module updates passed in the URL from the REDCap Repo
@@ -3479,6 +3548,15 @@ class ExternalModules
 
 	public static function getSupportInfo()
 	{
+		if(!self::$supportInfo){
+			self::cacheSupportInfo();
+		}
+
+		return self::$supportInfo;
+	}
+
+	private static function cacheSupportInfo()
+	{
 		$results = self::query("
 		  	select directory_prefix, support_end_date from redcap_external_modules
 		");
@@ -3515,7 +3593,7 @@ class ExternalModules
 			}
 		}
 
-		return $infoByPrefix;
+		self::$supportInfo = $infoByPrefix;
 	}
 
 	public static function updateSupportEndDates($modules)

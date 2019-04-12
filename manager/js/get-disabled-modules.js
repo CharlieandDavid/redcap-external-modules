@@ -129,7 +129,7 @@ $(function(){
 				supported = new Date(supportEndDate) > new Date();
 			}
 
-			var message = "may require funding and/or a software developer to add support for additional scenarios, support new REDCap versions, fix bugs, etc.  Please make sure you and your users consider this before using this module."
+			var message = ExternalModules.SHARED_SUPPORT_MESSAGE + " using this module."
 			if(supported){
 				message = "<b>This module will be supported until " + ExternalModules.formatDate(supportEndDate) + ".</b>  After that date, this module " + message
 			}
