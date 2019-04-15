@@ -1144,7 +1144,13 @@ $(function(){
 
 	// helper method for saving
 	var saveSettings = function(pidString, moduleDirectoryPrefix, version, data) {
-	   $.post('ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix, JSON.stringify(data)).done( function(returnData){
+		$.post(
+			'ajax/save-settings.php?pid=' + pidString + '&moduleDirectoryPrefix=' + moduleDirectoryPrefix,
+			{
+				// Pass the JSON data as a form parameter instead of directly so that REDCap automatic CSRF token adding/checking/removing works properly.
+				settings: JSON.stringify(data)
+			}
+		).done( function(returnData){
 			if(returnData.status != 'success'){
 				alert("An error occurred while saving settings: \n\n" + returnData);
 				configureModal.show();
