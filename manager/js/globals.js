@@ -101,21 +101,24 @@ var ExternalModules = {
 	},
 
 	formatDate: function(date){
+		// The UTC methods are used below to prevent dates from shifting due to timezone conversions.
+		// For details, see https://stackoverflow.com/a/31732581
+
 		if(typeof date === 'string'){
 			date = new Date(date)
 		}
 
-		var month = date.getMonth()+1 // add one since the return value is zero based
+		var month = date.getUTCMonth()+1 // add one since the return value is zero based
 		if(month < 10){
 			month = '0' + month
 		}
 
-		var day = date.getDate()
+		var day = date.getUTCDate()
 		if(day < 10){
 			day = '0' + day
 		}
 
-		return month + '/' + day + '/' + date.getFullYear()
+		return month + '/' + day + '/' + date.getUTCFullYear()
 	}
 };
 
