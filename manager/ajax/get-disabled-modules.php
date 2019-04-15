@@ -42,6 +42,9 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 				}
 				else{
 					$name = $config['name'];
+					if(empty($name)){
+						$name = "None (\"name\" is not specified in config.json for $moduleDirectoryPrefix)";
+					}
 				}
 
 				?>
