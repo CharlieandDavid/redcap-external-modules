@@ -14,7 +14,9 @@ $getIcon = function ($icon){
 		$image = APP_PATH_WEBROOT . 'Resources/images/' . $icon . ".png";
 	}
 	return $image;
-}
+};
+
+$menu_id = 'projMenuExternalModules';
 ?>
 <script type="text/javascript">
 	$(function () {
@@ -22,30 +24,9 @@ $getIcon = function ($icon){
 			var newPanel = $('#app_panel').clone()
 			newPanel.attr('id', 'external_modules_panel')
 			newPanel.find('.x-panel-header div:first-child').html("External Modules")
-
-			// The following chained blocks were adapted from base.js lines 7147 to 7170 in v6.16.8
-			newPanel.find('.projMenuToggle').mouseenter(function() {
-				$(this).removeClass('opacity50');
-				if (isIE) $(this).find("img").removeClass('opacity50');
-			}).mouseleave(function() {
-				$(this).addClass('opacity50');
-				if (isIE) $(this).find("img").addClass('opacity50');
-			}).click(function(){ // Copied from base.js line 7155 in v6.16.8
-				var divBox = $(this).parent().parent().find('.x-panel-bwrap:first');
-				// Toggle the box
-				divBox.toggle('blind','fast');
-				// Toggle the image
-				var toggleImg = $(this).find('img:first');
-				if (toggleImg.prop('src').indexOf('toggle-collapse.png') > 0) {
-					toggleImg.prop('src', app_path_images+'toggle-expand.png');
-					var collapse = 1;
-				} else {
-					toggleImg.prop('src', app_path_images+'toggle-collapse.png');
-					var collapse = 0;
-				}
-				// Send ajax request to save cookie
-				$.post(app_path_webroot+'ProjectGeneral/project_menu_collapse.php?pid='+ExternalModules.PID, { menu_id: $(this).prop('id'), collapse: collapse });
-			});
+			var menuToggle = newPanel.find('.projMenuToggle')
+			var menuId = <?=json_encode($menu_id)?>;
+			menuToggle.attr('id', menuId)
 
 			function getLink(icon, name,url, target){
 				newLink = exampleLink.clone()
@@ -85,7 +66,21 @@ $getIcon = function ($icon){
 			}
 			?>
             // Only render the newPanel if the menubox contains links
-			if (menubox.children().length) newPanel.insertBefore('#help_panel')
+			if (menubox.children().length) {
+				newPanel.insertBefore('#help_panel')
+				
+				projectMenuToggle('#projMenuExternalModules')
+
+				var shouldBeCollapsed = <?=json_encode(\UIState::getMenuCollapseState($project_id, $menu_id))?>;
+				var isCollapsed = menuToggle.find('img')[0].src.indexOf('collapse') === -1
+				if(
+					(shouldBeCollapsed && !isCollapsed)
+					||
+					(!shouldBeCollapsed && isCollapsed)
+				){
+					menuToggle.click()
+				}
+			}
 		}
 	})
 </script>
