@@ -68,6 +68,13 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame($systemValue, $array[TEST_SETTING_KEY]['system_value']);
 	}
 
+	function testGetSystemSettingsAsArray_noPrefix()
+	{
+		$this->assertThrowsException(function(){
+			ExternalModules::getSystemSettingsAsArray(null);
+		}, 'One or more module prefixes must be specified!');
+	}
+
 	function testAddReservedSettings()
 	{
 		$method = 'addReservedSettings';

@@ -1074,6 +1074,10 @@ class ExternalModules
 
 	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
 	{
+		if(empty($moduleDirectoryPrefixes)){
+			throw new Exception('One or more module prefixes must be specified!');
+		}
+
 		if ($projectId === NULL) {
 			$result = self::getSettings($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
 		} else {
