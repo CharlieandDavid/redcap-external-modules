@@ -838,6 +838,12 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 		$(this).find(".external-modules-instance-label").html(currentLabel + " ");
 		$(this).find("input, select, textarea").attr("name",$(this).attr("field") + currentName);
+
+		// The following is required because browsers will only check the last radio button
+		// if two checked radio buttons are inserted into the DOM with the same name.  For example:
+		//    document.body.innerHtml = '<input type="radio" name="test" checked><input type="radio" name="test" checked>'
+		// We must go back through and check them manually AFTER field names have been adjusted to account for repeatable/subsetting instances.
+		$(this).find("input[type=radio][checked]").prop('checked', true)
     });
 };
 

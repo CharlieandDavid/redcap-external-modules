@@ -23,16 +23,25 @@ class User
 			$rightsByPid[$project_id] = $rights[$project_id][$this->username];
 		}
 
-		return $rightsByPid;
+		if(count($project_ids) === 1){
+			return $rightsByPid[$project_ids[0]];
+		}
+		else{
+			return $rightsByPid;
+		}
 	}
 
-	function hasDesignRights(){
+	function hasDesignRights($project_id = null){
 		if($this->isSuperUser()){
 			return true;
 		}
 
-		$rights = $this->getRights();
-		return $rights['design'] === 1;
+		if(!$project_id){
+			$project_id = $this->framework->requireProjectId();
+		}
+
+		$rights = $this->getRights($project_id);
+		return $rights['design'] === '1';
 	}
 
 	private function getUserInfo(){
