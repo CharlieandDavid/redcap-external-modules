@@ -1323,6 +1323,10 @@ class ExternalModules
 			$array = array($array);
 		}
 
+		if(empty($array)){
+			throw new Exception('You must provide an array of values.');
+		}
+
 		$columnName = db_real_escape_string($columnName);
 
 		$valueListSql = "";
