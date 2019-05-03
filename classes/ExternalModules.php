@@ -1296,7 +1296,12 @@ class ExternalModules
 		self::$currentQuery = null;
 
 		if($result == FALSE){
-			throw new Exception("Error running External Module query: \nDB Error: " . db_error() . "\nSQL: $sql");
+			$message = "An error occurred while running an External Module query";
+
+			error_log($message . ": \nDB Error: " . db_error() . "\nSQL: $sql");
+
+			// Do not show sql or error details to minimize risk of exploitation.
+			throw new Exception($message . " (see the server error log for more details).");
 		}
 
 		return $result;
