@@ -79,7 +79,6 @@ class ExternalModules
 	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
-	private static $currentQuery = null;
 	private static $temporaryRecordId;
 	private static $disablingModuleDueToException = false;
 
@@ -1291,9 +1290,7 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		self::$currentQuery = $sql;
 		$result = db_query($sql);
-		self::$currentQuery = null;
 
 		if($result == FALSE){
 			$message = "An error occurred while running an External Module query";
