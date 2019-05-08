@@ -37,6 +37,39 @@ class ExternalModules
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
+	
+	//region Language feature-related constants
+
+	/**
+	 * The name of the system-level language setting.
+	 */
+	const KEY_LANGUAGE_SYSTEM = 'reserved_language_system';
+	/**
+	 * The name of the project-level language setting.
+	 */
+	const KEY_LANGUAGE_PROJECT = 'reserved_language_project';
+	/**
+	 * Then name of the default language.
+	 */
+	const DEFAULT_LANGUAGE = 'English';
+	/**
+	 * The name of the language folder. This is a subfolder of a module's folder.
+	 */
+	const LANGUAGE_FOLDER_NAME = "lang";
+	/**
+	 * The prefix for all external module-related keys in the global $lang.
+	 */
+	const EM_LANG_PREFIX = "emlang_";
+	/**
+	 * The prefix for fields in config.json that contain language file keys.
+	 */
+	const CONFIG_TRANSLATABLE_PREFIX = "tt_";
+	/**
+	 * The list of fields in config.json that support translation.
+	 */
+	const CONFIG_TRANSLATABLE_KEYS = array ("name" => true, "description" => true);
+
+	//endregion
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -315,6 +348,8 @@ class ExternalModules
 		self::$MODULES_PATH = $modulesDirectories;
 		self::$INCLUDED_RESOURCES = [];
 
+		//region Shutdown
+
 		register_shutdown_function(function () {
 			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
 			$error = error_get_last();
@@ -403,7 +438,214 @@ class ExternalModules
 				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
 			}
 		});
+
+		//endregion
+
+		// Initialize the language features for External Modules.
+		self::initializeLanguage();
 	}
+
+	//region Language features
+	 
+	/**
+	 * Finds all available language files for a given module.
+	 * 
+	 * @param string $prefix The module prefix.
+	 * @param string $version The version of the module.
+	 * 
+	 * @return Array An associative array with the language names as keys and the full path to the INI file as values.
+	 */
+	private static function getLanguageFiles($prefix, $version) {
+		$langs = array();
+		$path = self::getModuleDirectoryPath($prefix, $version) . DS . self::LANGUAGE_FOLDER_NAME . DS;
+		if (is_dir($path)) {
+			$files = glob($path . "*.{i,I}{n,N}{i,I}", GLOB_BRACE);
+			foreach ($files as $filename) {
+				if (is_file($filename)) {
+					$lang = pathinfo($filename, PATHINFO_FILENAME); 
+					$langs[$lang] = $filename;
+				}
+			}
+		}
+		return $langs;
+	}
+
+	/**
+	 * Gets the language set for a module.
+	 * 
+	 * @param string $prefix The module prefix.
+	 * @param int $projectId The ID of the project (or null whenn not in a project context).
+	 * 
+	 * @return string The language to use for the module.
+	 */
+	private static function getLanguageSetting($prefix, $projectId = null) {
+		$lang = "";
+		$settings = self::getSettingsAsArray($prefix, $projectId);
+		if (!empty($settings)) {
+			$lang = array_key_exists(self::KEY_LANGUAGE_SYSTEM, $settings) ? $settings[self::KEY_LANGUAGE_SYSTEM]["system_value"] : "";
+			if ($projectId && strlen($settings[self::KEY_LANGUAGE_PROJECT]["value"])) {
+				$lang = $settings[self::KEY_LANGUAGE_PROJECT]["value"];
+			}
+		}
+		return strlen($lang) ? $lang : self::DEFAULT_LANGUAGE;
+	}
+
+	/**
+	 * Initializes the language features for External Modules.
+	 */
+	private static function initializeLanguage() {
+
+		global $lang;
+
+		// Get project id if available.
+		$projectId = isset($GLOBALS["project_id"]) ? $GLOBALS["project_id"] : null;
+		// Get a list of all enabled modules.
+		$enabledModules = self::getEnabledModules(null);
+		// Go through them and parse their language files.
+		foreach ($enabledModules as $prefix => $version) {
+			$availableLangs = self::getLanguageFiles($prefix, $version);
+			if (count($availableLangs) > 0) {
+				$setLang = self::getLanguageSetting($prefix, $projectId);
+				// Verify the set language exists as a file, or set to default language. No warnings here if they don't.
+				$translationFile = array_key_exists($setLang, $availableLangs) ? $availableLangs[$setLang] : null;
+				$defaultFile = array_key_exists(self::DEFAULT_LANGUAGE, $availableLangs) ? $availableLangs[self::DEFAULT_LANGUAGE] : null;
+				// Read the files.
+				$default = file_exists($defaultFile) ? parse_ini_file($defaultFile) : array();
+				$translation = $defaultFile != $translationFile && file_exists($translationFile) ? parse_ini_file($translationFile) : array();
+				$moduleLang = array_merge($default, $translation);
+				// Add to global language array $lang
+				foreach ($moduleLang as $key => $val) {
+					$lang_key = self::constructLanguageKey($prefix, $key);
+					$lang[$lang_key] = $val;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Generates a key for the $lang global from a module prefix and a module-scope language file key.
+	 */
+	public static function constructLanguageKey($prefix, $key) {
+		return self::EM_LANG_PREFIX . "{$prefix}_{$key}";
+	}
+
+	/**
+	 * Provides a template for adding the reserved language setting to module config data.
+	 */
+	private static $LANGUAGE_SETTING_PROMPT = '<b>Language file:</b><br>Language file to use for this module. This setting can be overridden in the project configuration of this module';
+	
+	/**
+	 * Adds a language setting to config when translation is supported by a module.
+	 * 
+	 * @param Array $config The config array to which to add language setting support.
+	 * @param string $prefix The module prefix.
+	 * @param string $version The version of the module.
+	 * @param int $projectId The project id.
+	 * 
+	 * @return Array A config array with language selection support enabled.
+	 */
+	private static function addLanguageSetting($config, $prefix, $version, $projectId = null) {
+		$langs = self::getLanguageFiles($prefix, $version);
+		// Does the module support translation?
+		if (count($langs) > 0) {
+			// Build the choices.
+			$choices = array();
+			$langNames = array_keys($langs);
+			sort($langNames);
+			// Add the default language (if available) as the first choice.
+			if (in_array(self::DEFAULT_LANGUAGE, $langNames)) {
+				array_push($choices, array(
+					"value" => "", "name" => self::DEFAULT_LANGUAGE
+				));
+			}
+			foreach ($langNames as $lang) {
+				if ($lang == self::DEFAULT_LANGUAGE) continue; // Skip default, it's already there.
+				array_push($choices, array(
+					"value" => $lang, "name" => $lang
+				));
+			}
+			$templates = array (
+				"system-settings" => array(
+					"key" => self::KEY_LANGUAGE_SYSTEM,
+					"name" => self::$LANGUAGE_SETTING_PROMPT,
+					"type" => "dropdown",
+					"choices" => $choices
+				),
+				"project-settings" => array(
+					"key" => self::KEY_LANGUAGE_PROJECT,
+					"name" => self::$LANGUAGE_SETTING_PROMPT,
+					"type" => "dropdown",
+					"choices" => $choices
+				)
+			);
+			// Check reserved keys.
+			$systemSettings = $config['system-settings'];
+			$projectSettings = $config['project-settings'];
+
+			$existingSettingKeys = array();
+			foreach($systemSettings as $details){
+				$existingSettingKeys[$details['key']] = true;
+			}
+			foreach($projectSettings as $details){
+				$existingSettingKeys[$details['key']] = true;
+			}
+			foreach (array_keys($templates) as $type) {
+				$key = $templates[$type]['key'];
+				if(isset($existingSettingKeys[$key])){
+					throw new Exception("The '$key' setting key is reserved for internal use.  Please use a different setting key in your module.");
+				}
+				// Merge arrays so that the language setting always end up at the top of the list.
+				$config[$type] = array_merge(array($templates[$type]), $config[$type]);
+			}
+		}
+			return $config;
+	}
+
+	/**
+	 * Returns the translation for the given language file key.
+	 * 
+	 * @param string $prefix The module prefix.
+	 * @param string $key The language file key.
+	 * 
+	 * @return string The key as it occurs in the global $lang.
+	 */
+	public static function tt($prefix, $key) {
+		global $lang;
+		$lang_key = self::constructLanguageKey($prefix, $key);
+		return $lang[$lang_key];
+	}
+
+
+	/**
+	 * Applies translations to a config file.
+	 * 
+	 * @param Array $config The configuration to translate.
+	 * 
+	 * @return Array The configuration with translations.
+	 */
+	private static function translateConfig(&$config, $prefix) {
+		foreach ($config as $key => $val) {
+			if (array_key_exists($key, self::CONFIG_TRANSLATABLE_KEYS)) {
+				$tt_key = self::CONFIG_TRANSLATABLE_PREFIX.$key;
+				if (isset($config[$tt_key])) {
+					if ($config[$tt_key] === true) {
+						// In case of actual 'true', use the present value as key.
+						$translation = self::tt($prefix, $val);
+					} else {
+						// Use the value supplied in the tt field.
+						$translation = self::tt($prefix, $config[$tt_key]);
+					}
+					if ($translation !== null) $config[$key] = $translation;
+				}
+			}
+			else if (is_array($val)) {
+				$config[$key] = self::translateConfig($val, $prefix);
+			}
+		}
+		return $config;
+	}
+
+	//endregion
 
 	private static function isSuperUser()
 	{
@@ -616,6 +858,8 @@ class ExternalModules
 		return null;
 	}
 
+	//region Cron
+
 	# initializes any crons contained in the config, and adds them to the redcap_crons table
 	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
@@ -773,6 +1017,8 @@ class ExternalModules
 				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
 		return db_query($sql);
 	}
+
+	//endregion
 
 	# initializes the system settings
 	static function initializeSettingDefaults($moduleInstance, $pid=null)
@@ -1768,6 +2014,7 @@ class ExternalModules
 	# note well that if [module] contains an underscore (_), only the first chain link will be dealt with
 	# E.g., vanderbilt_example_v1.0 yields a class name of "ExampleExternalModule"
 	# vanderbilt_pdf_modify_v1.2 yields a class name of "PdfExternalModule"
+	//TODO: remove
 	private static function getMainClassName($prefix)
 	{
 		$parts = explode('_', $prefix);
@@ -2187,6 +2434,11 @@ class ExternalModules
 				$config['project-settings'][$configKey] = self::getAdditionalFieldChoices($configRow,$pid);
 			}
 		}
+
+		// Add in language settings if available.
+		$config = self::addLanguageSetting($config, $prefix, $version, $pid);
+		// Apply translations to config.
+		$config = self::translateConfig($config, $prefix);
 
 		if($pid === null) {
 			$config = self::addReservedSettings($config);
@@ -3092,7 +3344,7 @@ class ExternalModules
 		} else if ($email_error) {
 			\REDCap::email($email_error, $from, $subject, $body);
 		} else if($email_error == ""){
-			$emails = self::getDatacoreEmails();
+			$emails = self::getDatacoreEmails(); // TODO: fix error - getDatacoreEmails requires a parameter!
 			foreach ($emails as $to){
 				\REDCap::email($to, $from, $subject, $body);
 			}
