@@ -1290,7 +1290,7 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		$result = self::queryWithRetries($sql, 2);
+		$result = db_query($sql);
 
 		if($result == FALSE){
 			$message = "An error occurred while running an External Module query";
@@ -1299,25 +1299,6 @@ class ExternalModules
 
 			// Do not show sql or error details to minimize risk of exploitation.
 			throw new Exception($message . " (see the server error log for more details).");
-		}
-
-		return $result;
-	}
-
-	private function queryWithRetries($sql, $retriesLeft)
-	{
-		$result = db_query($sql);
-
-		if(
-			$result === FALSE
-			&&
-			in_array(db_errno(), [
-				1213 // Deadlock found when trying to get lock; try restarting transaction
-			])
-			&&
-			$retriesLeft > 0
-		){
-			$result = self::queryWithRetries($sql, $retriesLeft-1);
 		}
 
 		return $result;
