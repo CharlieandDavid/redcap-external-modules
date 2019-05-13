@@ -11,7 +11,7 @@ if(!ExternalModules::hasDesignRights() && !ExternalModules::hasDiscoverableModul
 ?>
 
 <h4 style="margin-top: 0;">
-	<img src="<?= '../images/puzzle_medium.png' ?>">
+	<i class="fas fa-cube"></i>
 	External Modules - Project Module Manager
 </h4>
 

@@ -79,7 +79,6 @@ class ExternalModules
 	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
-	private static $currentQuery = null;
 	private static $temporaryRecordId;
 	private static $disablingModuleDueToException = false;
 
@@ -1291,12 +1290,15 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		self::$currentQuery = $sql;
 		$result = db_query($sql);
-		self::$currentQuery = null;
 
 		if($result == FALSE){
-			throw new Exception("Error running External Module query: \nDB Error: " . db_error() . "\nSQL: $sql");
+			$message = "An error occurred while running an External Module query";
+
+			error_log($message . ": \nDB Error: " . db_error() . "\nSQL: $sql");
+
+			// Do not show sql or error details to minimize risk of exploitation.
+			throw new Exception($message . " (see the server error log for more details).");
 		}
 
 		return $result;
@@ -1321,6 +1323,10 @@ class ExternalModules
 	{
 		if(!is_array($array)){
 			$array = array($array);
+		}
+
+		if(empty($array)){
+			throw new Exception('You must provide an array of values.');
 		}
 
 		$columnName = db_real_escape_string($columnName);
