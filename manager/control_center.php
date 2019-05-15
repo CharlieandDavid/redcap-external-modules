@@ -8,7 +8,7 @@ ExternalModules::storeREDCapRepoUpdatesInConfig(@$_GET['module_updates'], !isset
 
 <h4 style="margin-top:0;" class="clearfix">
 	<div class="pull-left float-left">
-		<img src='../images/puzzle_medium.png'>
+		<i class="fas fa-cube"></i>
 		External Modules - Module Manager
 	</div>	
 	<div class="pull-right float-right" style="margin-top:5px;">

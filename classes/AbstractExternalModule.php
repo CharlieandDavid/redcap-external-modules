@@ -1257,11 +1257,6 @@ class AbstractExternalModule
 			return call_user_func_array([$this, 'log_internal'], $arguments);
 		}
 
-		// Forward translation support function to the framework.
-		if ($name == "tt" && isset($this->framework) && method_exists($this->framework, $name)) {
-			return call_user_func_array([$this->framework, $name], $arguments);
-		}
-
 		throw new Exception("The following method does not exist: $name()");
 	}
 
