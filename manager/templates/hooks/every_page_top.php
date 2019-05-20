@@ -30,10 +30,17 @@ $menu_id = 'projMenuExternalModules';
 
 			function getLink(icon, name,url, target){
 				newLink = exampleLink.clone()
-				newLink.find('img').attr('src', icon)
 				newLink.find('a').attr('href', url+'&pid=<?= $project_id ?>')
 				newLink.find('a').attr('target', target)
 				newLink.find('a').html(name);
+
+				var img = $('<img />')
+				img.css('vertical-align', '-3px')
+				img.css('height', '14px')
+				img.css('width', '14px')
+				img.attr('src', icon)
+				newLink.find('i').replaceWith(img)
+
 				return(newLink);
 			}
 
