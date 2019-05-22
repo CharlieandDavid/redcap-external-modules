@@ -3415,15 +3415,15 @@ class ExternalModules
 			// Do nothing since there's no framework object in this version.
 			return;
 		}
-		else if($version === 2){
-			require_once __DIR__ . '/framework/v2/Framework.php';
-			$framework = new FrameworkVersion2\Framework($module);
-		}
-		else{
+
+		$path = __DIR__ . "/framework/v$version/Framework.php";
+		if(!file_exists($path)) {
 			throw new Exception("The {$module->getModuleName()} module requires framework version '$version', which is not available on your REDCap instance.");
 		}
 
-		$module->framework = $framework;
+		require_once $path;
+		$className = "\\ExternalModules\\FrameworkVersion$version\\Framework";
+		$module->framework = new $className($module);
 	}
 
 	public static function getFrameworkVersion($module)
@@ -3464,5 +3464,51 @@ class ExternalModules
 
 	public static function isRoute($routeName){
 		return $_GET['route'] === $routeName;
+	}
+
+	public static function getLinkIconHtml($module, $link){
+		$icon = $link['icon'];
+
+		$style = 'width: 16px; height: 16px; text-align: center;';
+
+		$getImageIconElement = function($iconUrl) use ($style){
+			return "<img src='$iconUrl' style='$style'>";
+		};
+
+		if(ExternalModules::getFrameworkVersion($module) >= 3){
+			$iconPath = $module->framework->getModulePath() . '/' . $icon;
+			if(file_exists($iconPath)){
+				$iconElement = $getImageIconElement($module->getUrl($icon));
+			}
+			else{
+				// Assume it is a font awesome class.
+				$iconElement = "<i class='$icon' style='$style'></i>";
+			}
+		}
+		else{
+			$iconPathSuffix = 'images/' . $icon . '.png';
+
+			if(file_exists(ExternalModules::$BASE_PATH . $iconPathSuffix )){
+				$iconUrl = ExternalModules::$BASE_URL . $iconPathSuffix;
+			}
+			else{
+				$iconUrl = APP_PATH_WEBROOT . 'Resources/' . $iconPathSuffix;
+			}
+
+			$iconElement = $getImageIconElement($iconUrl);
+		}
+
+		$linkUrl = $link['url'];
+		$projectId = $module->getProjectId();
+		if($projectId){
+			$linkUrl .= "&pid=$projectId";
+		}
+
+		return "
+			<div>
+				$iconElement
+				<a href='$linkUrl' target='{$link["target"]}'>{$link["name"]}</a>
+			</div>
+		";
 	}
 }
