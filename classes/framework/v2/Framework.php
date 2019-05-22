@@ -42,13 +42,7 @@ class Framework
 	}
 
 	function __call($name, $arguments){
-		$module = $this->module;
-
-		if(method_exists($module, $name)){
-			return call_user_func_array([$module, $name], $arguments);
-		}
-
-		throw new Exception("The following method does not exist: $name()");
+		return call_user_func_array([$this->module, $name], $arguments);
 	}
 
 	function getSubSettings($key, $pid = null)
