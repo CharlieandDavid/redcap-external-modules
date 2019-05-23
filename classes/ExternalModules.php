@@ -3309,7 +3309,7 @@ class ExternalModules
 	{
 		$url = $_SERVER['REQUEST_URI'];
 
-		return strpos($url, '/surveys/') === 0 &&
+		return strpos($url, APP_PATH_SURVEY) === 0 &&
 			strpos($url, '__passthru=DataEntry%2Fimage_view.php') === false; // Prevent hooks from firing for survey logo URLs (and breaking them).
 	}
 
@@ -3409,25 +3409,36 @@ class ExternalModules
 
 	public static function initializeFramework($module)
 	{
-		$config = $module->getConfig();
-		$version = @$config['framework-version'];
-		if($version === 2){
-			require_once __DIR__ . '/framework/v2/Framework.php';
-			$framework = new FrameworkVersion2\Framework($module);
+		$version = self::getFrameworkVersion($module);
+
+		if($version === 1){
+			// Do nothing since there's no framework object in this version.
+			return;
 		}
-		else if($version === null){
-			$framework = null;
-		}
-		else if(gettype($version) != 'integer'){
-			throw new Exception("The framework version must be specified as an integer (not a string) for the {$module->getModuleName()} module.");
-		}
-		else if($version !== null){
+
+		$path = __DIR__ . "/framework/v$version/Framework.php";
+		if(!file_exists($path)) {
 			throw new Exception("The {$module->getModuleName()} module requires framework version '$version', which is not available on your REDCap instance.");
 		}
 
-		if($framework){
-			$module->framework = $framework;
+		require_once $path;
+		$className = "\\ExternalModules\\FrameworkVersion$version\\Framework";
+		$module->framework = new $className($module);
+	}
+
+	public static function getFrameworkVersion($module)
+	{
+		$config = self::getConfig($module->PREFIX, $module->VERSION);
+		$version = @$config['framework-version'];
+
+		if($version === null){
+			$version = 1;
 		}
+		else if(gettype($version) != 'integer'){
+			throw new Exception("The framework version must be specified as an integer (not a string) for the $prefix module.");
+		}
+
+		return $version;
 	}
 
 	public static function requireInteger($mixed){
@@ -3453,5 +3464,51 @@ class ExternalModules
 
 	public static function isRoute($routeName){
 		return $_GET['route'] === $routeName;
+	}
+
+	public static function getLinkIconHtml($module, $link){
+		$icon = $link['icon'];
+
+		$style = 'width: 16px; height: 16px; text-align: center;';
+
+		$getImageIconElement = function($iconUrl) use ($style){
+			return "<img src='$iconUrl' style='$style'>";
+		};
+
+		if(ExternalModules::getFrameworkVersion($module) >= 3){
+			$iconPath = $module->framework->getModulePath() . '/' . $icon;
+			if(file_exists($iconPath)){
+				$iconElement = $getImageIconElement($module->getUrl($icon));
+			}
+			else{
+				// Assume it is a font awesome class.
+				$iconElement = "<i class='$icon' style='$style'></i>";
+			}
+		}
+		else{
+			$iconPathSuffix = 'images/' . $icon . '.png';
+
+			if(file_exists(ExternalModules::$BASE_PATH . $iconPathSuffix )){
+				$iconUrl = ExternalModules::$BASE_URL . $iconPathSuffix;
+			}
+			else{
+				$iconUrl = APP_PATH_WEBROOT . 'Resources/' . $iconPathSuffix;
+			}
+
+			$iconElement = $getImageIconElement($iconUrl);
+		}
+
+		$linkUrl = $link['url'];
+		$projectId = $module->getProjectId();
+		if($projectId){
+			$linkUrl .= "&pid=$projectId";
+		}
+
+		return "
+			<div>
+				$iconElement
+				<a href='$linkUrl' target='{$link["target"]}'>{$link["name"]}</a>
+			</div>
+		";
 	}
 }

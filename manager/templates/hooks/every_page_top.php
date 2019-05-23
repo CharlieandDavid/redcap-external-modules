@@ -7,15 +7,6 @@ $project_id = $arguments[0];
 
 $links = ExternalModules::getLinks();
 
-$getIcon = function ($icon){
-	if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $icon . '.png')) {
-		$image = ExternalModules::$BASE_URL . 'images/' . $icon . ".png";
-	} else {
-		$image = APP_PATH_WEBROOT . 'Resources/images/' . $icon . ".png";
-	}
-	return $image;
-};
-
 $menu_id = 'projMenuExternalModules';
 ?>
 <script type="text/javascript">
@@ -28,20 +19,10 @@ $menu_id = 'projMenuExternalModules';
 			var menuId = <?=json_encode($menu_id)?>;
 			menuToggle.attr('id', menuId)
 
-			function getLink(icon, name,url, target){
-				newLink = exampleLink.clone()
-				newLink.find('img').attr('src', icon)
-				newLink.find('a').attr('href', url+'&pid=<?= $project_id ?>')
-				newLink.find('a').attr('target', target)
-				newLink.find('a').html(name);
-				return(newLink);
-			}
-
 			var menubox = newPanel.find('.x-panel-body .menubox .menubox')
 			var exampleLink = menubox.find('.hang:first-child').clone()
 			menubox.html('')
 
-			var newLink;
 			<?php
 			foreach($links as $name=>$link){
 				$prefix = $link['prefix'];
@@ -55,8 +36,7 @@ $menu_id = 'projMenuExternalModules';
 						}
 
 						?>
-						newLink = getLink('<?=$getIcon($link['icon'])?>', '<?= $name ?>','<?=$link['url']?>', '<?= $link['target'] ?>');
-						menubox.append(newLink);
+						menubox.append(<?=json_encode(ExternalModules::getLinkIconHtml($module_instance, $link))?>);
 						<?php
 					}
 				}
