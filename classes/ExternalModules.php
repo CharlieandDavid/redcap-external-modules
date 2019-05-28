@@ -3417,8 +3417,15 @@ class ExternalModules
 		}
 
 		$path = __DIR__ . "/framework/v$version/Framework.php";
+
+		global $redcap_version;
+		if($version === 3 && version_compare($redcap_version, '9.0.3', '<')){
+			// This line and surrounding 'if' can be removed once the LTS release is greater than 9.0.3.
+			$path = null;
+		}
+
 		if(!file_exists($path)) {
-			throw new Exception("The {$module->getModuleName()} module requires framework version '$version', which is not available on your REDCap instance.");
+			throw new Exception("The {$module->getModuleName()} module requires framework version $version, which is not available on your REDCap instance.");
 		}
 
 		require_once $path;
