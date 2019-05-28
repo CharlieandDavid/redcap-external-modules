@@ -34,12 +34,20 @@ $menu_id = 'projMenuExternalModules';
 				newLink.find('a').attr('target', target)
 				newLink.find('a').html(name);
 
-				var img = $('<img />')
-				img.css('vertical-align', '-3px')
-				img.css('height', '14px')
-				img.css('width', '14px')
-				img.attr('src', icon)
-				newLink.find('i').replaceWith(img)
+				var fontAwesomeIcon = newLink.find('i')
+				if(fontAwesomeIcon.length === 0){
+					// We're in 9.0.1+
+					newLink.find('img').attr('src', icon)
+				}
+				else{
+					// We're in an LTS release prior to 9.0.1
+					var img = $('<img />')
+					img.css('vertical-align', '-3px')
+					img.css('height', '14px')
+					img.css('width', '14px')
+					img.attr('src', icon)
+					newLink.find('i').replaceWith(img)
+				}
 
 				return(newLink);
 			}
