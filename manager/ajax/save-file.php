@@ -84,7 +84,14 @@ foreach($_FILES as $key=>$value){
                 }
                 $aux = (string)$edoc;
 
-                $data = ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pidPossiblyWithNullValue,$shortKey);
+                $isThisSystem = ExternalModules::isSystemSetting($moduleDirectoryPrefix,$shortKey);
+
+                if ($isThisSystem) {
+                    $data = ExternalModules::getSystemSetting($moduleDirectoryPrefix,$shortKey);
+                }
+                else {
+                    $data = ExternalModules::getProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey);
+                }
                 if(!isset($data) || !is_array($data) || $data == null){
                     //do nothing
                 }else{
@@ -92,7 +99,12 @@ foreach($_FILES as $key=>$value){
                 }
 				\REDCap::logEvent("Save file $edoc on $moduleDirectoryPrefix module to $shortKey for ".(!empty($pid) ? "project ".$pid : "system"),"",var_export($settings,true));
 
-				ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
+                if ($isThisSystem) {
+                    ExternalModules::setSystemSetting($moduleDirectoryPrefix,$shortKey,$settings);
+                }
+                else {
+                    ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $shortKey, $settings);
+                }
             }else{
                 ExternalModules::setFileSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $edoc);
 
@@ -123,14 +135,25 @@ if ($edoc) {
 	foreach($repeatingFiles as $key) {
 		if(array_key_exists($key."____0",$_POST)) {
 			$edoc = $_POST[$key."____0"];
-			$data = ExternalModules::getProjectSetting($moduleDirectoryPrefix,$pidPossiblyWithNullValue,$key);
+            $isThisSystem = ExternalModules::isSystemSetting($moduleDirectoryPrefix,$key);
+            if ($isThisSystem) {
+                $data = ExternalModules::getSystemSetting($moduleDirectoryPrefix,$key);
+            }
+            else {
+                $data = ExternalModules::getProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key);
+            }
 			if(is_array($data)){
 				//do nothing since it's already an array
 			}else if($data == $edoc) {
 				$settings = [$data];
 				\REDCap::logEvent("Re-save file $edoc as array on $moduleDirectoryPrefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),"",var_export($settings,true));
 
-				ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $settings);
+				if ($isThisSystem) {
+				    ExternalModules::setSystemSetting($moduleDirectoryPrefix,$key,$settings);
+                }
+				else {
+                    ExternalModules::setProjectSetting($moduleDirectoryPrefix, $pidPossiblyWithNullValue, $key, $settings);
+                }
 			}
 		}
 	}

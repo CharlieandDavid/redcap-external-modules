@@ -103,7 +103,6 @@ ExternalModules.Settings.prototype.getSettingRows = function(configSettings, sav
 	var settingsObject = this;
 	configSettings.forEach(function(setting){
 		var setting = $.extend({}, setting);
-
 		rowsHtml += settingsObject.getSettingColumns(setting,savedSettings,instance);
 	});
 
@@ -124,6 +123,9 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	}
 
 	if(typeof thisSavedSettings === "undefined") {
+		thisSavedSettings = [{}];
+	}
+	else if (thisSavedSettings.value.length == 0) {
 		thisSavedSettings = [{}];
 	}
 	else {
@@ -148,7 +150,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 		}
 	}
 
-
 	if(typeof thisSavedSettings === 'undefined') {
 		thisSavedSettings = [{}];
 	}
@@ -160,7 +161,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	thisSavedSettings.forEach(function(settingValue,instance) {
 		var subInstance  = previousInstance.slice();
 		subInstance.push(instance);
-
 		if(setting.type == "sub_settings") {
 			rowsHtml += settingsObject.getColumnHtml(setting);
 			setting.sub_settings.forEach(function(settingDetails){
@@ -1121,6 +1121,8 @@ $(function(){
 			lengthOfFiles++;
 			formData.append(name, files[name]);   // filename agnostic
 		}
+		console.log(url);
+		console.log(formData);
 		if (lengthOfFiles > 0) {
 			// AJAX rather than $.post
 			$.ajax({
