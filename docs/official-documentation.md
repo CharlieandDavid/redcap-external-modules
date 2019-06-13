@@ -688,7 +688,7 @@ For reference, below is a nearly comprehensive example of the types of things th
          "method": "cron1",
          "cron_frequency": "1800",
          "cron_max_run_time": "60"
-       },
+      },
       {
          "cron_name": "cron2",
          "cron_description": "Cron that runs daily to do YY",
@@ -717,6 +717,7 @@ For reference, below is a nearly comprehensive example of the types of things th
          "method": "some_other_method_5",
          "cron_hour": 16,
          "cron_minute": 30,
+      }
    ],
    "compatibility": {
       "php-version-min": "5.4.0",
