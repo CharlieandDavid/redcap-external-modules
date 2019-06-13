@@ -22,18 +22,9 @@ if (!empty($extModLinks)) {
             } catch(\Exception $e) {
                 ExternalModules::sendAdminEmail("An exception was thrown when generating control center links", $e->__toString(), $prefix);
             }
-			?>
-			items += '<div class="cc_menu_item"><img src="<?php
-				if (file_exists(ExternalModules::$BASE_PATH . 'images' . DS . $link['icon'] . '.png')) {
-					echo ExternalModules::$BASE_URL . 'images/' . $link['icon'] . ".png";
-				} else {
-					echo APP_PATH_WEBROOT . 'Resources/images/' . $link['icon'] . ".png"; 
-				}
-				?>">';
-			items += '&nbsp; ';
-			items += '<a href="<?= $link['url'] ?>" target="<?= $link["target"]?>"><?= $link["name"] ?></a>';
-			items += '</div>';
 
+            ?>
+			items += <?=json_encode(ExternalModules::getLinkIconHtml($module_instance, $link))?>;
 			<?php
 		}
 		?>

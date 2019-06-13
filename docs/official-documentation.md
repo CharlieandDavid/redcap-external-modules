@@ -79,7 +79,9 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 * Grant **permissions** for all of the operations, including hooks (e.g., **redcap_save_record**).
 * **links** specify any links to show up on the left-hand toolbar. These include stand-alone webpages (substitutes for plugins) or links to outside websites. These are listable at the control-center level or at the project level.  A **link** consists of:
 	* A **name** to be displayed on the site
-	* An **icon** in REDCap's image repository
+	* An **icon**
+		* For framework version 3 and later, specifying the [Font Awesome](https://fontawesome.com/icons?d=gallery) classes for each icon is recommended (ex: `fas fa-user-friends`).  The path to an icon in each module's directory may also be specified (ex: `images/my-icon.png`).
+		* For framework versions prior to 3, the filename of a REDCap icon in the `Resources/images` folder must be specified without the extension (ex: `user_list`).	
 	* A **url** either in the local directory or external to REDCap.
 * **system-settings** specify settings configurable at the system-wide level (this Control Center).  Settings do NOT have to be defined in config.json to be used programmatically.  
 * **project-settings** specify settings configurable at the project level, different for each project.  Settings do NOT have to be defined in config.json to be used programatically.  
@@ -99,6 +101,7 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* dag-list
 		* dropdown
 		* checkbox
+		* button
 		* project-id
 		* form-list
 		* event-list
@@ -228,6 +231,7 @@ There are a few extra hooks dedicated for modules use:
 - `redcap_module_configure_button_display($project_id)`: Triggered when each enabled module defined is rendered.  Return `null` if you don't want to display the Configure button and `true` to display.
 - `redcap_module_link_check_display($project_id, $link)`: Triggered when each link defined in config.json is rendered.  Override this method and return `null` if you don't want to display the link, or modify and return the `$link` parameter as desired.  This method also controls whether pages will load if users access their URLs directly.
 - `redcap_module_save_configuration($project_id)`: Triggered after a module configuration is saved.
+- `redcap_module_import_page_top($project_id)`: Triggered at the top of the Data Import Tool page.
 
 Examples:
 
@@ -257,7 +261,7 @@ The difference between module plugin pages and traditional plugins is that while
 
 Note: If you are building links to plugin pages in your module, you should use the  `getUrl()` method (documented in the methods list below), which will build the URL all the required parameters for you.
 
-**Add a link on the project menu to your plugin:** Adding a page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed, and *brick.png* in the REDCap version's image directory will be used as the icon (this is optional). You may add as many links as you wish.  By default, project links will only display for superusers and users with design rights, but this can be customized in each module (see the *redcap_module_link_check_display()* documentation above). 
+**Add a link on the project menu to your plugin:** Adding a page to your module is fairly easy. First, it requires adding an item to the `links` option in the config.json file. In order for the plugin link to show up in a project where the module is enabled, put the link settings (name, icon, and url) under the `project` sub-option, as seen below, in which *url* notes that index.php in the module directory will be the endpoint of the URL, *"VoteCap"* will be the link text displayed. See the **Config.json** section above for details on the *icon* parameter. You may add as many links as you wish.  By default, project links will only display for superusers and users with design rights, but this can be customized in each module (see the *redcap_module_link_check_display()* documentation above). 
 
 ``` json
 {
@@ -265,7 +269,7 @@ Note: If you are building links to plugin pages in your module, you should use t
       "project": [
          {
             "name": "VoteCap",
-            "icon": "brick",
+            "icon": "fas fa-receipt",
             "url": "index.php"
          }
       ]
@@ -289,14 +293,14 @@ If you want to similarly add links to your plugins on the Control Center's left-
       "project": [
          {
             "name": "VoteCap",
-            "icon": "brick",
+            "icon": "fas fa-receipt",
             "url": "index.php"
          }
       ],
       "control-center": [
          {
             "name": "VoteCap System Config",
-            "icon": "brick",
+            "icon": "fas fa-receipt",
             "url": "config.php"
          }
       ]
@@ -311,7 +315,7 @@ If you want to similarly add links to your plugins on the Control Center's left-
       "project": [
          {
             "name": "VoteCap",
-            "icon": "brick",
+            "icon": "fas fa-receipt",
             "url": "index.php?NOAUTH"
          }
       ]
@@ -495,14 +499,14 @@ For reference, below is a nearly comprehensive example of the types of things th
       "project": [
          {
             "name": "Configuration Page",
-            "icon": "report",
+            "icon": "fas fa-receipt",
             "url": "configure.php"
          }
       ],
       "control-center": [
          {
             "name": "SystemConfiguration Page",
-            "icon": "report",
+            "icon": "fas fa-receipt",
             "url": "configure_system.php"
          }
       ],

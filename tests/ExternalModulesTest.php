@@ -68,6 +68,13 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame($systemValue, $array[TEST_SETTING_KEY]['system_value']);
 	}
 
+	function testGetSystemSettingsAsArray_noPrefix()
+	{
+		$this->assertThrowsException(function(){
+			ExternalModules::getSystemSettingsAsArray(null);
+		}, 'One or more module prefixes must be specified!');
+	}
+
 	function testAddReservedSettings()
 	{
 		$method = 'addReservedSettings';
@@ -668,5 +675,35 @@ class ExternalModulesTest extends BaseTest
 
 		// Prevent issues in other tests.
 		$this->setPrivateVariable($variableName, null);
+	}
+
+	function testGetFrameworkVersion()
+	{
+		$doNotIncludeFrameworkVersionValue = 'do-not-include-framework-version';
+
+		$assertFrameworkVersion = function($jsonValue, $expected = null) use ($doNotIncludeFrameworkVersionValue){
+			$config = [];
+			if($jsonValue !== $doNotIncludeFrameworkVersionValue){
+				$config['framework-version'] = $jsonValue;
+			}
+
+			$this->setConfig($config);
+
+			$actual = ExternalModules::getFrameworkVersion($this->getInstance());
+			$this->assertSame($expected, $actual);
+		};
+
+		$assertFrameworkVersion($doNotIncludeFrameworkVersionValue, 1);
+		$assertFrameworkVersion(null, 1);
+		$assertFrameworkVersion(1, 1);
+		$assertFrameworkVersion(2, 2);
+
+		$exceptionValues = ['', 'a', '1', '2', 1.1, true, false, []];
+
+		foreach($exceptionValues as $value){
+			$this->assertThrowsException(function() use ($assertFrameworkVersion, $value){
+				$assertFrameworkVersion($value);
+			}, 'must be specified as an integer');
+		}
 	}
 }

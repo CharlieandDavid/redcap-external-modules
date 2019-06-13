@@ -81,7 +81,6 @@ class ExternalModules
 	private static $hookStartTime;
 	private static $hookBeingExecuted;
 	private static $versionBeingExecuted;
-	private static $currentQuery = null;
 	private static $temporaryRecordId;
 	private static $disablingModuleDueToException = false;
 
@@ -503,6 +502,13 @@ class ExternalModules
 
 	public static function sendAdminEmail($subject, $message, $prefix = null)
 	{
+		if(self::isVanderbilt() && in_array(gethostname(), ['ori1007lt', 'ori1007lr', 'ori1007lp', 'ori1008lp', 'ori3007lp', 'ori3008lp'])){
+			// This is one of the new Vandy REDCap servers that are just being tested currently.
+			// Log errors on these servers for now instead of emailing (until they're stable).
+			error_log("ExternalModules - sendAdminEmail() - $subject - $prefix - $message");
+			return;
+		}
+
 		$email = self::getAdminEmailMessage($subject, $message, $prefix);
 		$email->send();
 	}
@@ -990,9 +996,12 @@ class ExternalModules
 				return;
 			}
 
-			$pidString = $projectId;
-			if (!$projectId || $projectId == "") {
+			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
 				$pidString = "NULL";
+			}
+			else{
+				// Require an integer to prevent sql injection.
+				$pidString = self::requireInteger($projectId);
 			}
 
 			if ($type == "boolean") {
@@ -1098,6 +1107,10 @@ class ExternalModules
 
 	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
 	{
+		if(empty($moduleDirectoryPrefixes)){
+			throw new Exception('One or more module prefixes must be specified!');
+		}
+
 		if ($projectId === NULL) {
 			$result = self::getSettings($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
 		} else {
@@ -1311,12 +1324,15 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		self::$currentQuery = $sql;
 		$result = db_query($sql);
-		self::$currentQuery = null;
 
 		if($result == FALSE){
-			throw new Exception("Error running External Module query: \nDB Error: " . db_error() . "\nSQL: $sql");
+			$message = "An error occurred while running an External Module query";
+
+			error_log($message . ": \nDB Error: " . db_error() . "\nSQL: $sql");
+
+			// Do not show sql or error details to minimize risk of exploitation.
+			throw new Exception($message . " (see the server error log for more details).");
 		}
 
 		return $result;
@@ -1337,10 +1353,14 @@ class ExternalModules
 	}
 
 	# converts an IN array clause into SQL
-	private static function getSQLInClause($columnName, $array)
+	public static function getSQLInClause($columnName, $array)
 	{
 		if(!is_array($array)){
 			$array = array($array);
+		}
+
+		if(empty($array)){
+			throw new Exception('You must provide an array of values.');
 		}
 
 		$columnName = db_real_escape_string($columnName);
@@ -1948,7 +1968,7 @@ class ExternalModules
 	}
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
-	static function addResource($path, $cdnUrl = null, $integrity = null)
+	static function addResource($path)
 	{
 		$extension = pathinfo($path, PATHINFO_EXTENSION);
 
@@ -1956,44 +1976,21 @@ class ExternalModules
 			$url = $path;
 		}
 		else {
-			$localFile = true;
-			if(empty($cdnUrl)){
-				// This is a local resource.
-				$path = "manager/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
-			}
-			else{
-				// This is a third party resource.  We check for the node module, then fall back to the CDN url if it doesn't exist.
-				// These local Yarn (node_module) dependencies were added only for PMI (which doesn't allow CDNs).
-				// Running 'yarn install' is currently only required prior to deploying to the PMI REDCap instance.
-				$path = "node_modules/$path";
-				$fullLocalPath = __DIR__ . "/../$path";
+			$path = "manager/$path";
+			$fullLocalPath = __DIR__ . "/../$path";
 
-				if(!file_exists($fullLocalPath)){
-					$localFile = false;
-					$url = $cdnUrl;
-				}
-			}
-
-			if($localFile){
-				// Add the filemtime to the url for cache busting.
-				clearstatcache(true, $fullLocalPath);
-				$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
-			}
+			// Add the filemtime to the url for cache busting.
+			clearstatcache(true, $fullLocalPath);
+			$url = ExternalModules::$BASE_URL . $path . '?' . filemtime($fullLocalPath);
 		}
 
 		if(in_array($url, self::$INCLUDED_RESOURCES)) return;
 
-		$integrityAttributes = '';
-		if(!empty($integrity)){
-			$integrityAttributes = "integrity='$integrity' crossorigin='anonymous'";
-		}
-
 		if ($extension == 'css') {
-			echo "<link rel='stylesheet' type='text/css' href='" . $url . "' $integrityAttributes>";
+			echo "<link rel='stylesheet' type='text/css' href='" . $url . "'>";
 		}
 		else if ($extension == 'js') {
-			echo "<script type='text/javascript' src='" . $url . "' $integrityAttributes></script>";
+			echo "<script type='text/javascript' src='" . $url . "'></script>";
 		}
 		else {
 			throw new Exception('Unsupported resource added: ' . $path);
@@ -2356,9 +2353,14 @@ class ExternalModules
 			];
 
 			while($row = db_fetch_assoc($result)) {
+				$projectName = utf8_encode($row["app_title"]);
+
+				// Required to display things like single quotes correctly
+				$projectName = htmlspecialchars_decode($projectName, ENT_QUOTES);
+
 				$matchingProjects[] = [
 					"id" => $row["project_id"],
-					"text" => "(" . $row["project_id"] . ") " . utf8_encode($row["app_title"]),
+					"text" => "(" . $row["project_id"] . ") " . $projectName,
 				];
 			}
 			$configRow['choices'] = $matchingProjects;
@@ -2952,19 +2954,12 @@ class ExternalModules
 		}
 
 		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (file_exists($connectPath)) {
-			require_once $connectPath;
-		} else {
+		if (!file_exists($connectPath)) {
+		    // We must be using the "external_modules" folder to override the version of the framework bundled with REDCap.
 			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-			if (file_exists($connectPath)) {
-				require_once $connectPath;
-			} else {
-				$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-				if (file_exists($connectPath)) {
-					require_once $connectPath;
-				}
-			}
-		}	
+		}
+
+		require_once $connectPath;
 	}
 	
 	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
@@ -3348,7 +3343,7 @@ class ExternalModules
 	{
 		$url = $_SERVER['REQUEST_URI'];
 
-		return strpos($url, '/surveys/') === 0 &&
+		return strpos($url, APP_PATH_SURVEY) === 0 &&
 			strpos($url, '__passthru=DataEntry%2Fimage_view.php') === false; // Prevent hooks from firing for survey logo URLs (and breaking them).
 	}
 
@@ -3634,16 +3629,113 @@ class ExternalModules
 
 	public static function initializeFramework($module)
 	{
-		$config = $module->getConfig();
-		$version = @$config['framework-version'];
-		$framework = null;
-		if($version === 2){
-			require_once __DIR__ . '/framework/v2/Framework.php';
-			$framework = new FrameworkVersion2\Framework($module);
+		$version = self::getFrameworkVersion($module);
+
+		if($version === 1){
+			// Do nothing since there's no framework object in this version.
+			return;
 		}
 
-		if($framework){
-			$module->framework = $framework;
+		$path = __DIR__ . "/framework/v$version/Framework.php";
+
+		global $redcap_version;
+		if($version === 3 && version_compare($redcap_version, '9.0.3', '<')){
+			// This line and surrounding 'if' can be removed once the LTS release is greater than 9.0.3.
+			$path = null;
 		}
+
+		if(!file_exists($path)) {
+			throw new Exception("The {$module->getModuleName()} module requires framework version $version, which is not available on your REDCap instance.");
+		}
+
+		require_once $path;
+		$className = "\\ExternalModules\\FrameworkVersion$version\\Framework";
+		$module->framework = new $className($module);
+	}
+
+	public static function getFrameworkVersion($module)
+	{
+		$config = self::getConfig($module->PREFIX, $module->VERSION);
+		$version = @$config['framework-version'];
+
+		if($version === null){
+			$version = 1;
+		}
+		else if(gettype($version) != 'integer'){
+			throw new Exception("The framework version must be specified as an integer (not a string) for the $prefix module.");
+		}
+
+		return $version;
+	}
+
+	public static function requireInteger($mixed){
+		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
+		if($integer === false){
+			throw new Exception("An integer was required but the following value was specified instead: $mixed");
+		}
+
+		return $integer;
+	}
+
+	public static function getJavascriptModuleObjectName($moduleInstance){
+		$jsObjectParts = explode('\\', get_class($moduleInstance));
+
+		// Remove the class name, since it's always the same as it's parent namespace.
+		array_pop($jsObjectParts);
+
+		// Prepend "ExternalModules" to contain all module namespaces.
+		array_unshift($jsObjectParts, 'ExternalModules');
+
+		return implode('.', $jsObjectParts);
+	}
+
+	public static function isRoute($routeName){
+		return $_GET['route'] === $routeName;
+	}
+
+	public static function getLinkIconHtml($module, $link){
+		$icon = $link['icon'];
+
+		$style = 'width: 16px; height: 16px; text-align: center;';
+
+		$getImageIconElement = function($iconUrl) use ($style){
+			return "<img src='$iconUrl' style='$style'>";
+		};
+
+		if(ExternalModules::getFrameworkVersion($module) >= 3){
+			$iconPath = $module->framework->getModulePath() . '/' . $icon;
+			if(file_exists($iconPath)){
+				$iconElement = $getImageIconElement($module->getUrl($icon));
+			}
+			else{
+				// Assume it is a font awesome class.
+				$iconElement = "<i class='$icon' style='$style'></i>";
+			}
+		}
+		else{
+			$iconPathSuffix = 'images/' . $icon . '.png';
+
+			if(file_exists(ExternalModules::$BASE_PATH . $iconPathSuffix )){
+				$iconUrl = ExternalModules::$BASE_URL . $iconPathSuffix;
+			}
+			else{
+				$iconUrl = APP_PATH_WEBROOT . 'Resources/' . $iconPathSuffix;
+			}
+
+			$iconElement = $getImageIconElement($iconUrl);
+		}
+
+		$linkUrl = $link['url'];
+		$projectId = $module->getProjectId();
+		if($projectId){
+			$linkUrl .= "&pid=$projectId";
+		}
+
+		return "
+			<div>
+				$iconElement
+				<a href='$linkUrl' target='{$link["target"]}'>{$link["name"]}</a>
+			</div>
+		";
 	}
 }
