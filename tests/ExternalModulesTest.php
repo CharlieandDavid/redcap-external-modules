@@ -75,6 +75,61 @@ class ExternalModulesTest extends BaseTest
 		}, 'One or more module prefixes must be specified!');
 	}
 
+	function testIsTimeToRun()
+	{
+		$method = 'isTimeToRun';
+
+		$offsets = array(
+				0 => "assertTrue",
+				3600 => "assertFalse",
+				-3600 => "assertFalse",
+				60 => "assertFalse",
+				-60 => "assertFalse",
+				24 * 3600 => "assertTrue",
+				-24 * 3600 => "assertTrue",
+				);
+
+		foreach ($offsets as $offset => $validationMethod) {
+			$time = time() + $offset;
+			$cron = array(
+                			'cron_hour' => date("G", $time),
+                			'cron_minute' => date("i", $time),
+					);
+			$this->$validationMethod(self::callPrivateMethod($method, array($cron)));
+		}
+
+		$time2 = time() + 24 * 3600;
+		$cron2 = array(
+				'cron_hour' => date("G", $time2),
+				'cron_minute' => date("i", $time2),
+				'cron_weekday' => date("w", $time2),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array($cron2)));
+
+		$time3 = time() + 7 * 24 * 3600;
+		$cron3 = array(
+				'cron_hour' => date("G", $time3),
+				'cron_minute' => date("i", $time3),
+				'cron_weekday' => date("w", $time3),
+				);
+		$this->assertTrue(self::callPrivateMethod($method, array($cron3)));
+
+		$cron3_2 = array(
+				'cron_hour' => date("G", $time3),
+				'cron_minute' => date("i", $time3),
+				'cron_monthday' => date("j", $time3),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array($cron3_2)));
+	}
+
+	function testRunInLastMinute()
+	{
+		$method = 'runInLastMinute';
+
+		$this->assertTrue(self::callPrivateMethod($method, array(time())));
+		$this->assertTrue(!self::callPrivateMethod($method, array(time() - 3600)));
+	}
+
 	function testAddReservedSettings()
 	{
 		$method = 'addReservedSettings';

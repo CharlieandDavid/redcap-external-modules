@@ -663,11 +663,14 @@ class ExternalModules
 	# validate module config's cron jobs' attributes. pass in the $cron job as an array of attributes.
 	static function validateCronAttributes(&$cron=array(), $moduleInstance=null)
 	{
+		$isValidTabledCron = self::isValidTabledCron($cron);
+		$isValidTimedCron = self::isValidTimedCron($cron);
+
 		// Ensure certain attributes are integers
-		if (self::isValidTabledCron($cron)) {
+		if ($isValidTabledCron) {
 			$cron['cron_frequency'] = (int)$cron['cron_frequency'];
 			$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
-		} else if (self::isValidTimedCron($cron)) {
+		} else if ($isValidTimedCron) {
 			$cron['cron_minute'] = (int) $cron['cron_minute'];
 			if (isset($cron['cron_hour'])) {
 				$cron['cron_hour'] = (int) $cron['cron_hour'];
@@ -697,8 +700,6 @@ class ExternalModules
 		}
 
 		// Make sure integer attributes are integers
-		$isValidTabledCron = self::isValidTabledCron($cron);
-		$isValidTimedCron = self::isValidTimedCron($cron);
 		if ($isValidTabledCron && $isValidTimedCron) { 
 			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'cron_hour' and 'cron_minute'. Please choose one timing setting or the other, but not both.");
 		}
@@ -3448,7 +3449,7 @@ class ExternalModules
 
 		// We check the cron start time instead of the current time
 		// in case another module's cron job ran us into the next minute.
-		$cronStartTime = $_SERVER["REQUEST_TIME_FLOAT"];
+		$cronStartTime = self::getLastTimeRun();
 		$currentHour = (int) date('G', $cronStartTime);
 		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
 		$currentWeekday = (int) date('w', $cronStartTime);
