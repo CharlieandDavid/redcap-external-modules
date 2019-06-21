@@ -3533,8 +3533,6 @@ class ExternalModules
 				array_push($returnMessages, $currentReturnMessage);
 			}
 		}
-		self::setActiveModulePrefix(null);
-		self::$hookBeingExecuted = "";
 		
 		return $returnMessages;
 	}
