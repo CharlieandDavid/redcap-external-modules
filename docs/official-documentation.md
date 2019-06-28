@@ -105,6 +105,8 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* project-id
 		* form-list
 		* event-list
+		* color-picker
+			* This option is backward compatible with older versions of REDCap where it will appear as a text field into which an HTML color can be entered.  
 		* sub_settings
 		* radio
 		* file

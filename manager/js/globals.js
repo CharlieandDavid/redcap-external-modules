@@ -734,6 +734,17 @@ ExternalModules.Settings.prototype.initializeSettingsFields = function() {
 	this.initializeRichTextFields();
 
 	$('input.external-modules-input-element.datepicker').datepicker()
+
+	$('input.external-modules-input-element[type=color-picker]').spectrum({
+		showAlpha: true,
+		allowEmpty: true,
+		preferredFormat: "hex",
+		chooseText: "Save",
+		cancelText: "Cancel",
+
+		// If the following is not set, the color is not actually saved on clickout (even though it looks like it is).
+		clickoutFiresChange: false
+	})
 }
 
 ExternalModules.Settings.prototype.resetConfigInstances = function() {

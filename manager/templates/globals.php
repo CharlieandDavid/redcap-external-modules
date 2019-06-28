@@ -22,6 +22,10 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
 ?>
+
+<link rel='stylesheet' href='<?php echo APP_PATH_CSS ?>spectrum.css'>
+<script type='text/javascript' src='<?php echo APP_PATH_JS ?>spectrum.js'></script>
+
 <script type="text/javascript">
     ExternalModules.PID = <?=json_encode(@$_GET['pid'])?>;
     ExternalModules.SUPER_USER = <?=SUPER_USER?>;
