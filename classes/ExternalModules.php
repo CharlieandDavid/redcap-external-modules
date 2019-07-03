@@ -827,17 +827,8 @@ class ExternalModules
 	# value is edoc ID
 	static function setFileSetting($moduleDirectoryPrefix, $projectId, $key, $value)
 	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, "file");
-	}
-
-	static function removeSystemFileSetting($moduleDirectoryPrefix, $key)
-	{
-		self::removeFileSetting($moduleDirectoryPrefix, self::SYSTEM_SETTING_PROJECT_ID, $key);
-	}
-
-	static function removeFileSetting($moduleDirectoryPrefix, $projectId, $key)
-	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, null, "file");
+		// The string type parameter is only needed because of some incorrect handling on the js side that needs to be refactored.
+		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, 'string');
 	}
 
 	# returns boolean
@@ -1162,14 +1153,17 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
+		if ($type == 'file') {
+			// This is a carry over from the old way edoc IDs were stored.  Convert it to the new way.
+			// Really this should be 'integer', but it must be 'string' currently because of some incorrect handling on the js side that needs to be corrected.
+			$type = 'string';
+		}
+
 		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
 			}
-		}
-		else if ($type == 'file') {
-			// do nothing
 		}
 		else if ($type == "boolean") {
 			if ($value === "true") {
@@ -1181,10 +1175,8 @@ class ExternalModules
 		else if ($type == "json-object") {
 			$value = json_decode($value,false);
 		}
-		else {
-			if (!settype($value, $type)) {
-				throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
-			}
+		else if (!settype($value, $type)) {
+			throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
 		}
 
 		$row['value'] = $value;

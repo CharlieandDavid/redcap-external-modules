@@ -61,7 +61,7 @@ if (($systemValue == $edoc) && $pid) {
 				\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),var_export($settings,true));
 			}
 		} else {
-			ExternalModules::removeFileSetting($prefix, $pid, $key);
+			ExternalModules::removeProjectSetting($prefix, $pid, $key);
 			\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"));
 			$type = "Delete $edoc";
 		}
