@@ -915,7 +915,7 @@ class ExternalModules
 		}
 
 		$releaseLock = function() use ($lockName, $releaseLockSql) {
-			self::query($releaseLockSql);
+			ExternalModules::query($releaseLockSql);
 		};
 
 		try{
