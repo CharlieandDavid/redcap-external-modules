@@ -3506,13 +3506,16 @@ class ExternalModules
 		$sourceProjectId = (int) $sourceProjectId;
 		$destinationProjectId = (int) $destinationProjectId;
 
+		self::copySettingValues($sourceProjectId, $destinationProjectId);
+		self::recreateAllEDocs($destinationProjectId);
+	}
+
+	private static function copySettingValues($sourceProjectId, $destinationProjectId){
 		self::query("
 			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
 		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
 		");
-
-		self::recreateAllEDocs($destinationProjectId);
 	}
 
 	// We recreate edocs when copying settings between projects so that edocs removed from

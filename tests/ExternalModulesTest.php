@@ -707,12 +707,12 @@ class ExternalModulesTest extends BaseTest
 		}
 	}
 
-	function testCopySettings()
+	function testCopySettingValues()
 	{
 		$value = [rand(), rand()];
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY, $value);
 
-		ExternalModules::copySettings(TEST_SETTING_PID, TEST_SETTING_PID_2);
+		self::callPrivateMethod('copySettingValues', TEST_SETTING_PID, TEST_SETTING_PID_2);
 
 		$this->assertSame($value, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID_2, TEST_SETTING_KEY));
 	}
