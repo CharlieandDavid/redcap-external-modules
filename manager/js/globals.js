@@ -1216,6 +1216,7 @@ $(function(){
 			}
 
 			if (type == 'file') {
+				// We do not reach this point for previously saved file fields (is that intentional?!?!?!).
 				// only store one file per variable - the first file
 				jQuery.each(element[0].files, function(i, file) {
 					if (typeof files[name] == "undefined") {

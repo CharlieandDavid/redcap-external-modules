@@ -245,8 +245,8 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame($edocIdProject, $array[FILE_SETTING_KEY]['value']);
 		$this->assertSame($edocIdSystem, $array[FILE_SETTING_KEY]['system_value']);
 
-		ExternalModules::removeFileSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
-		ExternalModules::removeSystemFileSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
+		ExternalModules::removeProjectSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
+		ExternalModules::removeSystemSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
 		$array = ExternalModules::getProjectSettingsAsArray($this->getInstance()->PREFIX, TEST_SETTING_PID);
 
 		$this->assertNull(@$array[FILE_SETTING_KEY]['value']);
