@@ -3501,7 +3501,7 @@ class ExternalModules
 		";
 	}
 
-	function copySettings($sourceProjectId, $destinationProjectId){
+	static function copySettings($sourceProjectId, $destinationProjectId){
 		// Prevent SQL Injection
 		$sourceProjectId = (int) $sourceProjectId;
 		$destinationProjectId = (int) $destinationProjectId;
@@ -3511,12 +3511,21 @@ class ExternalModules
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
 		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
 		");
+
+		self::recreateAllEDocs($destinationProjectId);
 	}
 
 	// We recreate edocs when copying settings between projects so that edocs removed from
 	// one project are not also removed from other projects.
 	// While this method is generally undocumented/unsupported in modules, it is used by Carl's settings import/export module.
-	function recreateAllEDocs($pid){
+	static function recreateAllEDocs($pid)
+	{
+		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
+		self::recreateRichTextEDocs($pid, $richTextSettingsByPrefix);
+	}
+
+	private static function recreateEDocSettings($pid)
+	{
 		// Prevent SQL Injection
 		$pid = (int) $pid;
 
@@ -3527,40 +3536,94 @@ class ExternalModules
 				}
 			}
 			else{
-				$sql = "select * from redcap_edocs_metadata where doc_id = $value and date_deleted_server is null";
-				$result = self::query($sql);
-				$row = db_fetch_assoc($result);
-				if(!$row){
-					return '';
-				}
-
-				$oldFilePath = EDOC_PATH . '/' . $row['stored_name'];
-				$newFilepath = tempnam(sys_get_temp_dir(), 'module-edoc-copy-');
-				copy($oldFilePath, $newFilepath);
-
-				$file = [
-					'name' => $row['doc_name'],
-					'size' => $row['doc_size'],
-					'tmp_name' => $newFilepath
-				];
-
-				$value = \Files::uploadFile($file, $pid);
+				list($oldPid, $value) = self::recreateEdoc($pid, $value);
 			}
 
 			return $value;
 		};
 
 		$result = self::query("select * from redcap_external_module_settings where project_id = $pid");
+		$richTextSettingsByPrefix = [];
 		while($row = db_fetch_assoc($result)){
 			$prefix = self::getPrefixForID($row['external_module_id']);
 			$key = $row['key'];
 
 			$details = self::getSettingDetails($prefix, $key);
-			if($details['type'] === 'file'){
+			$type = $details['type'];
+			if($type === 'file'){
 				$value = self::getProjectSetting($prefix, $pid, $key);
 				$value = $handleValue($value, $handleValue);
 				self::setProjectSetting($prefix, $pid, $key, $value);
 			}
+			else if($type === 'rich-text'){
+				$richTextSettingsByPrefix[$prefix][] = $row;
+			}
 		}
+
+		return $richTextSettingsByPrefix;
+	}
+
+	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
+	{
+		$results = ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' and project_id = $pid");
+		while($row = db_fetch_assoc($results)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+			$settings = &$richTextSettingsByPrefix[$prefix];
+
+			foreach($files as &$file){
+				$name = $file['name'];
+
+				$oldId = $file['edocId'];
+				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
+				$file['edocId'] = $newId;
+
+				foreach($settings as &$setting){
+					$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
+					$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+
+					$setting['value'] = str_replace($search, $replace, $setting['value']);
+				}
+			}
+
+			ExternalModules::setProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $files);
+		}
+
+		foreach($richTextSettingsByPrefix as $prefix=>$settings){
+			foreach($settings as $setting){
+				ExternalModules::setProjectSetting($prefix, $pid, $setting['key'], $setting['value']);
+			}
+		}
+	}
+
+	private static function recreateEdoc($pid, $edocId)
+	{
+		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
+		$result = self::query($sql);
+		$row = db_fetch_assoc($result);
+		if(!$row){
+			return '';
+		}
+
+		$oldFilePath = EDOC_PATH . '/' . $row['stored_name'];
+		$newFilepath = tempnam(sys_get_temp_dir(), 'module-edoc-copy-');
+		copy($oldFilePath, $newFilepath);
+
+		$file = [
+			'name' => $row['doc_name'],
+			'size' => $row['doc_size'],
+			'tmp_name' => $newFilepath
+		];
+
+		return [
+			$row['project_id'],
+			\Files::uploadFile($file, $pid)
+		];
+	}
+
+	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
+	{
+		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
 	}
 }
