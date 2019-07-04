@@ -1769,7 +1769,7 @@ class ExternalModules
 		}
 	}
 
-	private static function getSystemwideEnabledVersions()
+	static function getSystemwideEnabledVersions()
 	{
 		if(!isset(self::$systemwideEnabledVersions)){
 			self::cacheAllEnableData();
