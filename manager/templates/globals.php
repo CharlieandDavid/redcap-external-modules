@@ -12,12 +12,13 @@ if(empty($configsByPrefixJSON)) {
     $configsByPrefixJSON = "''";
 }
 
-ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.css');
-ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
 ?>
+
+<link rel="stylesheet" type="text/css" href="<?php echo APP_PATH_CSS ?>select2.css">
+<script type="text/javascript" src="<?php echo APP_PATH_JS ?>select2.js"></script>
 
 <link rel='stylesheet' href='<?php echo APP_PATH_CSS ?>spectrum.css'>
 <script type='text/javascript' src='<?php echo APP_PATH_JS ?>spectrum.js'></script>
