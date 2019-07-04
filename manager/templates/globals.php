@@ -12,10 +12,6 @@ if(empty($configsByPrefixJSON)) {
     $configsByPrefixJSON = "''";
 }
 
-
-// The decision to use TinyMCE was not taken lightly.  I actually tried integrating Quill, Trix, and Summernote as well, but they either
-// didn't work as well out of the box when placed inside the configuration model, or were not as flexible/customizable.
-ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'/tinymce/tinymce.min.js');
 ExternalModules::addResource(ExternalModules::getManagerCSSDirectory().'select2.css');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'select2.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');

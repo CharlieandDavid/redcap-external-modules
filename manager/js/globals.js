@@ -858,6 +858,8 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
 	var settingsObject = this;
 
+	// The decision to use TinyMCE was not taken lightly.  We tried integrating Quill, Trix, and Summernote as well, but they either
+	// didn't work as well out of the box when placed inside the configuration model, or were not as flexible/customizable.
 	tinymce.init({
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
