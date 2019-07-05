@@ -169,6 +169,37 @@ class ExternalModulesTest extends BaseTest
 		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
 	}
 
+	function testCallCronMethod_unlockOnException()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => [[
+			'cron_name' => $methodName,
+			'cron_description' => 'Test Cron',
+			'method' => $methodName,
+		]]]);
+
+		$callCronMethod = function($function) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = $function;
+
+			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+			ExternalModules::callCronMethod($moduleId, $methodName);
+		};
+
+
+		$callCronMethod(function(){
+			throw new Exception();
+		});
+		$this->assertSame(ExternalModules::CRON_EXCEPTION_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+
+		$secondCronRan = false;
+		$callCronMethod(function() use (&$secondCronRan){
+			$secondCronRan = true;
+		});
+		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
+	}
+
 	function testAddReservedSettings()
 	{
 		$method = 'addReservedSettings';

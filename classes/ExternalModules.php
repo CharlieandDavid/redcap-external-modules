@@ -55,6 +55,7 @@ class ExternalModules
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
 
 	const LONG_RUNNING_CRON_EMAIL_SUBJECT = 'External Module Long-Running Cron';
+	const CRON_EXCEPTION_EMAIL_SUBJECT = 'External Module Exception in Cron Job';
 
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
@@ -3558,7 +3559,7 @@ class ExternalModules
 			$returnMessage = "Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
 			$emailMessage = "$returnMessage with the following Exception: $e";
 
-			self::sendAdminEmail('External Module Exception in Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+			self::sendAdminEmail(self::CRON_EXCEPTION_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
 			self::unlockCron($moduleDirectoryPrefix);
 		}
 
