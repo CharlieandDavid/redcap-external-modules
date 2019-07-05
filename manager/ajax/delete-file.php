@@ -41,16 +41,27 @@ if (($systemValue == $edoc) && $pid) {
 			$parts = preg_split("/____/", $key);
 			$shortKey = array_shift($parts);
 
-			$data = ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+			$isSystemSetting = ExternalModules::isSystemSetting($prefix,$shortKey);
+			if ($isSystemSetting) {
+				$data = ExternalModules::getSystemSetting($prefix,$shortKey);
+			}
+			else {
+				$data = ExternalModules::getProjectSetting($prefix, $pid, $shortKey);
+			}
 			if (!isset($data) || !is_array($data) || $data == null) {
 				//do nothing
 			} else {
 				$settings = r_search_and_replace($data,$edoc);
-				ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+				if ($isSystemSetting) {
+					ExternalModules::setSystemSetting($prefix,$shortKey,$settings);
+				}
+				else {
+					ExternalModules::setProjectSetting($prefix, $pid, $shortKey, $settings);
+				}
 				\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"),var_export($settings,true));
 			}
 		} else {
-			ExternalModules::removeFileSetting($prefix, $pid, $key);
+			ExternalModules::removeProjectSetting($prefix, $pid, $key);
 			\REDCap::logEvent("Remove file $edoc on $prefix module to $key for ".(!empty($pid) ? "project ".$pid : "system"));
 			$type = "Delete $edoc";
 		}

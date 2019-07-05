@@ -300,8 +300,8 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame($edocIdProject, $array[FILE_SETTING_KEY]['value']);
 		$this->assertSame($edocIdSystem, $array[FILE_SETTING_KEY]['system_value']);
 
-		ExternalModules::removeFileSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
-		ExternalModules::removeSystemFileSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
+		ExternalModules::removeProjectSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
+		ExternalModules::removeSystemSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
 		$array = ExternalModules::getProjectSettingsAsArray($this->getInstance()->PREFIX, TEST_SETTING_PID);
 
 		$this->assertNull(@$array[FILE_SETTING_KEY]['value']);
@@ -759,6 +759,168 @@ class ExternalModulesTest extends BaseTest
 			$this->assertThrowsException(function() use ($assertFrameworkVersion, $value){
 				$assertFrameworkVersion($value);
 			}, 'must be specified as an integer');
+		}
+	}
+
+	function testCopySettingValues()
+	{
+		$value = [rand(), rand()];
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY, $value);
+
+		self::callPrivateMethod('copySettingValues', TEST_SETTING_PID, TEST_SETTING_PID_2);
+
+		$this->assertSame($value, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID_2, TEST_SETTING_KEY));
+	}
+
+	function testRecreateAllEDocs_fileSettings()
+	{
+		$edocIds = [];
+		$edocFilenames = [];
+
+		$minEdocs = 5;
+		$result = ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null and doc_size < 1000000 limit $minEdocs");
+		while($row = db_fetch_assoc($result)){
+			$edocIds[] = $row['doc_id'];
+			$edocFilenames[] = $row['stored_name'];
+		}
+
+		$edocsNeeded = $minEdocs - count($edocIds);
+		if($edocsNeeded !== 0){
+			throw new Exception("Please upload $edocsNeeded more edocs to any project in order for unit tests to run properly.");
+		}
+
+		$key1 = 'test-key-1';
+		$key2 = 'test-key-2';
+		$key3 = 'test-key-3';
+
+		$this->setConfig([
+			'project-settings' => [
+					[
+						'key' => $key1,
+						'type' => 'file'
+					],
+					[
+						'key' => $key2,
+						'type' => 'file'
+					],
+					[
+						'key' => $key3,
+						'type' => 'text'
+					]
+				]
+			]
+		);
+
+		$value1 = $edocIds[0];
+
+		// simulate repeatable sub-settings
+		$value2 = [
+			[
+				$edocIds[1],
+				$edocIds[2],
+				$edocIds[3],
+			],
+			[
+				$edocIds[4],
+			]
+		];
+
+		ExternalModules::setFileSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $value1);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $value2);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3, $value2);
+
+		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
+
+		$newValue1 = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1);
+		$newValue2 = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2);
+
+		$newEdocIds = array_merge([$newValue1], $newValue2[0], $newValue2[1]);
+		for($i=0; $i<$minEdocs; $i++){
+			$oldId = $edocIds[$i];
+			$newId = $newEdocIds[$i];
+
+			$this->assertEdocsEqual($oldId, $newId);
+		}
+
+		// Make sure non-file settings are not touched.
+		$this->assertSame($value2, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3));
+
+		foreach($newEdocIds as $id){
+			ExternalModules::deleteEDoc($id);
+		}
+	}
+
+	private function assertEdocsEqual($expected, $actual)
+	{
+		// If the expected and actual edoc IDs are the same, something in the calling test isn't right.
+		$this->assertNotSame($expected, $actual);
+
+		$this->assertFileEquals(self::getEdocPath($expected), self::getEdocPath($actual));
+	}
+
+	private function getEdocPath($edocId)
+	{
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = " . $edocId));
+		return EDOC_PATH . $row['stored_name'];
+	}
+
+	function testRecreateAllEDocs_richText()
+	{
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' limit 1"));
+		if(empty($row)){
+			throw new Exception("Please upload at least one image to any 'rich-text' module setting (like the inline popups module) to allow this unit test to run.");
+		}
+
+		$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+		$oldFiles = ExternalModules::getProjectSetting($prefix, $row['project_id'], ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+
+
+		$key1 = 'test-key-1';
+		$key2 = 'test-key-2';
+		$this->setConfig([
+			'project-settings' => [
+					[
+						'key' => $key1,
+						'type' => 'rich-text'
+					],
+					[
+						'key' => $key2,
+						'type' => 'text'
+					]
+				]
+			]
+		);
+
+		$getRichTextExampleContent = function($pid, $edocId) use ($oldFiles){
+			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $oldFiles[0]['name'])) . '" alt="" width="150" height="190" /></p>';
+		};
+
+		$oldRichTextContent = $getRichTextExampleContent($row['project_id'], $oldFiles[0]['edocId']);
+
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $oldFiles);
+		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
+		$newFiles = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+
+		$newRichTextContent = $getRichTextExampleContent(TEST_SETTING_PID, $newFiles[0]['edocId']);
+		$this->assertSame($newRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1));
+
+		// Make sure non-rich-text fields are not changed
+		$this->assertSame($oldRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2));
+
+		$this->assertSame(count($oldFiles), count($newFiles));
+		for($i=0; $i<count($oldFiles); $i++){
+			$oldFile = $oldFiles[$i];
+			$newFile = $newFiles[$i];
+
+			$oldEdocId = $oldFile['edocId'];
+			$newEdocId = $newFile['edocId'];
+
+			$this->assertEdocsEqual($oldEdocId, $newEdocId);
+			$this->assertSame($oldFile['name'], $newFile['name']);
+
+			ExternalModules::deleteEDoc($newEdocId);
 		}
 	}
 }

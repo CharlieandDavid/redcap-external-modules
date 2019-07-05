@@ -103,7 +103,6 @@ ExternalModules.Settings.prototype.getSettingRows = function(configSettings, sav
 	var settingsObject = this;
 	configSettings.forEach(function(setting){
 		var setting = $.extend({}, setting);
-
 		rowsHtml += settingsObject.getSettingColumns(setting,savedSettings,instance);
 	});
 
@@ -124,6 +123,9 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	}
 
 	if(typeof thisSavedSettings === "undefined") {
+		thisSavedSettings = [{}];
+	}
+	else if (thisSavedSettings.value.length == 0) {
 		thisSavedSettings = [{}];
 	}
 	else {
@@ -148,7 +150,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 		}
 	}
 
-
 	if(typeof thisSavedSettings === 'undefined') {
 		thisSavedSettings = [{}];
 	}
@@ -160,7 +161,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	thisSavedSettings.forEach(function(settingValue,instance) {
 		var subInstance  = previousInstance.slice();
 		subInstance.push(instance);
-
 		if(setting.type == "sub_settings") {
 			rowsHtml += settingsObject.getColumnHtml(setting);
 			setting.sub_settings.forEach(function(settingDetails){
@@ -734,6 +734,17 @@ ExternalModules.Settings.prototype.initializeSettingsFields = function() {
 	this.initializeRichTextFields();
 
 	$('input.external-modules-input-element.datepicker').datepicker()
+
+	$('input.external-modules-input-element[type=color-picker]').spectrum({
+		showAlpha: true,
+		allowEmpty: true,
+		preferredFormat: "hex",
+		chooseText: "Save",
+		cancelText: "Cancel",
+
+		// If the following is not set, the color is not actually saved on clickout (even though it looks like it is).
+		clickoutFiresChange: false
+	})
 }
 
 ExternalModules.Settings.prototype.resetConfigInstances = function() {
@@ -847,6 +858,8 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
 	var settingsObject = this;
 
+	// The decision to use TinyMCE was not taken lightly.  We tried integrating Quill, Trix, and Summernote as well, but they either
+	// didn't work as well out of the box when placed inside the configuration model, or were not as flexible/customizable.
 	tinymce.init({
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
@@ -1121,6 +1134,8 @@ $(function(){
 			lengthOfFiles++;
 			formData.append(name, files[name]);   // filename agnostic
 		}
+		console.log(url);
+		console.log(formData);
 		if (lengthOfFiles > 0) {
 			// AJAX rather than $.post
 			$.ajax({
@@ -1203,6 +1218,7 @@ $(function(){
 			}
 
 			if (type == 'file') {
+				// We do not reach this point for previously saved file fields (is that intentional?!?!?!).
 				// only store one file per variable - the first file
 				jQuery.each(element[0].files, function(i, file) {
 					if (typeof files[name] == "undefined") {

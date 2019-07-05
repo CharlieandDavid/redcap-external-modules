@@ -23,6 +23,7 @@ const TEST_LOG_MESSAGE = 'This is a unit test log message';
 const TEST_SETTING_KEY = 'unit-test-setting-key';
 const FILE_SETTING_KEY = 'unit-test-file-setting-key';
 const TEST_SETTING_PID = 1;
+const TEST_SETTING_PID_2 = 2;
 
 abstract class BaseTest extends TestCase
 {
