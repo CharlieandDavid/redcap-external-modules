@@ -88,6 +88,11 @@ class ExternalModulesTest extends BaseTest
 				24 * 3600 => "assertTrue",
 				-24 * 3600 => "assertTrue",
 				);
+		$defaultCron = array(
+					'cron_name' => 'test_name',
+					'cron_description' => 'This is a test',
+					'method' => 'test_method',
+					);
 
 		foreach ($offsets as $offset => $validationMethod) {
 			$time = time() + $offset;
@@ -95,7 +100,7 @@ class ExternalModulesTest extends BaseTest
                 			'cron_hour' => date("G", $time),
                 			'cron_minute' => date("i", $time),
 					);
-			$this->$validationMethod(self::callPrivateMethod($method, array($cron)));
+			$this->$validationMethod(self::callPrivateMethod($method, array(array_merge($defaultCron, $cron))));
 		}
 
 		$time2 = time() + 24 * 3600;
@@ -104,7 +109,7 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time2),
 				'cron_weekday' => date("w", $time2),
 				);
-		$this->assertFalse(self::callPrivateMethod($method, array($cron2)));
+		$this->assertFalse(self::callPrivateMethod($method, array(array_merge($defaultCron, $cron2))));
 
 		$time3 = time() + 7 * 24 * 3600;
 		$cron3 = array(
@@ -112,14 +117,14 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time3),
 				'cron_weekday' => date("w", $time3),
 				);
-		$this->assertTrue(self::callPrivateMethod($method, array($cron3)));
+		$this->assertTrue(self::callPrivateMethod($method, array(array_merge($defaultCron, $cron3))));
 
 		$cron3_2 = array(
 				'cron_hour' => date("G", $time3),
 				'cron_minute' => date("i", $time3),
 				'cron_monthday' => date("j", $time3),
 				);
-		$this->assertFalse(self::callPrivateMethod($method, array($cron3_2)));
+		$this->assertFalse(self::callPrivateMethod($method, array(array_merge($defaultCron, $cron3_2))));
 	}
 
 	function testRunInLastMinute()
