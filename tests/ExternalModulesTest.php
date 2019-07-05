@@ -109,7 +109,6 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time2),
 				'cron_weekday' => date("w", $time2),
 				);
-		echo json_encode($cron2)."\n";
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
 
 		$time3 = time() + 7 * 24 * 3600;
@@ -118,7 +117,6 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time3),
 				'cron_weekday' => date("w", $time3),
 				);
-		echo json_encode($cron3)."\n";
 		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
 
 		$cron3_2 = array(
@@ -126,7 +124,6 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time3),
 				'cron_monthday' => date("j", $time3),
 				);
-		echo json_encode($cron3_2)."\n";
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
 
