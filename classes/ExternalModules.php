@@ -3516,6 +3516,7 @@ class ExternalModules
 		return $returnMessages;
 	}
 
+	// This method is called both internally and by the REDCap Core code.
 	public static function callCronMethod($moduleId, $cronName)
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
