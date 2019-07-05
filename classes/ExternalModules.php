@@ -39,6 +39,7 @@ class ExternalModules
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
 	const KEY_RESERVED_CRON_LAST_RUN = 'reserved-cron-last-run';
+	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -319,6 +320,7 @@ class ExternalModules
 		self::$MODULES_PATH = $modulesDirectories;
 		self::$INCLUDED_RESOURCES = [];
 
+		# runs whenever a cron/hook functions
 		register_shutdown_function(function () {
 			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
 			$error = error_get_last();
@@ -340,6 +342,14 @@ class ExternalModules
 				// PHP must have died in the middle of getModuleInstance()
 				$message = 'Could not instantiate';
 			} else {
+				# search to tell if crashing method and current module has cron
+				$config = self::getConfig($activeModulePrefix);
+				foreach ($config['crons'] as $cron) {
+					if ($cron['cron_name'] == self::$hookBeingExecuted) {
+						self::unlockCron($activeModulePrefix);
+						break;
+					}
+				}
 				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
 			}
 
@@ -796,16 +806,15 @@ class ExternalModules
 		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
 	}
 
+	# prerequisite: is a valid tabled cron
 	# obtain the info of a cron job for a module in the redcap_crons table
 	static function updateCronJobInTable($cron=array(), $externalModuleId)
 	{
 		if (empty($cron) || empty($externalModuleId)) return false;
-		if (self::isValidTabledCron($cron)) {
-			$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
-					cron_description = '".db_escape($cron['cron_description'])."'
-					where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
-			return db_query($sql);
-		}
+		$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
+				cron_description = '".db_escape($cron['cron_description'])."'
+				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
+		return db_query($sql);
 		return false;
 	}
 
@@ -3360,6 +3369,10 @@ class ExternalModules
 		$weekday = $cronAttr['cron_weekday'];
 		$monthday = $cronAttr['cron_monthday'];
 
+		if (!self::isValidCron($cronAttr)) {
+			return FALSE;
+		}
+
 		if (!empty($cronAttr['cron_frequency']) || !empty($cronAttr['cron_max_run_time'])) {
 			return FALSE;
 		}
@@ -3455,13 +3468,13 @@ class ExternalModules
 		$currentWeekday = (int) date('w', $cronStartTime);
 		$currentMonthday = (int) date('j', $cronStartTime);
 
-		if (!empty($weekday)) {
+		if (isset($cronAttr['cron_weekday'])) {
 			if ($currentWeekday != $weekday) {
 				return FALSE;
 			}
 		}
 
-		if (!empty($monthday)) {
+		if (isset($cronAttr['cron_monthday'])) {
 			if ($currentMonthday != $monthday) {
 				return FALSE;
 			}
@@ -3521,6 +3534,7 @@ class ExternalModules
 								if ($mssg) {
 									array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
 								}
+								$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, 0);
 							}
 						}
 					}
@@ -3548,17 +3562,25 @@ class ExternalModules
 			// Call cron for this External Module
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 			if (!empty($moduleInstance)) {
-				$config = $moduleInstance->getConfig();
-				if (isset($config['crons']) && !empty($config['crons'])) {
-					// Loop through all crons to find the one we're looking for
-					foreach ($config['crons'] as $cronKey=>$cronAttr) {
-						if ($cronAttr['cron_name'] != $cronName) continue;
-						// Find and validate the cron method in the module class
-						$cronMethod = $config['crons'][$cronKey]['method'];
-
-						// Execute the cron method in the module class
-						$returnMessage = $moduleInstance->$cronMethod($cronAttr);
+				if (!self::isCronLocked($moduleDirectoryPrefix)) {
+					self::lockCron($moduleDirectoryPrefix);
+					$config = $moduleInstance->getConfig();
+					if (isset($config['crons']) && !empty($config['crons'])) {
+						// Loop through all crons to find the one we're looking for
+						foreach ($config['crons'] as $cronKey=>$cronAttr) {
+							if ($cronAttr['cron_name'] != $cronName) continue;
+	
+							// Find and validate the cron method in the module class
+							$cronMethod = $config['crons'][$cronKey]['method'];
+	
+							// Execute the cron method in the module class
+							$returnMessage = $moduleInstance->$cronMethod($cronAttr);
+						}
 					}
+					self::unlockCron($moduleDirectoryPrefix);
+				} else {
+					$emailMessage = "Cron job \"$cronName\" has two instances running, so the second instance has not run. Please check that module configuration is correct. Module prefix is $moduleDirectoryPrefix. Long-running process in is process id ".$moduleInstance->getSystemSetting(KEY_RESERVED_IS_CRON_RUNNING).". If this process has completed, then you might need to run the following query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".KEY_RESERVED_IS_CRON_RUNNING."'";
+					self::sendAdminEmail('External Module Long-Running Cron', $emailMessage, $moduleDirectoryPrefix);
 				}
 			}
 		}
@@ -3567,12 +3589,25 @@ class ExternalModules
 			$emailMessage = "$returnMessage with the following Exception: $e";
 
 			self::sendAdminEmail('External Module Exception in Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+			self::unlockCron($moduleDirectoryPrefix);
 		}
 
 		self::setActiveModulePrefix(null);
 		self::$hookBeingExecuted = "";
 		
 		return $returnMessage;
+	}
+
+	private static function isCronLocked($modulePrefix) {
+		return self::getSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING);
+	}
+
+	private static function unlockCron($modulePrefix) {
+		self::removeSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING);
+	}
+
+	private static function lockCron($modulePrefix) {
+		self::setSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING, getmypid());
 	}
 
 	// Throttles actions by using the redcap_log_event.description.
