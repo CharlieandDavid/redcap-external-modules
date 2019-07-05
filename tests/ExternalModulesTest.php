@@ -6,6 +6,14 @@ use \Exception;
 
 class ExternalModulesTest extends BaseTest
 {
+	public static $lastSendAdminEmailArgs;
+
+	protected function tearDown()
+	{
+		self::$lastSendAdminEmailArgs = null;
+		parent::tearDown();
+	}
+
 	function testInitializeSettingDefaults()
 	{
 		$defaultValue = rand();
@@ -125,6 +133,40 @@ class ExternalModulesTest extends BaseTest
 				'cron_monthday' => date("j", $time3),
 				);
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
+	}
+
+	function testCallCronMethod_concurrency()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => [[
+			'cron_name' => $methodName,
+			'cron_description' => 'Test Cron',
+			'method' => $methodName,
+		]]]);
+
+		$callCronMethod = function($seconds) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = function() use ($seconds){
+				sleep($seconds);
+			};
+
+			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+			ExternalModules::callCronMethod($moduleId, $methodName);
+		};
+
+		$parentAction = function() use ($callCronMethod){
+			sleep(1); // wait until the child is in progress
+			$callCronMethod(0);
+			$this->assertSame(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+		};
+
+		$childAction = function() use ($callCronMethod){
+			$callCronMethod(2);
+			$this->assertTrue(true); // We have to have an assertion or the phpunit process will fail.
+		};
+
+		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
 	}
 
 	function testAddReservedSettings()

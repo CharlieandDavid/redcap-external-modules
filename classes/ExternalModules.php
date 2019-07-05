@@ -54,6 +54,8 @@ class ExternalModules
 
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
 
+	const LONG_RUNNING_CRON_EMAIL_SUBJECT = 'External Module Long-Running Cron';
+
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
 
@@ -512,6 +514,12 @@ class ExternalModules
 
 	public static function sendAdminEmail($subject, $message, $prefix = null)
 	{
+		if(self::isTesting()){
+			// Report back to our test class instead of sending an email.
+			ExternalModulesTest::$lastSendAdminEmailArgs = func_get_args();
+			return;
+		}
+
 		if(self::isVanderbilt() && in_array(gethostname(), ['ori1007lt', 'ori1007lr', 'ori1007lp', 'ori1008lp', 'ori3007lp', 'ori3008lp'])){
 			// This is one of the new Vandy REDCap servers that are just being tested currently.
 			// Log errors on these servers for now instead of emailing (until they're stable).
@@ -1884,7 +1892,7 @@ class ExternalModules
 		// The fake unit testing modules are not currently ever enabled in the DB,
 		// but we may as well leave this check in place in case that changes in the future.
 		$isTestPrefix = strpos($prefix, self::TEST_MODULE_PREFIX) === 0;
-		if($isTestPrefix && !self::isTesting($prefix)){
+		if($isTestPrefix && !self::isTesting()){
 			// This php process is not running unit tests.
 			// Ignore the test prefix so it doesn't interfere with this process.
 			return true;
@@ -3542,7 +3550,7 @@ class ExternalModules
 					self::unlockCron($moduleDirectoryPrefix);
 				} else {
 					$emailMessage = "Cron job \"$cronName\" has two instances running, so the second instance has not run. Please check that module configuration is correct. Module prefix is $moduleDirectoryPrefix. Long-running process in is process id ".$moduleInstance->getSystemSetting(KEY_RESERVED_IS_CRON_RUNNING).". If this process has completed, then you might need to run the following query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".KEY_RESERVED_IS_CRON_RUNNING."'";
-					self::sendAdminEmail('External Module Long-Running Cron', $emailMessage, $moduleDirectoryPrefix);
+					self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
 				}
 			}
 		}

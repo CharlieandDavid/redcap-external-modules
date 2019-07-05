@@ -1121,7 +1121,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 			$this->assertSame($iterations, $maxIterations);
 		};
-		
+
 		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
 	}
 }

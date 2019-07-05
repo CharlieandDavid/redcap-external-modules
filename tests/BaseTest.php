@@ -233,6 +233,12 @@ abstract class BaseTest extends TestCase
 
 			$parentAction($isChildRunning);
 
+			while($isChildRunning()){
+				// The parent finished before the child.
+				// Wait for the child to finish before continuing so that the exit code can be checked below.
+				sleep(.1);
+			}
+
 			$status = $getChildStatus();
 			$exitCode = $status['exitcode'];
 			if($exitCode !== 0){
@@ -279,7 +285,12 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		$this->testHookArguments = func_get_args();
 	}
 
-	function redcap_test_call_function($function){
+	function redcap_test_call_function($function = null){
+		// We must check if the arg is callable b/c it could be cron attributes for a cron job.
+		if(!is_callable($function)){
+			$function = $this->function;
+		}
+
 		$function();
 	}
 	
