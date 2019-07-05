@@ -342,7 +342,9 @@ class ExternalModules
 				// PHP must have died in the middle of getModuleInstance()
 				$message = 'Could not instantiate';
 			} else {
-				# search to tell if crashing method and current module has cron
+				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
+
+				// If the current "hook" was a cron, we need to unlock it so it can run again.
 				$config = self::getConfig($activeModulePrefix);
 				foreach ($config['crons'] as $cron) {
 					if ($cron['cron_name'] == self::$hookBeingExecuted) {
@@ -350,7 +352,6 @@ class ExternalModules
 						break;
 					}
 				}
-				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
 			}
 
 			$message .= " the '$activeModulePrefix' module";
