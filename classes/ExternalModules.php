@@ -38,7 +38,6 @@ class ExternalModules
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
-	const KEY_RESERVED_CRON_LAST_RUN = 'reserved-cron-last-run';
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
@@ -3485,7 +3484,6 @@ class ExternalModules
 				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 
 				# do not run twice in the same minute
-				$lastRun = $moduleInstance->getSystemSetting(KEY_RESERVED_CRON_LAST_RUN);
 				$config = $moduleInstance->getConfig();
 				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
 				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
@@ -3493,14 +3491,12 @@ class ExternalModules
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 							# if isTimeToRun, run method
-							$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, self::getLastTimeRun());
 							$cronMethod = $config['crons'][$cronKey]['method'];
 							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
 							$mssg = self::callCronMethod($moduleId, $cronName);
 							if ($mssg) {
 								array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
 							}
-							$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, 0);
 						}
 					}
 				}
