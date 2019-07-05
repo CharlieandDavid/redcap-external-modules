@@ -862,17 +862,8 @@ class ExternalModules
 	# value is edoc ID
 	static function setFileSetting($moduleDirectoryPrefix, $projectId, $key, $value)
 	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, "file");
-	}
-
-	static function removeSystemFileSetting($moduleDirectoryPrefix, $key)
-	{
-		self::removeFileSetting($moduleDirectoryPrefix, self::SYSTEM_SETTING_PROJECT_ID, $key);
-	}
-
-	static function removeFileSetting($moduleDirectoryPrefix, $projectId, $key)
-	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, null, "file");
+		// The string type parameter is only needed because of some incorrect handling on the js side that needs to be refactored.
+		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, 'string');
 	}
 
 	# returns boolean
@@ -950,7 +941,7 @@ class ExternalModules
 		}
 
 		$releaseLock = function() use ($lockName, $releaseLockSql) {
-			self::query($releaseLockSql);
+			ExternalModules::query($releaseLockSql);
 		};
 
 		try{
@@ -1197,14 +1188,17 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
+		if ($type == 'file') {
+			// This is a carry over from the old way edoc IDs were stored.  Convert it to the new way.
+			// Really this should be 'integer', but it must be 'string' currently because of some incorrect handling on the js side that needs to be corrected.
+			$type = 'string';
+		}
+
 		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
 			}
-		}
-		else if ($type == 'file') {
-			// do nothing
 		}
 		else if ($type == "boolean") {
 			if ($value === "true") {
@@ -1216,10 +1210,8 @@ class ExternalModules
 		else if ($type == "json-object") {
 			$value = json_decode($value,false);
 		}
-		else {
-			if (!settype($value, $type)) {
-				throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
-			}
+		else if (!settype($value, $type)) {
+			throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
 		}
 
 		$row['value'] = $value;
@@ -1812,7 +1804,7 @@ class ExternalModules
 		}
 	}
 
-	private static function getSystemwideEnabledVersions()
+	static function getSystemwideEnabledVersions()
 	{
 		if(!isset(self::$systemwideEnabledVersions)){
 			self::cacheAllEnableData();
@@ -1904,54 +1896,51 @@ class ExternalModules
 		$projectEnabledOverrides = array();
 		$projectEnabledDefaults = array();
 
-		// Only attempt to detect enabled modules if the external module tables exist.
-		if (self::areTablesPresent()) {
-			$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
+		$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
 
-			// Split results into version and enabled arrays: this seems wasteful, but using one
-            // query above, we can then validate which EMs/versions are valid before we build
-            // out which are enabled and how they are enabled
-            $result_versions = array();
-			$result_enabled = array();
-			while($row = self::validateSettingsRow(db_fetch_assoc($result))) {
-				$key = $row['key'];
-				if ($key == self::KEY_VERSION) {
-					$result_versions[] = $row;
-				} else if($key == self::KEY_ENABLED) {
-					$result_enabled[] = $row;
-				} else {
-					throw new Exception("Unexpected key: $key");
-				}
+		// Split results into version and enabled arrays: this seems wasteful, but using one
+		// query above, we can then validate which EMs/versions are valid before we build
+		// out which are enabled and how they are enabled
+		$result_versions = array();
+		$result_enabled = array();
+		while($row = self::validateSettingsRow(db_fetch_assoc($result))) {
+			$key = $row['key'];
+			if ($key == self::KEY_VERSION) {
+				$result_versions[] = $row;
+			} else if($key == self::KEY_ENABLED) {
+				$result_enabled[] = $row;
+			} else {
+				throw new Exception("Unexpected key: $key");
+			}
+		}
+
+		// For each version, verify if the module folder exists and is valid
+		foreach ($result_versions as $row) {
+			$prefix = $row['directory_prefix'];
+			$value = $row['value'];
+			if (self::shouldExcludeModule($prefix, $value)) {
+				continue;
+			} else {
+				$systemwideEnabledVersions[$prefix] = $value;
+			}
+		}
+
+		// Set enabled arrays for EMs
+		foreach ($result_enabled as $row) {
+			$pid = $row['project_id'];
+			$prefix = $row['directory_prefix'];
+			$value = $row['value'];
+
+			// If EM was not valid above, then skip
+			if (!isset($systemwideEnabledVersions[$prefix])) {
+				continue;
 			}
 
-			// For each version, verify if the module folder exists and is valid
-            foreach ($result_versions as $row) {
-				$prefix = $row['directory_prefix'];
-				$value = $row['value'];
-				if (self::shouldExcludeModule($prefix, $value)) {
-					continue;
-				} else {
-					$systemwideEnabledVersions[$prefix] = $value;
-				}
-			}
-
-			// Set enabled arrays for EMs
-			foreach ($result_enabled as $row) {
-				$pid = $row['project_id'];
-				$prefix = $row['directory_prefix'];
-				$value = $row['value'];
-
-				// If EM was not valid above, then skip
-				if (!isset($systemwideEnabledVersions[$prefix])) {
-					continue;
-				}
-
-				// Set enabled global or project
-				if (isset($pid)) {
-					$projectEnabledOverrides[$pid][$prefix] = $value;
-				} else if ($value) {
-					$projectEnabledDefaults[$prefix] = true;
-				}
+			// Set enabled global or project
+			if (isset($pid)) {
+				$projectEnabledOverrides[$pid][$prefix] = $value;
+			} else if ($value) {
+				$projectEnabledDefaults[$prefix] = true;
 			}
 		}
 
@@ -1959,13 +1948,6 @@ class ExternalModules
 		self::$systemwideEnabledVersions = $systemwideEnabledVersions;
 		self::$projectEnabledDefaults = $projectEnabledDefaults;
 		self::$projectEnabledOverrides = $projectEnabledOverrides;
-	}
-
-	# tests whether External Modules has been initially configured
-	static function areTablesPresent()
-	{
-		$result = self::query("SHOW TABLES LIKE 'redcap_external_module%'");
-		return db_num_rows($result) > 0;
 	}
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
@@ -3736,5 +3718,134 @@ class ExternalModules
 				<a href='$linkUrl' target='{$link["target"]}'>{$link["name"]}</a>
 			</div>
 		";
+	}
+
+	static function copySettings($sourceProjectId, $destinationProjectId){
+		// Prevent SQL Injection
+		$sourceProjectId = (int) $sourceProjectId;
+		$destinationProjectId = (int) $destinationProjectId;
+
+		self::copySettingValues($sourceProjectId, $destinationProjectId);
+		self::recreateAllEDocs($destinationProjectId);
+	}
+
+	private static function copySettingValues($sourceProjectId, $destinationProjectId){
+		self::query("
+			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
+			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
+		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
+		");
+	}
+
+	// We recreate edocs when copying settings between projects so that edocs removed from
+	// one project are not also removed from other projects.
+	// While this method is generally undocumented/unsupported in modules, it is used by Carl's settings import/export module.
+	static function recreateAllEDocs($pid)
+	{
+		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
+		self::recreateRichTextEDocs($pid, $richTextSettingsByPrefix);
+	}
+
+	private static function recreateEDocSettings($pid)
+	{
+		// Prevent SQL Injection
+		$pid = (int) $pid;
+
+		$handleValue = function($value, $handleValue) use ($pid){
+			if(gettype($value) === 'array'){
+				for($i=0; $i<count($value); $i++){
+					$value[$i] = $handleValue($value[$i], $handleValue);
+				}
+			}
+			else{
+				list($oldPid, $value) = self::recreateEdoc($pid, $value);
+			}
+
+			return $value;
+		};
+
+		$result = self::query("select * from redcap_external_module_settings where project_id = $pid");
+		$richTextSettingsByPrefix = [];
+		while($row = db_fetch_assoc($result)){
+			$prefix = self::getPrefixForID($row['external_module_id']);
+			$key = $row['key'];
+
+			$details = self::getSettingDetails($prefix, $key);
+			$type = $details['type'];
+			if($type === 'file'){
+				$value = self::getProjectSetting($prefix, $pid, $key);
+				$value = $handleValue($value, $handleValue);
+				self::setProjectSetting($prefix, $pid, $key, $value);
+			}
+			else if($type === 'rich-text'){
+				$richTextSettingsByPrefix[$prefix][] = $row;
+			}
+		}
+
+		return $richTextSettingsByPrefix;
+	}
+
+	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
+	{
+		$results = ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' and project_id = $pid");
+		while($row = db_fetch_assoc($results)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+			$settings = &$richTextSettingsByPrefix[$prefix];
+
+			foreach($files as &$file){
+				$name = $file['name'];
+
+				$oldId = $file['edocId'];
+				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
+				$file['edocId'] = $newId;
+
+				foreach($settings as &$setting){
+					$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
+					$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+
+					$setting['value'] = str_replace($search, $replace, $setting['value']);
+				}
+			}
+
+			ExternalModules::setProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $files);
+		}
+
+		foreach($richTextSettingsByPrefix as $prefix=>$settings){
+			foreach($settings as $setting){
+				ExternalModules::setProjectSetting($prefix, $pid, $setting['key'], $setting['value']);
+			}
+		}
+	}
+
+	private static function recreateEdoc($pid, $edocId)
+	{
+		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
+		$result = self::query($sql);
+		$row = db_fetch_assoc($result);
+		if(!$row){
+			return '';
+		}
+
+		$oldFilePath = EDOC_PATH . '/' . $row['stored_name'];
+		$newFilepath = tempnam(sys_get_temp_dir(), 'module-edoc-copy-');
+		copy($oldFilePath, $newFilepath);
+
+		$file = [
+			'name' => $row['doc_name'],
+			'size' => $row['doc_size'],
+			'tmp_name' => $newFilepath
+		];
+
+		return [
+			$row['project_id'],
+			\Files::uploadFile($file, $pid)
+		];
+	}
+
+	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
+	{
+		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
 	}
 }

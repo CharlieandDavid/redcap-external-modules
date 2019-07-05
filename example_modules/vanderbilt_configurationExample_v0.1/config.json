@@ -229,6 +229,11 @@
 			"name": "For Super Users Only",
 			"type": "text",
 			"super-users-only": true
+		},
+		{
+			"key": "color-picker",
+			"name": "Color Picker",
+			"type": "color-picker"
 		}
 	]
 }

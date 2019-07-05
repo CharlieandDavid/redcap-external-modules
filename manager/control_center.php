@@ -30,6 +30,9 @@ ExternalModules::storeREDCapRepoUpdatesInConfig(@$_GET['module_updates'], !isset
 	<div class="cc_info">NOTE: HTML may be used in order to adjust the style of the text or to display links, images, etc.</div>
 </div>
 
+<!-- We only load TinyMCE for the control center because REDCap automatically loads it on project pages. -->
+<script type="text/javascript" src="<?php echo APP_PATH_JS ?>tinymce/tinymce.min.js"></script>
+
 <?php
 ExternalModules::safeRequireOnce('manager/templates/enabled-modules.php');
 ?>

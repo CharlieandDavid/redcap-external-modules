@@ -76,11 +76,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 	foreach($files as $file){
 		$edocId = $file['edocId'];
 		$name = $file['name'];
-		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-		$url = ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid"
 		?>
 		<tr>
-			<td><a href="<?=$url?>"><?=$name?></a></td>
+			<td><a href="<?=ExternalModules::getRichTextFileUrl($prefix, $pid, $edocId, $name)?>"><?=$name?></a></td>
 			<td>
 				<form method='POST' enctype='multipart/form-data'>
 					<input type="hidden" name="edoc-to-delete" value="<?=$edocId?>">
