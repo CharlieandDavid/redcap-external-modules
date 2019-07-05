@@ -1102,25 +1102,44 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->removeProjectSetting();
 		};
 
+		$parentAction = function ($isChildRunning) use ($concurrentOperations, $iterations, $maxIterations) {
+			while($isChildRunning()){
+				$concurrentOperations();
+				$iterations++;
+			}
+
+			// The parent will generally run more iterations than the child, but apparently not always.
+			// Consider the text successful if $iterations is at least 90% of $maxIterations.
+			$this->assertGreaterThan($maxIterations * 0.9, $iterations);
+		};
+
+		$childAction = function () use ($iterations, $maxIterations, $concurrentOperations) {
+			while ($iterations < $maxIterations) {
+				$concurrentOperations();
+				$iterations++;
+			}
+
+			$this->assertSame($iterations, $maxIterations);
+		};
+
+		$this->startConcurrentTestProcess(__FUNCTION__, $parentAction, $childAction);
+	}
+
+	function startConcurrentTestProcess($functionName, $parentAction, $childAction)
+	{
 		// The parenthesis are included in the argument and check below so we can still filter for this function manually (WITHOUT the parenthesis)  when testing for testing and avoid triggering the recursion.
-		$functionName = __FUNCTION__ . '()';
+		$functionName .= '()';
 
 		global $argv;
 		if(end($argv) === $functionName){
 			// This is the child process.
-
-			while($iterations < $maxIterations){
-				$concurrentOperations();
-				$iterations++;
-			}
-			
-			$this->assertSame($iterations, $maxIterations);
+			$childAction();
 		}
 		else{
 			// This is the parent process.
 
 			$cmd = "vendor/phpunit/phpunit/phpunit --filter " . escapeshellarg($functionName);
-			$process = proc_open(
+			$childProcess = proc_open(
 				$cmd, [
 					0 => ['pipe', 'r'],
 					1 => ['pipe', 'w'],
@@ -1129,22 +1148,29 @@ class AbstractExternalModuleTest extends BaseTest
 				$pipes
 			);
 
-			do{
-				$concurrentOperations();
-				$status = proc_get_status($process);
-				$iterations++;
-			}
-			while($status["running"]);
+			// Gets the child status, but caches the final result since calling proc_get_status() multiple times
+			// after a process ends will incorrectly return -1 for the exit code.
+			$getChildStatus = function() use ($childProcess, &$lastStatus){
+				if(!$lastStatus || $lastStatus['running']){
+					$lastStatus = proc_get_status($childProcess);
+				}
 
+				return $lastStatus;
+			};
+
+			$isChildRunning = function() use ($getChildStatus){
+				$status = $getChildStatus();
+				return $status['running'];
+			};
+
+			$parentAction($isChildRunning);
+
+			$status = $getChildStatus();
 			$exitCode = $status['exitcode'];
 			if($exitCode !== 0){
 				$output = stream_get_contents($pipes[1]);
 				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
 			}
-
-			// The parent will generally run more iterations than the child, but apparently not always.
-			// Consider the text successful if $iterations is at least 90% of $maxIterations.
-			$this->assertGreaterThan($maxIterations*0.9, $iterations);
 		}
 	}
 }
