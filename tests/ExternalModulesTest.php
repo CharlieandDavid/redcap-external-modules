@@ -130,14 +130,6 @@ class ExternalModulesTest extends BaseTest
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
 
-	function testRunInLastMinute()
-	{
-		$method = 'runInLastMinute';
-
-		$this->assertTrue(self::callPrivateMethod($method, array(time())));
-		$this->assertTrue(!self::callPrivateMethod($method, array(time() - 3600)));
-	}
-
 	function testAddReservedSettings()
 	{
 		$method = 'addReservedSettings';
