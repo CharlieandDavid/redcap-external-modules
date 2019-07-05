@@ -3465,22 +3465,6 @@ class ExternalModules
 		return ($hour === $currentHour) && ($minute === $currentMinute);
 	}
 
-	# param 1 is a timestamp
-	private static function runInLastMinute($lastStartTime) {
-		$lastHour = (int) date('G', $lastStartTime);
-		$lastMinute = (int) date('i', $lastStartTime);  // The cast is especially important here to get rid of a possible leading zero.
-		$lastWeekday = (int) date('w', $lastStartTime);
-		$lastMonthday = (int) date('j', $lastStartTime);
-
-		$cronStartTime = self::getLastTimeRun();
-		$currentHour = (int) date('G', $cronStartTime);
-		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
-		$currentWeekday = (int) date('w', $cronStartTime);
-		$currentMonthday = (int) date('j', $cronStartTime);
-
-		return ($currentHour == $lastHour) && ($currentMinute == $lastMinute) && ($currentWeekday == $lastWeekday) && ($lastMonthday == $currentMonthday);
-	}
-
 	private static function getLastTimeRun() {
 		return $_SERVER["REQUEST_TIME_FLOAT"];
 	}
@@ -3501,23 +3485,21 @@ class ExternalModules
 
 				# do not run twice in the same minute
 				$lastRun = $moduleInstance->getSystemSetting(KEY_RESERVED_CRON_LAST_RUN);
-				if (!self::runInLastMinute($lastRun)) {
-					$config = $moduleInstance->getConfig();
-					$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
-					if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
-						foreach ($config['crons'] as $cronKey=>$cronAttr) {
-							$cronName = $cronAttr['cron_name'];
-							if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
-								# if isTimeToRun, run method
-								$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, self::getLastTimeRun());
-								$cronMethod = $config['crons'][$cronKey]['method'];
-								array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
-								$mssg = self::callCronMethod($moduleId, $cronName);
-								if ($mssg) {
-									array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
-								}
-								$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, 0);
+				$config = $moduleInstance->getConfig();
+				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
+					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+						$cronName = $cronAttr['cron_name'];
+						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
+							# if isTimeToRun, run method
+							$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, self::getLastTimeRun());
+							$cronMethod = $config['crons'][$cronKey]['method'];
+							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
+							$mssg = self::callCronMethod($moduleId, $cronName);
+							if ($mssg) {
+								array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
 							}
+							$moduleInstance->setSystemSetting(KEY_RESERVED_CRON_LAST_RUN, 0);
 						}
 					}
 				}
