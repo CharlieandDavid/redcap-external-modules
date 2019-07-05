@@ -100,6 +100,7 @@ class ExternalModulesTest extends BaseTest
                 			'cron_hour' => date("G", $time),
                 			'cron_minute' => date("i", $time),
 					);
+			echo "($offset, $validationMethod) ";
 			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
 		}
 
