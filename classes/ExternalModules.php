@@ -824,7 +824,6 @@ class ExternalModules
 				cron_description = '".db_escape($cron['cron_description'])."'
 				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
 		return db_query($sql);
-		return false;
 	}
 
 	# initializes the system settings
