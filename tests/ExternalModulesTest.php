@@ -6,6 +6,14 @@ use \Exception;
 
 class ExternalModulesTest extends BaseTest
 {
+	public static $lastSendAdminEmailArgs;
+
+	protected function tearDown()
+	{
+		self::$lastSendAdminEmailArgs = null;
+		parent::tearDown();
+	}
+
 	function testInitializeSettingDefaults()
 	{
 		$defaultValue = rand();
@@ -73,6 +81,123 @@ class ExternalModulesTest extends BaseTest
 		$this->assertThrowsException(function(){
 			ExternalModules::getSystemSettingsAsArray(null);
 		}, 'One or more module prefixes must be specified!');
+	}
+
+	function testIsTimeToRun()
+	{
+		$method = 'isTimeToRun';
+
+		$offsets = array(
+				0 => "assertTrue",
+				3600 => "assertFalse",
+				-3600 => "assertFalse",
+				60 => "assertFalse",
+				-60 => "assertFalse",
+				24 * 3600 => "assertTrue",
+				-24 * 3600 => "assertTrue",
+				);
+		$defaultCron = array(
+					'cron_name' => 'test_name',
+					'cron_description' => 'This is a test',
+					'method' => 'test_method',
+					);
+
+		foreach ($offsets as $offset => $validationMethod) {
+			$time = time() + $offset;
+			$cron = array(
+                			'cron_hour' => date("G", $time),
+                			'cron_minute' => date("i", $time),
+					);
+			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
+		}
+
+		$time2 = time() + 24 * 3600;
+		$cron2 = array(
+				'cron_hour' => date("G", $time2),
+				'cron_minute' => date("i", $time2),
+				'cron_weekday' => date("w", $time2),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
+
+		$time3 = time() + 7 * 24 * 3600;
+		$cron3 = array(
+				'cron_hour' => date("G", $time3),
+				'cron_minute' => date("i", $time3),
+				'cron_weekday' => date("w", $time3),
+				);
+		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
+
+		$cron3_2 = array(
+				'cron_hour' => date("G", $time3),
+				'cron_minute' => date("i", $time3),
+				'cron_monthday' => date("j", $time3),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
+	}
+
+	function testCallCronMethod_concurrency()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => [[
+			'cron_name' => $methodName,
+			'cron_description' => 'Test Cron',
+			'method' => $methodName,
+		]]]);
+
+		$callCronMethod = function($seconds) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = function() use ($seconds){
+				sleep($seconds);
+			};
+
+			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+			ExternalModules::callCronMethod($moduleId, $methodName);
+		};
+
+		$parentAction = function() use ($callCronMethod){
+			sleep(1); // wait until the child is in progress
+			$callCronMethod(0);
+			$this->assertSame(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+		};
+
+		$childAction = function() use ($callCronMethod){
+			$callCronMethod(2);
+			$this->assertTrue(true); // We have to have an assertion or the phpunit process will fail.
+		};
+
+		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
+	}
+
+	function testCallCronMethod_unlockOnException()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => [[
+			'cron_name' => $methodName,
+			'cron_description' => 'Test Cron',
+			'method' => $methodName,
+		]]]);
+
+		$callCronMethod = function($function) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = $function;
+
+			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+			ExternalModules::callCronMethod($moduleId, $methodName);
+		};
+
+
+		$callCronMethod(function(){
+			throw new Exception();
+		});
+		$this->assertSame(ExternalModules::CRON_EXCEPTION_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+
+		$secondCronRan = false;
+		$callCronMethod(function() use (&$secondCronRan){
+			$secondCronRan = true;
+		});
+		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
 	}
 
 	function testAddReservedSettings()

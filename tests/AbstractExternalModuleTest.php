@@ -1102,49 +1102,26 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->removeProjectSetting();
 		};
 
-		// The parenthesis are included in the argument and check below so we can still filter for this function manually (WITHOUT the parenthesis)  when testing for testing and avoid triggering the recursion.
-		$functionName = __FUNCTION__ . '()';
-
-		global $argv;
-		if(end($argv) === $functionName){
-			// This is the child process.
-
-			while($iterations < $maxIterations){
+		$parentAction = function ($isChildRunning) use ($concurrentOperations, $iterations, $maxIterations) {
+			while($isChildRunning()){
 				$concurrentOperations();
 				$iterations++;
-			}
-			
-			$this->assertSame($iterations, $maxIterations);
-		}
-		else{
-			// This is the parent process.
-
-			$cmd = "vendor/phpunit/phpunit/phpunit --filter " . escapeshellarg($functionName);
-			$process = proc_open(
-				$cmd, [
-					0 => ['pipe', 'r'],
-					1 => ['pipe', 'w'],
-					2 => ['pipe', 'w'],
-				],
-				$pipes
-			);
-
-			do{
-				$concurrentOperations();
-				$status = proc_get_status($process);
-				$iterations++;
-			}
-			while($status["running"]);
-
-			$exitCode = $status['exitcode'];
-			if($exitCode !== 0){
-				$output = stream_get_contents($pipes[1]);
-				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
 			}
 
 			// The parent will generally run more iterations than the child, but apparently not always.
 			// Consider the text successful if $iterations is at least 90% of $maxIterations.
-			$this->assertGreaterThan($maxIterations*0.9, $iterations);
-		}
+			$this->assertGreaterThan($maxIterations * 0.9, $iterations);
+		};
+
+		$childAction = function () use ($iterations, $maxIterations, $concurrentOperations) {
+			while ($iterations < $maxIterations) {
+				$concurrentOperations();
+				$iterations++;
+			}
+
+			$this->assertSame($iterations, $maxIterations);
+		};
+
+		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
 	}
 }
