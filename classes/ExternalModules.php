@@ -3763,8 +3763,7 @@ class ExternalModules
 	// We recreate edocs when copying settings between projects so that edocs removed from
 	// one project are not also removed from other projects.
 	// This method is currently undocumented/unsupported in modules.
-	// It is public because it is used by Carl's settings import/export module,
-	// and also mentioned in show-duplicated-edocs.php.
+	// It is public because it is used by Carl's settings import/export module.
 	static function recreateAllEDocs($pid)
 	{
 		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
@@ -3852,19 +3851,9 @@ class ExternalModules
 			return '';
 		}
 
-		$oldFilePath = EDOC_PATH . '/' . $row['stored_name'];
-		$newFilepath = tempnam(sys_get_temp_dir(), 'module-edoc-copy-');
-		copy($oldFilePath, $newFilepath);
-
-		$file = [
-			'name' => $row['doc_name'],
-			'size' => $row['doc_size'],
-			'tmp_name' => $newFilepath
-		];
-
 		return [
 			$row['project_id'],
-			\Files::uploadFile($file, $pid)
+			copyFile($edocId, $pid)
 		];
 	}
 
