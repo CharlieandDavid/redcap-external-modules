@@ -9,6 +9,7 @@ use ExternalModules\FrameworkVersion2;
 if (!defined(__DIR__)){
 	define(__DIR__, dirname(__FILE__));
 }
+
 require_once __DIR__ . "/AbstractExternalModule.php";
 
 if(PHP_SAPI == 'cli'){
@@ -1113,7 +1114,7 @@ class ExternalModules
 		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectId);
 	}
 
-	static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
+	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
 	{
 		if(empty($moduleDirectoryPrefixes)){
 			throw new Exception('One or more module prefixes must be specified!');
