@@ -92,7 +92,13 @@ If you choose not to enable the module in all REDCap projects by default, then y
 on the left-hand menu of a given project to enable it there for that project. Some project-level configuration settings, depending on the module,
 may also need to set on the project page.</p>
 
-<?php 
+<?php if(!ExternalModules::haveUnsafeEDocReferencesBeenChecked()) { ?>
+	<div class='yellow repo-updates'>
+		Unsafe references may exist to files uploaded for modules. See <a href="show-duplicated-edocs.php">this page</a> for more details.
+	</div>
+<?php } ?>
+
+<?php
 // Display alert message in Control Center if any modules have updates in the REDCap Repo
 ExternalModules::renderREDCapRepoUpdatesAlert();
 ?>

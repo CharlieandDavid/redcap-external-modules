@@ -3762,7 +3762,9 @@ class ExternalModules
 
 	// We recreate edocs when copying settings between projects so that edocs removed from
 	// one project are not also removed from other projects.
-	// While this method is generally undocumented/unsupported in modules, it is used by Carl's settings import/export module.
+	// This method is currently undocumented/unsupported in modules.
+	// It is public because it is used by Carl's settings import/export module,
+	// and also mentioned in show-duplicated-edocs.php.
 	static function recreateAllEDocs($pid)
 	{
 		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
@@ -3870,5 +3872,134 @@ class ExternalModules
 	{
 		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+	}
+
+	public function haveUnsafeEDocReferencesBeenChecked()
+	{
+		$fieldName = 'external_modules_unsafe_edoc_references_checked';
+		if(isset($GLOBALS[$fieldName])){
+			return true;
+		}
+
+		if(empty(ExternalModules::getUnsafeEDocReferences())){
+			self::query("insert into redcap_config values ('$fieldName', 1)");
+			return true;
+		}
+
+		return false;
+	}
+
+	public function getUnsafeEDocReferences()
+	{
+		$keysByPrefix = [];
+		$handleSetting = function($prefix, $setting) use (&$handleSetting, &$keysByPrefix){
+			$type = $setting['type'];
+			if($type === 'file'){
+				$keysByPrefix[$prefix][] = $setting['key'];
+			}
+			else if ($type === 'sub_settings'){
+				foreach($setting['sub_settings'] as $subSetting){
+					$handleSetting($prefix, $subSetting);
+				}
+			}
+		};
+
+		foreach(ExternalModules::getSystemwideEnabledVersions() as $prefix=>$version){
+			$config = ExternalModules::getConfig($prefix, $version);
+			foreach(['system-settings', 'project-settings', 'email-dashboard-settings'] as $settingType){
+				$settings = @$config[$settingType];
+				if(!$settings){
+					continue;
+				}
+
+				foreach($settings as $setting){
+					$handleSetting($prefix, $setting);
+				}
+			}
+		}
+
+		$edocs = [];
+		$addEdoc = function($prefix, $pid, $key, $edocId) use (&$edocs){
+			if($edocId === ''){
+				return;
+			}
+
+			$edocs[$edocId][] = [
+				'prefix' => $prefix,
+				'pid' => $pid,
+				'key' => $key
+			];
+		};
+
+		$parseRichTextValue = function($prefix, $pid, $key, $files) use ($addEdoc){
+			foreach($files as $file){
+				$addEdoc($prefix, $pid, $key, $file['edocId']);
+			}
+		};
+
+		$parseFileSettingValue = function($prefix, $pid, $key, $value) use (&$parseFileSettingValue, &$addEdoc){
+			if(is_array($value)){
+				foreach($value as $subValue){
+					$parseFileSettingValue($prefix, $pid, $key, $subValue);
+				}
+			}
+			else{
+				$addEdoc($prefix, $pid, $key, $value);
+			}
+		};
+
+		$clauses = [
+			"`key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "'"
+		];
+
+		foreach($keysByPrefix as $prefix=>$keys){
+			$moduleId = ExternalModules::getIdForPrefix($prefix);
+			$clauses[] = "(external_module_id = $moduleId and " . ExternalModules::getSQLInClause('`key`', $keys) .  ")";
+		}
+
+		$sql = "
+			select * from redcap_external_module_settings
+			where
+			" . implode("\n\t or ", $clauses) . "
+		";
+
+		$result = ExternalModules::query($sql);
+		while($row = db_fetch_assoc($result)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$pid = $row['project_id'];
+			$key = $row['key'];
+			$value = json_decode($row['value'], true);
+
+			if($key === ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST){
+				$parseRichTextValue($prefix, $pid, $key, $value);
+			}
+			else{
+				$parseFileSettingValue($prefix, $pid, $key, $value);
+			}
+		}
+
+		$result = ExternalModules::query("select * from redcap_edocs_metadata where " . ExternalModules::getSQLInClause('doc_id', array_keys($edocs)));
+		$sourceProjectsByEdocId = [];
+		while($row = db_fetch_assoc($result)){
+			$sourceProjectsByEdocId[$row['doc_id']] = $row['project_id'];
+		}
+
+		$unsafeReferences = [];
+		ksort($edocs);
+		foreach($edocs as $edocId=>$references){
+			foreach($references as $reference){
+				$sourcePid = $sourceProjectsByEdocId[$edocId];
+				$referencePid = $reference['pid'];
+				if($referencePid === $sourcePid){
+					continue;
+				}
+
+				$reference['edocId'] = $edocId;
+				$reference['sourcePid'] = $sourcePid;
+				$unsafeReferences[] = $reference;
+			}
+		}
+
+		return $unsafeReferences;
 	}
 }
