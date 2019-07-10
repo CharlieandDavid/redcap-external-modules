@@ -269,8 +269,7 @@ class AbstractExternalModule
 		foreach($config['sub_settings'] as $subSetting){
 			$keys[] = $this->prefixSettingKey($subSetting['key']);
 		}
-
-		$rawSettings = ExternalModules::getProjectSettingsAsArray($this->PREFIX, self::requireProjectId($pid));
+		$rawSettings = ExternalModules::getSettingsAsArray($this->PREFIX, $pid);
 
 		$subSettings = [];
 		foreach($keys as $key){
