@@ -2522,7 +2522,15 @@ class ExternalModules
 	{
 		$config = self::getConfig($prefix);
 
-		$settingGroups = [$config['system-settings'], $config['project-settings']];
+		$settingGroups = [
+			$config['system-settings'],
+			$config['project-settings'],
+
+			// The following was added so that the recreateAllEDocs() function would work on Email Alerts module settings.
+			// Adding module specific code in the framework is not a good idea, but the fixing the duplicate edocs issue
+			// for the Email Alerts module seemed like the right think to do since it's so popular.
+			$config['email-dashboard-settings']
+		];
 
 		$handleSettingGroup = function($group) use ($prefix, $key, &$handleSettingGroup){
 			foreach($group as $details){
