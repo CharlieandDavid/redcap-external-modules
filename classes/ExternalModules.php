@@ -2522,13 +2522,28 @@ class ExternalModules
 	{
 		$config = self::getConfig($prefix);
 
-		$settingsTypes = [$config['system-settings'], $config['project-settings']];
+		$settingGroups = [$config['system-settings'], $config['project-settings']];
 
-		foreach($settingsTypes as $type){
-			foreach($type as $details){
+		$handleSettingGroup = function($group) use ($prefix, $key, &$handleSettingGroup){
+			foreach($group as $details){
 				if($details['key'] == $key){
 					return $details;
 				}
+				else if($details['type'] === 'sub_settings'){
+					$returnValue = $handleSettingGroup($details['sub_settings']);
+					if($returnValue){
+						return $returnValue;
+					}
+				}
+			}
+
+			return null;
+		};
+
+		foreach($settingGroups as $group){
+			$returnValue = $handleSettingGroup($group);
+			if($returnValue){
+				return $returnValue;
 			}
 		}
 
@@ -2664,6 +2679,14 @@ class ExternalModules
 	// Display alert message in Control Center if any modules have updates in the REDCap Repo
 	public static function renderREDCapRepoUpdatesAlert()
 	{
+		if(!ExternalModules::haveUnsafeEDocReferencesBeenChecked()) {
+			?>
+			<div class='yellow repo-updates'>
+				<b>WARNING:</b> Unsafe references exist to files uploaded for modules. See <a href="<?=self::$BASE_URL?>/manager/show-duplicated-edocs.php">this page</a> for more details.
+			</div>
+			<?php
+		}
+
 		global $lang, $external_modules_updates_available;
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
@@ -3775,10 +3798,10 @@ class ExternalModules
 		// Prevent SQL Injection
 		$pid = (int) $pid;
 
-		$handleValue = function($value, $handleValue) use ($pid){
+		$handleValue = function($value) use ($pid, &$handleValue){
 			if(gettype($value) === 'array'){
 				for($i=0; $i<count($value); $i++){
-					$value[$i] = $handleValue($value[$i], $handleValue);
+					$value[$i] = $handleValue($value[$i]);
 				}
 			}
 			else{
@@ -3795,13 +3818,16 @@ class ExternalModules
 			$key = $row['key'];
 
 			$details = self::getSettingDetails($prefix, $key);
+
 			$type = $details['type'];
 			if($type === 'file'){
 				$value = self::getProjectSetting($prefix, $pid, $key);
-				$value = $handleValue($value, $handleValue);
+				$value = $handleValue($value);
 				self::setProjectSetting($prefix, $pid, $key, $value);
 			}
 			else if($type === 'rich-text'){
+				// Replace the value with the version returned by getProjectSetting() to handle arrays for subsettings/repeatables.
+				$row['value'] = self::getProjectSetting($prefix, $pid, $key);;
 				$richTextSettingsByPrefix[$prefix][] = $row;
 			}
 		}
@@ -3824,11 +3850,24 @@ class ExternalModules
 				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
 				$file['edocId'] = $newId;
 
-				foreach($settings as &$setting){
-					$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
-					$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+				$handleValue = function($value) use ($pid, $prefix, $oldPid, $oldId, $newId, $name, &$handleValue){
+					if(gettype($value) === 'array'){
+						for($i=0; $i<count($value); $i++){
+							$value[$i] = $handleValue($value[$i]);
+						}
+					}
+					else{ // it's a string
+						$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
+						$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+						$value = str_replace($search, $replace, $value);
+					}
 
-					$setting['value'] = str_replace($search, $replace, $setting['value']);
+					return $value;
+				};
+
+				foreach($settings as $i=>$setting){
+					$setting['value'] = $handleValue($setting['value']);
+					$settings[$i] = $setting;
 				}
 			}
 
@@ -3844,6 +3883,11 @@ class ExternalModules
 
 	private static function recreateEdoc($pid, $edocId)
 	{
+		if(empty($edocId)){
+			// The stored id is already empty.
+			return '';
+		}
+
 		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
 		$result = self::query($sql);
 		$row = db_fetch_assoc($result);
@@ -3851,9 +3895,18 @@ class ExternalModules
 			return '';
 		}
 
+		$oldPid = $row['project_id'];
+		if($oldPid === $pid){
+			// This edoc is already associated with this project.  No need to recreate it.
+			$newEdocId = $edocId;
+		}
+		else{
+			$newEdocId = copyFile($edocId, $pid);
+		}
+
 		return [
-			$row['project_id'],
-			copyFile($edocId, $pid)
+			$oldPid,
+			(string)$newEdocId // We must cast to a string to avoid an issue on the js side when it comes to handling file fields if stored as integers.
 		];
 	}
 
@@ -3909,7 +3962,7 @@ class ExternalModules
 
 		$edocs = [];
 		$addEdoc = function($prefix, $pid, $key, $edocId) use (&$edocs){
-			if($edocId === ''){
+			if(empty($edocId)){
 				return;
 			}
 
@@ -3985,7 +4038,7 @@ class ExternalModules
 
 				$reference['edocId'] = $edocId;
 				$reference['sourcePid'] = $sourcePid;
-				$unsafeReferences[] = $reference;
+				$unsafeReferences[$referencePid][] = $reference;
 			}
 		}
 

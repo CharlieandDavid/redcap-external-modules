@@ -848,9 +848,18 @@ class ExternalModulesTest extends BaseTest
 		$edocFilenames = [];
 
 		$minEdocs = 5;
-		$result = ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null and doc_size < 1000000 limit $minEdocs");
+		$result = ExternalModules::query("
+			select * from redcap_edocs_metadata
+			where
+				date_deleted_server is null
+				and doc_size < 1000000
+				and project_id not in (".TEST_SETTING_PID.", ".TEST_SETTING_PID_2.")
+			limit $minEdocs
+		");
+
 		while($row = db_fetch_assoc($result)){
-			$edocIds[] = $row['doc_id'];
+			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
+			$edocIds[] = (string)$row['doc_id'];
 			$edocFilenames[] = $row['stored_name'];
 		}
 
@@ -870,8 +879,14 @@ class ExternalModulesTest extends BaseTest
 						'type' => 'file'
 					],
 					[
-						'key' => $key2,
-						'type' => 'file'
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key2,
+								'type' => 'file'
+							]
+						]
 					],
 					[
 						'key' => $key3,
@@ -922,8 +937,12 @@ class ExternalModulesTest extends BaseTest
 
 	private function assertEdocsEqual($expected, $actual)
 	{
+		// Make sure edoc IDs are stored as strings because of a bug on the js processing side for file fields that prevents integers from working.
+		$this->assertSame('string', gettype($expected));
+		$this->assertSame('string', gettype($actual));
+
 		// If the expected and actual edoc IDs are the same, something in the calling test isn't right.
-		$this->assertNotSame($expected, $actual);
+		$this->assertNotEquals($expected, $actual);
 
 		$this->assertFileEquals(self::getEdocPath($expected), self::getEdocPath($actual));
 	}
@@ -947,6 +966,7 @@ class ExternalModulesTest extends BaseTest
 
 		$key1 = 'test-key-1';
 		$key2 = 'test-key-2';
+		$key3 = 'test-key-3';
 		$this->setConfig([
 			'project-settings' => [
 					[
@@ -956,7 +976,17 @@ class ExternalModulesTest extends BaseTest
 					[
 						'key' => $key2,
 						'type' => 'text'
-					]
+					],
+					[
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key3,
+								'type' => 'rich-text'
+							]
+						]
+					],
 				]
 			]
 		);
@@ -969,6 +999,7 @@ class ExternalModulesTest extends BaseTest
 
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $oldRichTextContent);
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3, [$oldRichTextContent]);
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $oldFiles);
 		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
 		$newFiles = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
@@ -979,12 +1010,15 @@ class ExternalModulesTest extends BaseTest
 		// Make sure non-rich-text fields are not changed
 		$this->assertSame($oldRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2));
 
+		// Rich text content within sub_settings is also JSON escaped.  Make sure we are still able replace URLs properly.
+		$this->assertSame([$newRichTextContent], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3));
+
 		$this->assertSame(count($oldFiles), count($newFiles));
 		for($i=0; $i<count($oldFiles); $i++){
 			$oldFile = $oldFiles[$i];
 			$newFile = $newFiles[$i];
 
-			$oldEdocId = $oldFile['edocId'];
+			$oldEdocId = (string)$oldFile['edocId'];
 			$newEdocId = $newFile['edocId'];
 
 			$this->assertEdocsEqual($oldEdocId, $newEdocId);

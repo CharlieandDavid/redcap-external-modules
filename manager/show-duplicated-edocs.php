@@ -4,56 +4,120 @@ require_once __DIR__ . '/../classes/ExternalModules.php';
 require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 
 ?>
-<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-
-<style>
-	#pagecontainer {
-		max-width: 1200px;
-	}
-
-	#control_center_window{
-		max-width: 100%;
-		flex: 1;
-	}
-</style>
-
 <h5 style='margin:10px'>Unsafe Module File References</h5>
 <p>
 	In previous versions of REDCap, eDoc ID's were copied as-is along with other module settings when projects were copied.
 	If an eDoc referenced by multiple projects was deleted in any of them, it would then unexpectedly no longer exist for the other projects referencing it.
 	Newer reversions of REDCap automatically make new copies of eDocs referenced in module settings when projects are copied.
-	Below is a list of eDocs unsafely referenced in module settings outside the project for which it was uploaded.
-	To remove unsafe references, go through and re-upload the file for each module setting listed below.
-	If you have a PHP Developer at your institution, it is possible to do this programmatically as follows:
-	<ol>
-		<li>Only consider proceeding at your own risk.  The following method has not been heavily tested.</li>
-		<li>Backup ALL module settings for affected projects (ex: a dump or query of the <b>redcap_external_module_settings</b> table).</li>
-		<li>Be prepared to restore module settings from your backup in case the following call corrupts them.</li>
-		<li>Create a plugin or module and call the following method for each "Referencing Project" ID listed: <b>\ExternalModules\ExternalModules::recreateAllEDocs($pid);</b></li>
-	</ol>
+	Below is a list of eDocs unsafely referenced in module settings outside the projects for which they were uploaded.
+	It is recommended that you go through and manually re-upload each file referenced below.
+	The "Copy EDocs" feature below attempts to automate this, but is not feasible to test in every possible configuration scenario.
+	Only use this feature at your own risk, and not without a recent backup of the <b>redcap_external_module_settings</b> database table that you know how to restore manually in case this feature corrupts module settings.
 </p>
 <?php
 
-$references = ExternalModules::getUnsafeEDocReferences();
-if(empty($references)){
+$referencesByProject = ExternalModules::getUnsafeEDocReferences();
+if(empty($referencesByProject)){
 	echo "<br><h6>Congratulations, no unsafe references exist!</h6>";
 }
 else{
-	echo "<table class='table'>";
+	$getProjectNames = function($pids){
+		$projectNames = [];
+		$result = ExternalModules::query("
+			select *
+			from redcap_projects
+			where " . ExternalModules::getSQLInClause('project_id', $pids) . "
+		");
 
-	foreach(['EDoc ID', 'Source Project', 'Referencing Project', 'Module', 'Setting Key'] as $value){
+		while($row = $result->fetch_assoc()){
+			$projectNames[$row['project_id']] = $row['app_title'];
+		}
+
+		return $projectNames;
+	};
+
+	$projectNames = $getProjectNames(array_keys($referencesByProject));
+
+	echo "<table class='table unsafe-edocs'>";
+
+	foreach(['Project ID', 'Project Name', 'Actions'] as $value){
 		echo "<th>$value</th>";
 	}
 
-	foreach($references as $reference){
-		echo "<tr>";
-		foreach([$reference['edocId'], $reference['sourcePid'], $reference['pid'], $reference['prefix'], $reference['key']] as $value){
-			echo "<td>$value</td>";
-		}
-		echo "</tr>";
+	foreach($referencesByProject as $referencePid=>$references){
+		?>
+		<tr data-pid="<?=$referencePid?>">
+			<td>
+				<?=$referencePid?>
+			</td>
+			<td>
+				<a href='<?=APP_PATH_WEBROOT_FULL . APP_PATH_WEBROOT . "index.php?pid=$referencePid"?>' style='text-decoration: underline'><?=$projectNames[$referencePid]?></a>
+			</td>
+			<td>
+				<button class="show-details">Show Details</button>
+				<button class="copy-edocs">Copy EDocs</button>
+			</td>
+		</tr>
+		<?php
 	}
 
-	echo "</table>";
+	?>
+	</table>
+	<script>
+		$(function(){
+			var referencesByProject = <?=json_encode($referencesByProject)?>;
+			var table = $('table.unsafe-edocs')
+
+			var getPID = function(element){
+				return $(element).closest('tr').data('pid')
+			}
+
+			var copyEdocs = function(pid){
+				var loadingOverlay = $('<div class="modal-backdrop" style="opacity: .4;"></div>');
+				$('body').append(loadingOverlay)
+				$.post('ajax/copy-edocs.php', {pid: pid}, function(data){
+					loadingOverlay.fadeOut(200)
+
+					if(data === 'success'){
+						table.find('tr[data-pid=' + pid + ']').remove()
+					}
+					else{
+						console.log("Copy EDoc Response:", data)
+						simpleDialog('An error occurred while copying edocs for this project.  See the browser console for details.')
+					}
+				})
+			};
+
+			table.find('button.show-details').click(function(){
+				simpleDialog("<pre style='max-height: 50vh'>" + JSON.stringify(referencesByProject[getPID(this)], null, 2) + "</pre>")
+			})
+
+			table.find('button.copy-edocs').click(function(){
+				var pid = getPID(this)
+
+				var warningMessage = "<b>WARNING</b>: By continuing you are agreeing to the following:<br>"
+					+ "<ul>"
+					+ "<li>I accept the risk that this action may corrupt this project's module settings</li>"
+					+ "<li>I have a recent backup of all <b>redcap_external_module_settings</b> table rows for this project</li>"
+					+ "<li>I know how to safely use SQL queries to remove the module settings for this project restore them from my backup</li>"
+					+ "</ul>"
+
+				simpleDialog(
+					warningMessage,
+					null,
+					null,
+					700,
+					null,
+					'Cancel',
+					function(){
+						copyEdocs(pid)
+					},
+					'Continue'
+				)
+			})
+		})
+	</script>
+	<?php
 }
 
 require_once APP_PATH_DOCROOT . 'ControlCenter/footer.php';
