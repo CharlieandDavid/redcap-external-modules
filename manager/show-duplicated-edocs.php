@@ -4,6 +4,12 @@ require_once __DIR__ . '/../classes/ExternalModules.php';
 require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 
 ?>
+<style>
+	table.unsafe-edocs button{
+		margin: 2px;
+		min-width: 100px;
+	}
+</style>
 <h5 style='margin:10px'>Unsafe Module File References</h5>
 <p>
 	In previous versions of REDCap, eDoc ID's were copied as-is along with other module settings when projects were copied.
