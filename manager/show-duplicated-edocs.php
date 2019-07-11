@@ -82,12 +82,11 @@ else{
 				var loadingOverlay = $('<div class="modal-backdrop" style="opacity: .4;"></div>');
 				$('body').append(loadingOverlay)
 				$.post('ajax/copy-edocs.php', {pid: pid}, function(data){
-					loadingOverlay.fadeOut(200)
-
 					if(data === 'success'){
-						table.find('tr[data-pid=' + pid + ']').remove()
+						location.reload()
 					}
 					else{
+						loadingOverlay.fadeOut(200)
 						console.log("Copy EDoc Response:", data)
 						simpleDialog('An error occurred while copying edocs for this project.  See the browser console for details.')
 					}
