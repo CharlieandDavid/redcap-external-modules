@@ -6,6 +6,23 @@ use \Exception;
 
 class ExternalModulesTest extends BaseTest
 {
+	const TABLED_CRON_EXAMPLE = '{
+		"cron_name": "schedulednotifications",
+		"cron_description": "Daily cron to generate new notifications",
+		"method": "scheduledNotifications",
+		"cron_frequency": "3600",
+		"cron_max_run_time": "300"
+	}';
+
+	const TIMED_CRON_EXAMPLE = '{
+		"cron_name": "cron4",
+		"cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
+		"method": "some_other_method_4",
+		"cron_hour": 14,
+		"cron_minute": 25,
+		"cron_weekday": 1
+	}';
+
 	public static $lastSendAdminEmailArgs;
 
 	protected function tearDown()
@@ -145,11 +162,9 @@ class ExternalModulesTest extends BaseTest
 			'method' => $methodName,
 		]]]);
 
-		$callCronMethod = function($seconds) use ($methodName){
+		$callCronMethod = function($action) use ($methodName){
 			$m = $this->getInstance();
-			$m->function = function() use ($seconds){
-				sleep($seconds);
-			};
+			$m->function = $action;
 
 			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
 			ExternalModules::callCronMethod($moduleId, $methodName);
@@ -157,12 +172,28 @@ class ExternalModulesTest extends BaseTest
 
 		$parentAction = function() use ($callCronMethod){
 			sleep(1); // wait until the child is in progress
-			$callCronMethod(0);
-			$this->assertSame(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+
+			$assertConcurrentCallSkipped = function($expectedEmailSubject) use ($callCronMethod){
+				$callCronMethod(function(){
+					throw new Exception('This cron call should have been automatically skipped due to another recent cron call running.');
+				});
+
+				$this->assertSame($expectedEmailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+			};
+
+			$assertConcurrentCallSkipped(null);
+
+			$lockInfo = self::callPrivateMethod('getCronLockInfo', TEST_MODULE_PREFIX);
+			$lockInfo['time'] = time() - ExternalModules::HOUR_IN_SECONDS;
+			ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING, $lockInfo);
+			$assertConcurrentCallSkipped(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
 		};
 
 		$childAction = function() use ($callCronMethod){
-			$callCronMethod(2);
+			$callCronMethod(function(){
+				sleep(2);
+			});
+
 			$this->assertTrue(true); // We have to have an assertion or the phpunit process will fail.
 		};
 
@@ -1026,5 +1057,23 @@ class ExternalModulesTest extends BaseTest
 
 			ExternalModules::deleteEDoc($newEdocId);
 		}
+	}
+
+	function testIsValidTabledCron(){
+		$assertTabledCron = function($valid, $json){
+			$this->assertSame($valid, self::callPrivateMethod('isValidTabledCron', json_decode($json, true)));
+		};
+
+		$assertTabledCron(true, self::TABLED_CRON_EXAMPLE);
+		$assertTabledCron(false, self::TIMED_CRON_EXAMPLE);
+	}
+
+	function testIsValidTimedCron(){
+		$assertTimedCron = function($valid, $json){
+			$this->assertSame($valid, self::callPrivateMethod('isValidTimedCron', json_decode($json, true)));
+		};
+
+		$assertTimedCron(false, self::TABLED_CRON_EXAMPLE);
+		$assertTimedCron(true, self::TIMED_CRON_EXAMPLE);
 	}
 }
