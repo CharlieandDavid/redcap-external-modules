@@ -60,6 +60,14 @@ class ExternalModules
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
 
+	// Copy WordPress's time conveneience constants
+	const MINUTE_IN_SECONDS = 60;
+	const HOUR_IN_SECONDS = 60 * self::MINUTE_IN_SECONDS;
+	const DAY_IN_SECONDS = 24 * self::HOUR_IN_SECONDS;
+	const WEEK_IN_SECONDS = 7 * self::DAY_IN_SECONDS;
+	const MONTH_IN_SECONDS = 30 * self::DAY_IN_SECONDS;
+	const YEAR_IN_SECONDS = 365 * self::DAY_IN_SECONDS;
+
 	private static $SERVER_NAME;
 
 	# base URL for external modules
@@ -3532,7 +3540,8 @@ class ExternalModules
 			// Call cron for this External Module
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 			if (!empty($moduleInstance)) {
-				if (!self::isCronLocked($moduleDirectoryPrefix)) {
+				$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
+				if ($lockInfo === null) {
 					self::lockCron($moduleDirectoryPrefix);
 					$config = $moduleInstance->getConfig();
 					if (isset($config['crons']) && !empty($config['crons'])) {
@@ -3549,8 +3558,11 @@ class ExternalModules
 					}
 					self::unlockCron($moduleDirectoryPrefix);
 				} else {
-					$emailMessage = "Cron job \"$cronName\" has two instances running, so the second instance has not run. Please check that module configuration is correct. Module prefix is $moduleDirectoryPrefix. Long-running process in is process id ".$moduleInstance->getSystemSetting(KEY_RESERVED_IS_CRON_RUNNING).". If this process has completed, then you might need to run the following query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".KEY_RESERVED_IS_CRON_RUNNING."'";
-					self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+					$oneHourAgo = time() - self::HOUR_IN_SECONDS;
+					if($lockInfo['time'] <= $oneHourAgo){
+						$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".self::KEY_RESERVED_IS_CRON_RUNNING."'";
+						self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+					}
 				}
 			}
 		}
@@ -3568,16 +3580,19 @@ class ExternalModules
 		return $returnMessage;
 	}
 
-	private static function isCronLocked($modulePrefix) {
-		return self::getSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING);
+	private static function getCronLockInfo($modulePrefix) {
+		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
 	}
 
 	private static function unlockCron($modulePrefix) {
-		self::removeSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING);
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
 	}
 
 	private static function lockCron($modulePrefix) {
-		self::setSystemSetting($modulePrefix, KEY_RESERVED_IS_CRON_RUNNING, getmypid());
+		self::setSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING, [
+			'process-id' => getmypid(),
+			'time' => time()
+		]);
 	}
 
 	// Throttles actions by using the redcap_log_event.description.
