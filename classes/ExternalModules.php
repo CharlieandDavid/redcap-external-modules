@@ -983,10 +983,10 @@ class ExternalModules
 				}
 			}
 
+			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
+
 			$projectId = db_real_escape_string($projectId);
 			$key = db_real_escape_string($key);
-
-			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
 			$oldType = gettype($oldValue);
 			if ($oldType == 'array' || $oldType == 'object') {
