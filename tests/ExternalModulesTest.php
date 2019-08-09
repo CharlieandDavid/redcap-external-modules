@@ -1076,4 +1076,17 @@ class ExternalModulesTest extends BaseTest
 		$assertTimedCron(false, self::TABLED_CRON_EXAMPLE);
 		$assertTimedCron(true, self::TIMED_CRON_EXAMPLE);
 	}
+
+	function testGetSQLInClause(){
+		$assert = function($expected, $columnName, $array){
+			$this->assertSame("($expected)", ExternalModules::getSQLInClause($columnName, $array));
+		};
+
+		$assert("column_name IN ('1')", 'column_name', 1);
+		$assert("column_name IN ('1')", 'column_name', '1');
+		$assert("column_name IN ('1', '2')", 'column_name', [1, 2]);
+		$assert("column_name IN ('1') OR column_name IS NULL", 'column_name', [1, 'NULL']);
+		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
+		$assert("false", 'column_name', []);
+	}
 }

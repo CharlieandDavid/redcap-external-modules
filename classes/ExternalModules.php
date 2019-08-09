@@ -1378,7 +1378,7 @@ class ExternalModules
 		}
 
 		if(empty($array)){
-			throw new Exception('You must provide an array of values.');
+			return '(false)';
 		}
 
 		$columnName = db_real_escape_string($columnName);
@@ -1387,16 +1387,16 @@ class ExternalModules
 		$nullSql = "";
 
 		foreach($array as $item){
-			if(!empty($valueListSql)){
-				$valueListSql .= ', ';
-			}
-
 			$item = db_real_escape_string($item);
 
 			if($item == 'NULL'){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
+				if(!empty($valueListSql)){
+					$valueListSql .= ', ';
+				}
+
 				$valueListSql .= "'$item'";
 			}
 		}
