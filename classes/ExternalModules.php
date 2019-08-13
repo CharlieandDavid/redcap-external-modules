@@ -39,6 +39,7 @@ class ExternalModules
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
+	const KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME = 'reserved-last-long-running-cron-notification-time';
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -3558,11 +3559,7 @@ class ExternalModules
 					}
 					self::unlockCron($moduleDirectoryPrefix);
 				} else {
-					$oneHourAgo = time() - self::HOUR_IN_SECONDS;
-					if($lockInfo['time'] <= $oneHourAgo){
-						$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".self::KEY_RESERVED_IS_CRON_RUNNING."'";
-						self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
-					}
+					self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
 				}
 			}
 		}
@@ -3580,6 +3577,30 @@ class ExternalModules
 		return $returnMessage;
 	}
 
+	private static function checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo) {
+		/* There are currently two scenarios under which this method will get called:
+		 *
+		 * 1. A long running cron module method delays the start time of another cron module method in the same cron process,
+		 * and that method ends up running concurrently with itself in a later cron process.  This scenario can safely be ignored.
+		 *
+		 * 2. A cron module method has run longer than the $notificationThreshold below.  No matter how often a job is scheduled to run,
+		 * notifications for long running jobs will not be sent more often than the following threshold.  It's currently set
+		 * to a little less than 24 hours to ensure that a notification is sent at least once a day for long running daily jobs
+		 * (even if they were started a little late due to a previous job).
+		 */
+		$notificationThreshold = time() - 23*self::HOUR_IN_SECONDS;
+		$jobRunningLong = $lockInfo['time'] <= $notificationThreshold;
+		if($jobRunningLong){
+			$lastNotificationTime = self::getSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
+			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
+			if($notificationNeeded) {
+				$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run more than $x past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely manually killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '" . self::KEY_RESERVED_IS_CRON_RUNNING . "'";
+				self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+				self::setSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, time());
+			}
+		}
+	}
+
 	private static function getCronLockInfo($modulePrefix) {
 		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
 	}
@@ -3593,6 +3614,8 @@ class ExternalModules
 			'process-id' => getmypid(),
 			'time' => time()
 		]);
+
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
 	}
 
 	// Throttles actions by using the redcap_log_event.description.

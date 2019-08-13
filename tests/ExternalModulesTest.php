@@ -183,8 +183,11 @@ class ExternalModulesTest extends BaseTest
 
 			$assertConcurrentCallSkipped(null);
 
+			// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
+			$aLittleLessThanADay = ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+
 			$lockInfo = self::callPrivateMethod('getCronLockInfo', TEST_MODULE_PREFIX);
-			$lockInfo['time'] = time() - ExternalModules::HOUR_IN_SECONDS;
+			$lockInfo['time'] = time() - $aLittleLessThanADay;
 			ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING, $lockInfo);
 			$assertConcurrentCallSkipped(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
 		};
@@ -229,6 +232,25 @@ class ExternalModulesTest extends BaseTest
 			$secondCronRan = true;
 		});
 		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
+	}
+
+	function testCheckForALongRunningCronJob()
+	{
+		$assertLongRunningCronEmailSent = function($expected, $lockTime){
+			ExternalModulesTest::$lastSendAdminEmailArgs = null;
+			self::callPrivateMethod('checkForALongRunningCronJob', TEST_MODULE_PREFIX, null, ['time' => $lockTime]);
+			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+		};
+
+		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
+		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+
+		$assertLongRunningCronEmailSent(false, time() - ExternalModules::HOUR_IN_SECONDS*22);
+		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
+		$assertLongRunningCronEmailSent(false, $aLittleLessThanADayAgo); // The email should not send again (yet).
+
+		ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, $aLittleLessThanADayAgo);
+		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
 	}
 
 	function testAddReservedSettings()
