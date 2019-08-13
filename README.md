@@ -10,3 +10,8 @@ You can install modules using the "Repo" under "External Modules" in the REDCap 
 
 ## Making Changes To The Framework 
 Pull requests are always welcome.  To override the version of this framework bundled with REDCap for development, clone this repo into a directory named **external_modules** under your REDCap web root (e.g., /redcap/external_modules/).
+
+## Branch Descriptions
+- **testing** - This is the framework version currently being tested on the Vanderbilt's REDCap Test server.  Changes (including pull requests) are committed/merged here first.
+- **production** - This is the framework version deployed to Vanderbilt's REDCap Production servers.  Changes are merged here once they've been tested and determined stable and supportable.  This typically happens once changes have been in the **testing** branch for a week without any issues.  Vanderbilt DataCore team members can see more information about this process in our private [Weekly Merge Procedure](https://app.assembla.com/spaces/victr-dots/wiki/Weekly_Merge_Procedure) document.
+- **release** - This is the framework version bundled with REDCap for release to the consortium.  Changes are typically merged here once they've been on Vanderbilt's REDCap Production servers for at least a week.
