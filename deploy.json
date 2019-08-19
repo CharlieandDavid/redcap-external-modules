@@ -16,14 +16,23 @@
     },
     "SCRIPTS": [
         {
-            "type": "test",
+            "type": "pre_deploy",
             "environments": ["local"],
             "dir": "{{SRC}}",
             "cmds": [
-              "./predeploy.sh",
-              "./run-tests.sh"
+                "if [ -n \"$(git status --porcelain)\" ]; then echo 'Uncommitted changes found!'; exit 1; fi",
+                "git checkout production",
+                "./run-tests.sh"
             ],
             "confirm": true
+        },
+        {
+            "type": "post_deploy",
+            "environments": ["local"],
+            "dir": "{{SRC}}",
+            "cmds": [
+                "git checkout testing"
+            ]
         }
     ]
 }
