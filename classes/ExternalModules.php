@@ -3894,6 +3894,11 @@ class ExternalModules
 
 				$oldId = $file['edocId'];
 				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
+				if(empty($newId)){
+					// The edocId was either invalid or the file has been deleted.  Just skip this one.
+					continue;
+				}
+
 				$file['edocId'] = $newId;
 
 				$handleValue = function($value) use ($pid, $prefix, $oldPid, $oldId, $newId, $name, &$handleValue){
@@ -3958,8 +3963,20 @@ class ExternalModules
 
 	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
 	{
+		self::requireNonEmptyValues(func_get_args());
+
 		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+		$url = ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+
+		return $url;
+	}
+
+	private function requireNonEmptyValues($a){
+		foreach($a as $key=>$value){
+			if(empty($value)){
+				throw new Exception("The array value for key '$key' was unexpectedly empty!");
+			}
+		}
 	}
 
 	public function haveUnsafeEDocReferencesBeenChecked()

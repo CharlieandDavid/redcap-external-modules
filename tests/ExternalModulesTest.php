@@ -1008,14 +1008,20 @@ class ExternalModulesTest extends BaseTest
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' limit 1"));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1"));
 		if(empty($row)){
-			throw new Exception("Please upload at least one image to any 'rich-text' module setting (like the inline popups module) to allow this unit test to run.");
+			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
 
-		$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
-		$oldFiles = ExternalModules::getProjectSetting($prefix, $row['project_id'], ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
-
+		$oldProjectId = $row['project_id'];
+		$oldEdocId = $row['doc_id'];
+		$edocName = $row['doc_name'];
+		$oldFiles = [
+			[
+				'edocId' => $oldEdocId,
+				'name' => $edocName
+			]
+		];
 
 		$key1 = 'test-key-1';
 		$key2 = 'test-key-2';
@@ -1044,11 +1050,11 @@ class ExternalModulesTest extends BaseTest
 			]
 		);
 
-		$getRichTextExampleContent = function($pid, $edocId) use ($oldFiles){
-			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $oldFiles[0]['name'])) . '" alt="" width="150" height="190" /></p>';
+		$getRichTextExampleContent = function($pid, $edocId) use ($edocName){
+			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $edocName)) . '" alt="" width="150" height="190" /></p>';
 		};
 
-		$oldRichTextContent = $getRichTextExampleContent($row['project_id'], $oldFiles[0]['edocId']);
+		$oldRichTextContent = $getRichTextExampleContent($oldProjectId, $oldEdocId);
 
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $oldRichTextContent);
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $oldRichTextContent);
