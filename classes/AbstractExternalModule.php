@@ -1644,6 +1644,11 @@ class AbstractExternalModule
 
 	# overwrites previous version
 	public function setModifiedCrons($cronSchedule) {
+		foreach ($cronSchedule as $cronAttr) {
+			if (!self::isValidCron($cronAttr)) {
+				throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
+			}
+		}
 		$this->setSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
 	}
 
