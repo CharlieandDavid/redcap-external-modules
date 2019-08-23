@@ -24,6 +24,7 @@ class AbstractExternalModule
 	private static $RESERVED_LOG_PARAMETER_NAMES_FLIPPED;
 	public static $OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE = ['timestamp', 'username', 'ip', 'project_id', 'record', 'message'];
 	private static $LOG_PARAMETERS_ON_MAIN_TABLE;
+	public static $RESERVED_CRON_MODIFICATION_NAME = "___RESERVED___MODIFIED_CRON___";
 
 	public $PREFIX;
 	public $VERSION;
@@ -1629,5 +1630,32 @@ class AbstractExternalModule
 	{
 		self::$RESERVED_LOG_PARAMETER_NAMES_FLIPPED = array_flip(self::$RESERVED_LOG_PARAMETER_NAMES);
 		self::$LOG_PARAMETERS_ON_MAIN_TABLE = array_flip(array_merge(self::$RESERVED_LOG_PARAMETER_NAMES, self::$OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE));
+	}
+
+	public function removeModifiedCrons() {
+		if ($this->getModifiedCrons()) {
+			$this->removeSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+		}
+	}
+
+	public function getModifiedCrons() {
+		return $this->getSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+	}
+
+	# overwrites previous version
+	public function setModifiedCrons($cronSchedule) {
+		$this->setSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
+	}
+
+	public function getCronSchedules() {
+		$modifications = $this->getModifiedCrons();
+		if ($modifications) {
+			return $modifications;
+		}
+		$config = $this->getConfig();
+		if (isset($config['crons'])) {
+			return $config['crons'];
+		}
+		return array();
 	}
 }

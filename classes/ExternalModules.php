@@ -3362,7 +3362,7 @@ class ExternalModules
 	}
 
 	# for crons specified to run at a specific time
-	private static function isValidTimedCron($cronAttr) {
+	public static function isValidTimedCron($cronAttr) {
 		$hour = $cronAttr['cron_hour'];
 		$minute = $cronAttr['cron_minute'];
 		$weekday = $cronAttr['cron_weekday'];
@@ -3444,7 +3444,7 @@ class ExternalModules
 	}
 
 	# only for timed crons
-	private static function isTimeToRun($cronAttr) {
+	public static function isTimeToRun($cronAttr, $cronStartTime=NULL) {
 		$hour = $cronAttr['cron_hour'];
 		$minute = $cronAttr['cron_minute'];
 		$weekday = $cronAttr['cron_weekday'];
@@ -3461,7 +3461,9 @@ class ExternalModules
 
 		// We check the cron start time instead of the current time
 		// in case another module's cron job ran us into the next minute.
-		$cronStartTime = self::getLastTimeRun();
+		if (!$cronStartTime) {
+			$cronStartTime = self::getLastTimeRun();
+		}
 		$currentHour = (int) date('G', $cronStartTime);
 		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
 		$currentWeekday = (int) date('w', $cronStartTime);
@@ -3501,14 +3503,14 @@ class ExternalModules
 				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 
 				# do not run twice in the same minute
-				$config = $moduleInstance->getConfig();
+				$cronAttrs = $moduleInstance->getCronSchedules();
 				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
-				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
-					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+				if (!empty($moduleInstance) && !empty($moduleId) && !empty($cronAttrs)) {
+					foreach ($cronAttrs as $cronAttr) {
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 							# if isTimeToRun, run method
-							$cronMethod = $config['crons'][$cronKey]['method'];
+							$cronMethod = $cronAttr['method'];
 							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
 							$mssg = self::callCronMethod($moduleId, $cronName);
 							if ($mssg) {
@@ -3902,6 +3904,32 @@ class ExternalModules
 			$row['project_id'],
 			\Files::uploadFile($file, $pid)
 		];
+	}
+
+	# timespan is number of seconds
+	public static function getCronConflictTimestamps($timespan) {
+		$currTime = time();
+		$timesRun = array();
+		$conflicts = array();
+		$enabledModules = self::getEnabledModules();
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
+			$cronAttrs = $moduleInstance->getCronSchedules();
+			foreach ($cronAttrs as $cronAttr) {
+				# check every minute
+				for ($i = 0; $i < $timespan; $i += 60) {
+					$timeToCheck = $currTime + $i;
+					if (self::isTimeToRun($cronAttr, $timeToCheck) {
+						if (in_array($timeToCheck, $timesRun)) {
+							array_push($conflicts, $timeToCheck);
+						} else {
+							array_push($timesRun, $timeToCheck);
+						}
+					}
+				}
+			}
+		}
+		return $conflicts;
 	}
 
 	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
