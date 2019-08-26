@@ -152,22 +152,17 @@ class ExternalModulesTest extends BaseTest
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
 
-	function testCallCronMethod_concurrency()
+	function testCallTimedCronMethod_concurrency()
 	{
 		$methodName = 'redcap_test_call_function';
 
-		$this->setConfig(['crons' => [[
-			'cron_name' => $methodName,
-			'cron_description' => 'Test Cron',
-			'method' => $methodName,
-		]]]);
+		$this->setConfig(['crons' => json_decode(self::TIMED_CRON_EXAMPLE)]);
 
 		$callCronMethod = function($action) use ($methodName){
 			$m = $this->getInstance();
 			$m->function = $action;
 
-			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
-			ExternalModules::callCronMethod($moduleId, $methodName);
+			self::callPrivateMethod('callTimedCronMethod', TEST_MODULE_PREFIX, $methodName);
 		};
 
 		$parentAction = function() use ($callCronMethod){
