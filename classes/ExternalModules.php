@@ -641,6 +641,7 @@ class ExternalModules
 		try {
 			self::enable($moduleDirectoryPrefix, $version);
 		} catch (\Exception $e) {
+			self::removeSystemSetting($moduleDirectoryPrefix, self::KEY_VERSION); // Disable the module in case the exception occurred after it was enabled in the DB.
 			self::setActiveModulePrefix(null); // Unset the active module prefix, so an error email is not sent out.
 			return $e;
 		}
