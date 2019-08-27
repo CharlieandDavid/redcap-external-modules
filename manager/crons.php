@@ -9,7 +9,7 @@ $enabledModules = ExternalModules::getEnabledModules();
 $labelsAndTimedAttributes = array(
 					"Hour" => 'cron_hour',
 					"Minute" => 'cron_minute',
-					"<span title='Sunday is 0' style='text-decoration: underline #888 solid;'>Weekday</span>" => 'cron_weekday',
+					"<span title='Sunday is 0, Monday is 1, etc.' style='text-decoration: underline #888 solid;'>Weekday</span>" => 'cron_weekday',
 					"Day-of-Month" => 'cron_monthday'
 					);
 
@@ -137,9 +137,13 @@ $numConflicts = count($conflicts);
 <?php
 
 $numTimedCrons = 0;
+$spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 	$moduleInstance = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
 	$cronAttrs = $moduleInstance->getCronSchedules();
+	if (!empty($cronAttrs)) {
+		echo "<h3>Module ".$moduleInstance->getModuleName()." ".$version."</h3>\n";
+	}
 	foreach ($cronAttrs as $cronAttr) {
 		$cronId = $moduleDirectoryPrefix.$sep.$version.$sep.$cronAttr['cron_name'];
 		if ($cronAttr['method'] && ExternalModules::isValidTimedCron($cronAttr)) {
@@ -151,9 +155,8 @@ foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 				$descript = $cronAttr['cron_description']." (".$cronAttr['cron_name'].")";
 			}
 
-			echo "<div style='background-color: #eee; padding: 8px; width: 600px; border: 1px solid #888;'>\n";
-			echo "<h3>Module ".$moduleInstance->getModuleName()." ".$version."</h3>\n";
-			echo "<h4 style='font-size: 1.4em;'>$descript Attributes</h4>\n";
+			echo "<div style='margin-left: 50px; background-color: #eee; padding: 8px; width: 600px; border: 1px solid #888;'>\n";
+			echo "<h4>$descript Attributes</h4>\n";
 			$lines = array();
 			echo "<p>\n";
 			foreach ($attrs as $label => $attr) {
@@ -163,7 +166,7 @@ foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 				}
 				array_push($lines, $label." <input type='text' style='width: 50px;' name='".$cronId.$sep.$attr."' value='$value'>");
 			}
-			echo implode("<br>\n", $lines);
+			echo implode($spacing, $lines);
 			echo "</p>\n";
 			echo "</div>\n";
 		}
