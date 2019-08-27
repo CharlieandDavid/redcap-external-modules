@@ -3534,15 +3534,14 @@ class ExternalModules
 
 				# do not run twice in the same minute
 				$config = $moduleInstance->getConfig();
-				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
-				if (!empty($moduleInstance) && !empty($moduleId) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
+				if (!empty($moduleInstance) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
 					foreach ($config['crons'] as $cronKey=>$cronAttr) {
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 							# if isTimeToRun, run method
 							$cronMethod = $config['crons'][$cronKey]['method'];
 							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
-							$mssg = self::callCronMethod($moduleId, $cronName);
+							$mssg = self::callTimedCronMethod($moduleDirectoryPrefix, $cronName);
 							if ($mssg) {
 								array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
 							}
@@ -3561,6 +3560,25 @@ class ExternalModules
 		return $returnMessages;
 	}
 
+	private static function callTimedCronMethod($moduleDirectoryPrefix, $cronName)
+	{
+		$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
+		if($lockInfo){
+			self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
+			return;
+		}
+
+		try{
+			self::lockCron($moduleDirectoryPrefix);
+
+			$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+			return $returnMessage = self::callCronMethod($moduleId, $cronName);
+		}
+		finally{
+			self::unlockCron($moduleDirectoryPrefix);
+		}
+	}
+
 	// This method is called both internally and by the REDCap Core code.
 	public static function callCronMethod($moduleId, $cronName)
 	{
@@ -3573,25 +3591,18 @@ class ExternalModules
 			// Call cron for this External Module
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 			if (!empty($moduleInstance)) {
-				$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
-				if ($lockInfo === null) {
-					self::lockCron($moduleDirectoryPrefix);
-					$config = $moduleInstance->getConfig();
-					if (isset($config['crons']) && !empty($config['crons'])) {
-						// Loop through all crons to find the one we're looking for
-						foreach ($config['crons'] as $cronKey=>$cronAttr) {
-							if ($cronAttr['cron_name'] != $cronName) continue;
-	
-							// Find and validate the cron method in the module class
-							$cronMethod = $config['crons'][$cronKey]['method'];
-	
-							// Execute the cron method in the module class
-							$returnMessage = $moduleInstance->$cronMethod($cronAttr);
-						}
+				$config = $moduleInstance->getConfig();
+				if (isset($config['crons']) && !empty($config['crons'])) {
+					// Loop through all crons to find the one we're looking for
+					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+						if ($cronAttr['cron_name'] != $cronName) continue;
+
+						// Find and validate the cron method in the module class
+						$cronMethod = $config['crons'][$cronKey]['method'];
+
+						// Execute the cron method in the module class
+						$returnMessage = $moduleInstance->$cronMethod($cronAttr);
 					}
-					self::unlockCron($moduleDirectoryPrefix);
-				} else {
-					self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
 				}
 			}
 		}
@@ -3600,7 +3611,6 @@ class ExternalModules
 			$emailMessage = "$returnMessage with the following Exception: $e";
 
 			self::sendAdminEmail(self::CRON_EXCEPTION_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
-			self::unlockCron($moduleDirectoryPrefix);
 		}
 
 		self::setActiveModulePrefix(null);
