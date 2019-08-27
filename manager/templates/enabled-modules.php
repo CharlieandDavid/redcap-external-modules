@@ -92,6 +92,7 @@ If you choose not to enable the module in all REDCap projects by default, then y
 on the left-hand menu of a given project to enable it there for that project. Some project-level configuration settings, depending on the module,
 may also need to set on the project page.</p>
 
+
 <?php 
 // Display alert message in Control Center if any modules have updates in the REDCap Repo
 ExternalModules::renderREDCapRepoUpdatesAlert();
@@ -158,7 +159,8 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-primaryrc btn-sm">
 		<span class="fas fa-download" aria-hidden="true"></span>
 		View modules available in the REDCap Repo
-	</button>
+	</button> &nbsp;
+	<button id='external-modules-configure-crons'  class="btn btn-primary btn-primaryrc btn-sm">Manually Configure Cron Start Times</button>
 	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="user" value="<?=USERID?>">
 		<input type="hidden" name="name" value="<?=htmlspecialchars($GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], ENT_QUOTES)?>">
