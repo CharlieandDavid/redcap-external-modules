@@ -3400,7 +3400,7 @@ class ExternalModules
 	}
 
 	# for all generic crons; all must have the following attributes
-	private static function isValidCron($cronAttr) {
+	public static function isValidCron($cronAttr) {
 		$name = $cronAttr['cron_name'];
 		$descr = $cronAttr['cron_description'];
 		$method = $cronAttr['method'];
@@ -3909,8 +3909,12 @@ class ExternalModules
 	# timespan is number of seconds
 	public static function getCronConflictTimestamps($timespan) {
 		$currTime = time();
-		$timesRun = array();
 		$conflicts = array();
+
+		// keep these for debugging purposes
+		$timesRun = array();
+		$skipped = array();
+
 		$enabledModules = self::getEnabledModules();
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
@@ -3919,12 +3923,14 @@ class ExternalModules
 				# check every minute
 				for ($i = 0; $i < $timespan; $i += 60) {
 					$timeToCheck = $currTime + $i;
-					if (self::isTimeToRun($cronAttr, $timeToCheck) {
+					if (self::isTimeToRun($cronAttr, $timeToCheck)) {
 						if (in_array($timeToCheck, $timesRun)) {
 							array_push($conflicts, $timeToCheck);
 						} else {
 							array_push($timesRun, $timeToCheck);
 						}
+					} else {
+						array_push($skipped, $timeToCheck);
 					}
 				}
 			}
