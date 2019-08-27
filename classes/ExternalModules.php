@@ -3565,7 +3565,7 @@ class ExternalModules
 		$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
 		if($lockInfo){
 			self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
-			return;
+			return "Skipping cron '$cronName' for module '$moduleDirectoryPrefix' because an existing job is already running for this module.";
 		}
 
 		try{
