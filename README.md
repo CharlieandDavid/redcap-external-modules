@@ -4,6 +4,8 @@
 
 This repository represents the development work for the REDCap External Modules framework, which is a class-based framework for plugins and hooks in REDCap. External Modules is an independent and separate piece of software from REDCap, and is included natively in REDCap 8.0.0 and later.
 
+**[Click here](docs/framework/intro.md) for method documentation.**
+
 ## Usage
 
 You can install modules using the "Repo" under "External Modules" in the REDCap Control Center.  All modules are open source, and the Repo provides links to the GitHub page for each.  If you want to create your own module, see the [Official External Modules Documentation](docs/official-documentation.md).
