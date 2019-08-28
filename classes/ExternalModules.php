@@ -3530,11 +3530,10 @@ class ExternalModules
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 			try{
 				$cronName = "";
-				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 
 				# do not run twice in the same minute
-				$config = $moduleInstance->getConfig();
-				if (!empty($moduleInstance) && !empty($config) && isset($config['crons']) && !empty($config['crons'])) {
+				$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
+				if (!empty($config) && isset($config['crons']) && !empty($config['crons'])) {
 					foreach ($config['crons'] as $cronKey=>$cronAttr) {
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
