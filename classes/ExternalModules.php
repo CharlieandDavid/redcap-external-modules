@@ -3943,4 +3943,57 @@ class ExternalModules
 		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
 	}
+
+	public static function removeModifiedCrons($modulePrefix) {
+		$module = self::getModuleInstance($modulePrefix);
+		if ($module) {
+			if ($module->getModifiedCrons($modulePrefix)) {
+				$module->removeSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+			}
+		} else {
+			throw new \Exception("Could not instantiate module '$modulePrefix'!");
+		}
+	}
+
+	public static function getModifiedCrons($modulePrefix) {
+		$module = self::getModuleInstance($modulePrefix);
+		if ($module) {
+			return $module->getSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+		} else {
+			throw new \Exception("Could not instantiate module '$modulePrefix'!");
+		}
+		return array();
+	}
+
+	# overwrites previously saved version
+	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
+		$module = self::getModuleInstance($modulePrefix);
+		if ($module) {
+			foreach ($cronSchedule as $cronAttr) {
+				if (!ExternalModules::isValidCron($cronAttr)) {
+					throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
+				}
+			}
+			$module->setSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
+		} else {
+			throw new \Exception("Could not instantiate module '$modulePrefix'!");
+		}
+	}
+
+	public static function getCronSchedules($modulePrefix) {
+		$module = self::getModuleInstance($modulePrefix);
+		if ($module) {
+			$modifications = $module->getModifiedCrons();
+			if ($modifications) {
+				return $modifications;
+			}
+			$config = $module->getConfig();
+			if (isset($config['crons'])) {
+				return $config['crons'];
+			}
+		} else {
+			throw new \Exception("Could not instantiate module '$modulePrefix'!");
+		}
+		return array();
+	}
 }

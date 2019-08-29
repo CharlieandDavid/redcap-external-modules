@@ -88,11 +88,6 @@ if (count($_POST) > 0) {
 	# now for those that are different, copy changes into modifications; else, remove modifications
 	foreach ($changes as $prefix => $versions) {
 		foreach ($versions as $version => $crons) {
-			if (!empty($crons)) {
-				$moduleInstance = ExternalModules::getModuleInstance($prefix);
-			} else {
-				throw new \Exception("Could not instantiate module '$prefix'!"); 
-			}
 			$shouldSet = FALSE;
 			$cronAry = array();
 			foreach ($crons as $name => $attrs) {
@@ -108,9 +103,9 @@ if (count($_POST) > 0) {
 				}
 			}
 			if ($shouldSet) {
-				$moduleInstance->setModifiedCrons($cronAry);
+				ExternalModules::setModifiedCrons($prefix, $cronAry);
 			} else {
-				$moduleInstance->removeModifiedCrons();
+				ExternalModules::removeModifiedCrons($prefix);
 			}
 		}
 	}
@@ -139,8 +134,7 @@ $numConflicts = count($conflicts);
 $numTimedCrons = 0;
 $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
-	$moduleInstance = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
-	$cronAttrs = $moduleInstance->getCronSchedules();
+	$cronAttrs = ExternalModules::getCronSchedules($moduleDirectoryPrefix);
 	if (!empty($cronAttrs)) {
 		echo "<h3>Module ".$moduleInstance->getModuleName()." ".$version."</h3>\n";
 	}
