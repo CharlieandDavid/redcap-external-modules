@@ -641,6 +641,7 @@ class ExternalModules
 		try {
 			self::enable($moduleDirectoryPrefix, $version);
 		} catch (\Exception $e) {
+			self::disable($moduleDirectoryPrefix, true); // Disable the module in case the exception occurred after it was enabled in the DB.
 			self::setActiveModulePrefix(null); // Unset the active module prefix, so an error email is not sent out.
 			return $e;
 		}
@@ -984,10 +985,10 @@ class ExternalModules
 				}
 			}
 
+			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
+
 			$projectId = db_real_escape_string($projectId);
 			$key = db_real_escape_string($key);
-
-			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
 			$oldType = gettype($oldValue);
 			if ($oldType == 'array' || $oldType == 'object') {
@@ -1379,7 +1380,7 @@ class ExternalModules
 		}
 
 		if(empty($array)){
-			throw new Exception('You must provide an array of values.');
+			return '(false)';
 		}
 
 		$columnName = db_real_escape_string($columnName);
@@ -1388,16 +1389,16 @@ class ExternalModules
 		$nullSql = "";
 
 		foreach($array as $item){
-			if(!empty($valueListSql)){
-				$valueListSql .= ', ';
-			}
-
 			$item = db_real_escape_string($item);
 
 			if($item == 'NULL'){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
+				if(!empty($valueListSql)){
+					$valueListSql .= ', ';
+				}
+
 				$valueListSql .= "'$item'";
 			}
 		}
@@ -2531,13 +2532,36 @@ class ExternalModules
 	{
 		$config = self::getConfig($prefix);
 
-		$settingsTypes = [$config['system-settings'], $config['project-settings']];
+		$settingGroups = [
+			$config['system-settings'],
+			$config['project-settings'],
 
-		foreach($settingsTypes as $type){
-			foreach($type as $details){
+			// The following was added so that the recreateAllEDocs() function would work on Email Alerts module settings.
+			// Adding module specific code in the framework is not a good idea, but the fixing the duplicate edocs issue
+			// for the Email Alerts module seemed like the right think to do since it's so popular.
+			$config['email-dashboard-settings']
+		];
+
+		$handleSettingGroup = function($group) use ($prefix, $key, &$handleSettingGroup){
+			foreach($group as $details){
 				if($details['key'] == $key){
 					return $details;
 				}
+				else if($details['type'] === 'sub_settings'){
+					$returnValue = $handleSettingGroup($details['sub_settings']);
+					if($returnValue){
+						return $returnValue;
+					}
+				}
+			}
+
+			return null;
+		};
+
+		foreach($settingGroups as $group){
+			$returnValue = $handleSettingGroup($group);
+			if($returnValue){
+				return $returnValue;
 			}
 		}
 
@@ -2673,6 +2697,14 @@ class ExternalModules
 	// Display alert message in Control Center if any modules have updates in the REDCap Repo
 	public static function renderREDCapRepoUpdatesAlert()
 	{
+		if(!ExternalModules::haveUnsafeEDocReferencesBeenChecked()) {
+			?>
+			<div class='yellow repo-updates'>
+				<b>WARNING:</b> Unsafe references exist to files uploaded for modules. See <a href="<?=self::$BASE_URL?>/manager/show-duplicated-edocs.php">this page</a> for more details.
+			</div>
+			<?php
+		}
+
 		global $lang, $external_modules_updates_available;
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
@@ -2746,7 +2778,7 @@ class ExternalModules
 		// Also obtain the folder name of the module
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 
-		if(empty($moduleFolderName)){
+		if(empty($moduleFolderName) || $moduleFolderName == "ERROR"){
 			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
 		}
 
@@ -3500,10 +3532,9 @@ class ExternalModules
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 			try{
 				$cronName = "";
-				$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 
 				# do not run twice in the same minute
-				$cronAttrs = $moduleInstance->getCronSchedules();
+				$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
 				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
 				if (!empty($moduleInstance) && !empty($moduleId) && !empty($cronAttrs)) {
 					foreach ($cronAttrs as $cronAttr) {
@@ -3512,7 +3543,7 @@ class ExternalModules
 							# if isTimeToRun, run method
 							$cronMethod = $cronAttr['method'];
 							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
-							$mssg = self::callCronMethod($moduleId, $cronName);
+							$mssg = self::callTimedCronMethod($moduleDirectoryPrefix, $cronName);
 							if ($mssg) {
 								array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
 							}
@@ -3531,6 +3562,25 @@ class ExternalModules
 		return $returnMessages;
 	}
 
+	private static function callTimedCronMethod($moduleDirectoryPrefix, $cronName)
+	{
+		$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
+		if($lockInfo){
+			self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
+			return "Skipping cron '$cronName' for module '$moduleDirectoryPrefix' because an existing job is already running for this module.";
+		}
+
+		try{
+			self::lockCron($moduleDirectoryPrefix);
+
+			$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+			return $returnMessage = self::callCronMethod($moduleId, $cronName);
+		}
+		finally{
+			self::unlockCron($moduleDirectoryPrefix);
+		}
+	}
+
 	// This method is called both internally and by the REDCap Core code.
 	public static function callCronMethod($moduleId, $cronName)
 	{
@@ -3543,25 +3593,18 @@ class ExternalModules
 			// Call cron for this External Module
 			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
 			if (!empty($moduleInstance)) {
-				$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
-				if ($lockInfo === null) {
-					self::lockCron($moduleDirectoryPrefix);
-					$config = $moduleInstance->getConfig();
-					if (isset($config['crons']) && !empty($config['crons'])) {
-						// Loop through all crons to find the one we're looking for
-						foreach ($config['crons'] as $cronKey=>$cronAttr) {
-							if ($cronAttr['cron_name'] != $cronName) continue;
-	
-							// Find and validate the cron method in the module class
-							$cronMethod = $config['crons'][$cronKey]['method'];
-	
-							// Execute the cron method in the module class
-							$returnMessage = $moduleInstance->$cronMethod($cronAttr);
-						}
+				$config = $moduleInstance->getConfig();
+				if (isset($config['crons']) && !empty($config['crons'])) {
+					// Loop through all crons to find the one we're looking for
+					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+						if ($cronAttr['cron_name'] != $cronName) continue;
+
+						// Find and validate the cron method in the module class
+						$cronMethod = $config['crons'][$cronKey]['method'];
+
+						// Execute the cron method in the module class
+						$returnMessage = $moduleInstance->$cronMethod($cronAttr);
 					}
-					self::unlockCron($moduleDirectoryPrefix);
-				} else {
-					self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
 				}
 			}
 		}
@@ -3570,7 +3613,6 @@ class ExternalModules
 			$emailMessage = "$returnMessage with the following Exception: $e";
 
 			self::sendAdminEmail(self::CRON_EXCEPTION_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
-			self::unlockCron($moduleDirectoryPrefix);
 		}
 
 		self::setActiveModulePrefix(null);
@@ -3802,7 +3844,8 @@ class ExternalModules
 
 	// We recreate edocs when copying settings between projects so that edocs removed from
 	// one project are not also removed from other projects.
-	// While this method is generally undocumented/unsupported in modules, it is used by Carl's settings import/export module.
+	// This method is currently undocumented/unsupported in modules.
+	// It is public because it is used by Carl's settings import/export module.
 	static function recreateAllEDocs($pid)
 	{
 		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
@@ -3814,10 +3857,10 @@ class ExternalModules
 		// Prevent SQL Injection
 		$pid = (int) $pid;
 
-		$handleValue = function($value, $handleValue) use ($pid){
+		$handleValue = function($value) use ($pid, &$handleValue){
 			if(gettype($value) === 'array'){
 				for($i=0; $i<count($value); $i++){
-					$value[$i] = $handleValue($value[$i], $handleValue);
+					$value[$i] = $handleValue($value[$i]);
 				}
 			}
 			else{
@@ -3834,13 +3877,16 @@ class ExternalModules
 			$key = $row['key'];
 
 			$details = self::getSettingDetails($prefix, $key);
+
 			$type = $details['type'];
 			if($type === 'file'){
 				$value = self::getProjectSetting($prefix, $pid, $key);
-				$value = $handleValue($value, $handleValue);
+				$value = $handleValue($value);
 				self::setProjectSetting($prefix, $pid, $key, $value);
 			}
 			else if($type === 'rich-text'){
+				// Replace the value with the version returned by getProjectSetting() to handle arrays for subsettings/repeatables.
+				$row['value'] = self::getProjectSetting($prefix, $pid, $key);;
 				$richTextSettingsByPrefix[$prefix][] = $row;
 			}
 		}
@@ -3861,13 +3907,31 @@ class ExternalModules
 
 				$oldId = $file['edocId'];
 				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
+				if(empty($newId)){
+					// The edocId was either invalid or the file has been deleted.  Just skip this one.
+					continue;
+				}
+
 				$file['edocId'] = $newId;
 
-				foreach($settings as &$setting){
-					$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
-					$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+				$handleValue = function($value) use ($pid, $prefix, $oldPid, $oldId, $newId, $name, &$handleValue){
+					if(gettype($value) === 'array'){
+						for($i=0; $i<count($value); $i++){
+							$value[$i] = $handleValue($value[$i]);
+						}
+					}
+					else{ // it's a string
+						$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
+						$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+						$value = str_replace($search, $replace, $value);
+					}
 
-					$setting['value'] = str_replace($search, $replace, $setting['value']);
+					return $value;
+				};
+
+				foreach($settings as $i=>$setting){
+					$setting['value'] = $handleValue($setting['value']);
+					$settings[$i] = $setting;
 				}
 			}
 
@@ -3883,6 +3947,11 @@ class ExternalModules
 
 	private static function recreateEdoc($pid, $edocId)
 	{
+		if(empty($edocId)){
+			// The stored id is already empty.
+			return '';
+		}
+
 		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
 		$result = self::query($sql);
 		$row = db_fetch_assoc($result);
@@ -3890,19 +3959,18 @@ class ExternalModules
 			return '';
 		}
 
-		$oldFilePath = EDOC_PATH . '/' . $row['stored_name'];
-		$newFilepath = tempnam(sys_get_temp_dir(), 'module-edoc-copy-');
-		copy($oldFilePath, $newFilepath);
-
-		$file = [
-			'name' => $row['doc_name'],
-			'size' => $row['doc_size'],
-			'tmp_name' => $newFilepath
-		];
+		$oldPid = $row['project_id'];
+		if($oldPid === $pid){
+			// This edoc is already associated with this project.  No need to recreate it.
+			$newEdocId = $edocId;
+		}
+		else{
+			$newEdocId = copyFile($edocId, $pid);
+		}
 
 		return [
-			$row['project_id'],
-			\Files::uploadFile($file, $pid)
+			$oldPid,
+			(string)$newEdocId // We must cast to a string to avoid an issue on the js side when it comes to handling file fields if stored as integers.
 		];
 	}
 
@@ -3917,8 +3985,7 @@ class ExternalModules
 
 		$enabledModules = self::getEnabledModules();
 		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
-			$moduleInstance = self::getModuleInstance($moduleDirectoryPrefix);
-			$cronAttrs = $moduleInstance->getCronSchedules();
+			$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
 			foreach ($cronAttrs as $cronAttr) {
 				# check every minute
 				for ($i = 0; $i < $timespan; $i += 60) {
@@ -3940,8 +4007,149 @@ class ExternalModules
 
 	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
 	{
+		self::requireNonEmptyValues(func_get_args());
+
 		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-		return ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+		$url = ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+
+		return $url;
+	}
+
+	private function requireNonEmptyValues($a){
+		foreach($a as $key=>$value){
+			if(empty($value)){
+				throw new Exception("The array value for key '$key' was unexpectedly empty!");
+			}
+		}
+	}
+
+	public function haveUnsafeEDocReferencesBeenChecked()
+	{
+		$fieldName = 'external_modules_unsafe_edoc_references_checked';
+		if(isset($GLOBALS[$fieldName])){
+			return true;
+		}
+
+		if(empty(ExternalModules::getUnsafeEDocReferences())){
+			self::query("insert into redcap_config values ('$fieldName', 1)");
+			return true;
+		}
+
+		return false;
+	}
+
+	public function getUnsafeEDocReferences()
+	{
+		$keysByPrefix = [];
+		$handleSetting = function($prefix, $setting) use (&$handleSetting, &$keysByPrefix){
+			$type = $setting['type'];
+			if($type === 'file'){
+				$keysByPrefix[$prefix][] = $setting['key'];
+			}
+			else if ($type === 'sub_settings'){
+				foreach($setting['sub_settings'] as $subSetting){
+					$handleSetting($prefix, $subSetting);
+				}
+			}
+		};
+
+		foreach(ExternalModules::getSystemwideEnabledVersions() as $prefix=>$version){
+			$config = ExternalModules::getConfig($prefix, $version);
+			foreach(['system-settings', 'project-settings', 'email-dashboard-settings'] as $settingType){
+				$settings = @$config[$settingType];
+				if(!$settings){
+					continue;
+				}
+
+				foreach($settings as $setting){
+					$handleSetting($prefix, $setting);
+				}
+			}
+		}
+
+		$edocs = [];
+		$addEdoc = function($prefix, $pid, $key, $edocId) use (&$edocs){
+			if(empty($edocId)){
+				return;
+			}
+
+			$edocs[$edocId][] = [
+				'prefix' => $prefix,
+				'pid' => $pid,
+				'key' => $key
+			];
+		};
+
+		$parseRichTextValue = function($prefix, $pid, $key, $files) use ($addEdoc){
+			foreach($files as $file){
+				$addEdoc($prefix, $pid, $key, $file['edocId']);
+			}
+		};
+
+		$parseFileSettingValue = function($prefix, $pid, $key, $value) use (&$parseFileSettingValue, &$addEdoc){
+			if(is_array($value)){
+				foreach($value as $subValue){
+					$parseFileSettingValue($prefix, $pid, $key, $subValue);
+				}
+			}
+			else{
+				$addEdoc($prefix, $pid, $key, $value);
+			}
+		};
+
+		$clauses = [
+			"`key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "'"
+		];
+
+		foreach($keysByPrefix as $prefix=>$keys){
+			$moduleId = ExternalModules::getIdForPrefix($prefix);
+			$clauses[] = "(external_module_id = $moduleId and " . ExternalModules::getSQLInClause('`key`', $keys) .  ")";
+		}
+
+		$sql = "
+			select * from redcap_external_module_settings
+			where
+			" . implode("\n\t or ", $clauses) . "
+		";
+
+		$result = ExternalModules::query($sql);
+		while($row = db_fetch_assoc($result)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$pid = $row['project_id'];
+			$key = $row['key'];
+			$value = json_decode($row['value'], true);
+
+			if($key === ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST){
+				$parseRichTextValue($prefix, $pid, $key, $value);
+			}
+			else{
+				$parseFileSettingValue($prefix, $pid, $key, $value);
+			}
+		}
+
+		$result = ExternalModules::query("select * from redcap_edocs_metadata where " . ExternalModules::getSQLInClause('doc_id', array_keys($edocs)));
+		$sourceProjectsByEdocId = [];
+		while($row = db_fetch_assoc($result)){
+			$sourceProjectsByEdocId[$row['doc_id']] = $row['project_id'];
+		}
+
+		$unsafeReferences = [];
+		ksort($edocs);
+		foreach($edocs as $edocId=>$references){
+			foreach($references as $reference){
+				$sourcePid = $sourceProjectsByEdocId[$edocId];
+				$referencePid = $reference['pid'];
+				if($referencePid === $sourcePid){
+					continue;
+				}
+
+				$reference['edocId'] = $edocId;
+				$reference['sourcePid'] = $sourcePid;
+				$unsafeReferences[$referencePid][] = $reference;
+			}
+		}
+
+		return $unsafeReferences;
 	}
 
 	public static function removeModifiedCrons($modulePrefix) {

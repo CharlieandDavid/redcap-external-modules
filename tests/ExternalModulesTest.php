@@ -152,22 +152,17 @@ class ExternalModulesTest extends BaseTest
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
 
-	function testCallCronMethod_concurrency()
+	function testCallTimedCronMethod_concurrency()
 	{
 		$methodName = 'redcap_test_call_function';
 
-		$this->setConfig(['crons' => [[
-			'cron_name' => $methodName,
-			'cron_description' => 'Test Cron',
-			'method' => $methodName,
-		]]]);
+		$this->setConfig(['crons' => json_decode(self::TIMED_CRON_EXAMPLE)]);
 
 		$callCronMethod = function($action) use ($methodName){
 			$m = $this->getInstance();
 			$m->function = $action;
 
-			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
-			ExternalModules::callCronMethod($moduleId, $methodName);
+			self::callPrivateMethod('callTimedCronMethod', TEST_MODULE_PREFIX, $methodName);
 		};
 
 		$parentAction = function() use ($callCronMethod){
@@ -901,9 +896,18 @@ class ExternalModulesTest extends BaseTest
 		$edocFilenames = [];
 
 		$minEdocs = 5;
-		$result = ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null and doc_size < 1000000 limit $minEdocs");
+		$result = ExternalModules::query("
+			select * from redcap_edocs_metadata
+			where
+				date_deleted_server is null
+				and doc_size < 1000000
+				and project_id not in (".TEST_SETTING_PID.", ".TEST_SETTING_PID_2.")
+			limit $minEdocs
+		");
+
 		while($row = db_fetch_assoc($result)){
-			$edocIds[] = $row['doc_id'];
+			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
+			$edocIds[] = (string)$row['doc_id'];
 			$edocFilenames[] = $row['stored_name'];
 		}
 
@@ -923,8 +927,14 @@ class ExternalModulesTest extends BaseTest
 						'type' => 'file'
 					],
 					[
-						'key' => $key2,
-						'type' => 'file'
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key2,
+								'type' => 'file'
+							]
+						]
 					],
 					[
 						'key' => $key3,
@@ -975,8 +985,12 @@ class ExternalModulesTest extends BaseTest
 
 	private function assertEdocsEqual($expected, $actual)
 	{
+		// Make sure edoc IDs are stored as strings because of a bug on the js processing side for file fields that prevents integers from working.
+		$this->assertSame('string', gettype($expected));
+		$this->assertSame('string', gettype($actual));
+
 		// If the expected and actual edoc IDs are the same, something in the calling test isn't right.
-		$this->assertNotSame($expected, $actual);
+		$this->assertNotEquals($expected, $actual);
 
 		$this->assertFileEquals(self::getEdocPath($expected), self::getEdocPath($actual));
 	}
@@ -989,17 +1003,24 @@ class ExternalModulesTest extends BaseTest
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' limit 1"));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1"));
 		if(empty($row)){
-			throw new Exception("Please upload at least one image to any 'rich-text' module setting (like the inline popups module) to allow this unit test to run.");
+			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
 
-		$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
-		$oldFiles = ExternalModules::getProjectSetting($prefix, $row['project_id'], ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
-
+		$oldProjectId = $row['project_id'];
+		$oldEdocId = $row['doc_id'];
+		$edocName = $row['doc_name'];
+		$oldFiles = [
+			[
+				'edocId' => $oldEdocId,
+				'name' => $edocName
+			]
+		];
 
 		$key1 = 'test-key-1';
 		$key2 = 'test-key-2';
+		$key3 = 'test-key-3';
 		$this->setConfig([
 			'project-settings' => [
 					[
@@ -1009,19 +1030,30 @@ class ExternalModulesTest extends BaseTest
 					[
 						'key' => $key2,
 						'type' => 'text'
-					]
+					],
+					[
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key3,
+								'type' => 'rich-text'
+							]
+						]
+					],
 				]
 			]
 		);
 
-		$getRichTextExampleContent = function($pid, $edocId) use ($oldFiles){
-			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $oldFiles[0]['name'])) . '" alt="" width="150" height="190" /></p>';
+		$getRichTextExampleContent = function($pid, $edocId) use ($edocName){
+			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $edocName)) . '" alt="" width="150" height="190" /></p>';
 		};
 
-		$oldRichTextContent = $getRichTextExampleContent($row['project_id'], $oldFiles[0]['edocId']);
+		$oldRichTextContent = $getRichTextExampleContent($oldProjectId, $oldEdocId);
 
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $oldRichTextContent);
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3, [$oldRichTextContent]);
 		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $oldFiles);
 		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
 		$newFiles = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
@@ -1032,12 +1064,15 @@ class ExternalModulesTest extends BaseTest
 		// Make sure non-rich-text fields are not changed
 		$this->assertSame($oldRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2));
 
+		// Rich text content within sub_settings is also JSON escaped.  Make sure we are still able replace URLs properly.
+		$this->assertSame([$newRichTextContent], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3));
+
 		$this->assertSame(count($oldFiles), count($newFiles));
 		for($i=0; $i<count($oldFiles); $i++){
 			$oldFile = $oldFiles[$i];
 			$newFile = $newFiles[$i];
 
-			$oldEdocId = $oldFile['edocId'];
+			$oldEdocId = (string)$oldFile['edocId'];
 			$newEdocId = $newFile['edocId'];
 
 			$this->assertEdocsEqual($oldEdocId, $newEdocId);
@@ -1063,5 +1098,18 @@ class ExternalModulesTest extends BaseTest
 
 		$assertTimedCron(false, self::TABLED_CRON_EXAMPLE);
 		$assertTimedCron(true, self::TIMED_CRON_EXAMPLE);
+	}
+
+	function testGetSQLInClause(){
+		$assert = function($expected, $columnName, $array){
+			$this->assertSame("($expected)", ExternalModules::getSQLInClause($columnName, $array));
+		};
+
+		$assert("column_name IN ('1')", 'column_name', 1);
+		$assert("column_name IN ('1')", 'column_name', '1');
+		$assert("column_name IN ('1', '2')", 'column_name', [1, 2]);
+		$assert("column_name IN ('1') OR column_name IS NULL", 'column_name', [1, 'NULL']);
+		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
+		$assert("false", 'column_name', []);
 	}
 }
