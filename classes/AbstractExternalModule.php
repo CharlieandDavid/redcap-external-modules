@@ -94,13 +94,6 @@ class AbstractExternalModule
 		return !preg_match("/[^a-z0-9-_]/", $key);
 	}
 
-	function updateUserPermissions($some, $params=array())
-	{
-		self::checkPermissions(__FUNCTION__);
-
-		throw new Exception('Not yet implemented!');
-	}
-
 	# check whether the current External Module has permission to call the requested method $methodName
 	private function checkPermissions($methodName)
 	{
