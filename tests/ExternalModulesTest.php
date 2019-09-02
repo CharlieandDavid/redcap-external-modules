@@ -120,7 +120,14 @@ class ExternalModulesTest extends BaseTest
 					);
 
 		foreach ($offsets as $offset => $validationMethod) {
-			$time = time() + $offset;
+			$currentTime = time();
+			if($currentTime%60 === 59){
+				// The clock may turn over to the next minute by the time the check below runs.
+				// Go ahead and wait for the next minute to come to ensure the test always passes.
+				sleep(1);
+			}
+
+			$time = $currentTime + $offset;
 			$cron = array(
                 			'cron_hour' => date("G", $time),
                 			'cron_minute' => date("i", $time),
