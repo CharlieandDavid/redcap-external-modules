@@ -4192,13 +4192,20 @@ class ExternalModules
 		$module = self::getModuleInstance($modulePrefix);
 		if ($module) {
 			$modifications = $module->getModifiedCrons();
-			if ($modifications) {
-				return $modifications;
-			}
 			$config = $module->getConfig();
+			$finalVersion = array();
 			if (isset($config['crons'])) {
-				return $config['crons'];
+				foreach ($config['crons'] as $cronAttr) {
+					$finalVersion[$cronAttr['name']] = $cronAttr;
+				}
 			}
+			if ($modifications) {
+				foreach ($modifications as $cronAttr) {
+					# overwrite config's if modifications exist
+					$finalVersion[$cronAttr['name']] = $cronAttr;
+				}
+			}
+			return array_values($finalVersion);
 		} else {
 			throw new \Exception("Could not instantiate module '$modulePrefix'!");
 		}

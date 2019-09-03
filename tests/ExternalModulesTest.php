@@ -55,6 +55,72 @@ class ExternalModulesTest extends BaseTest
 		ExternalModules::initializeSettingDefaults($m);
 		$this->assertNotEquals($defaultValue, $this->getSystemSetting());
 	}
+        function testCheckCronModifications() {
+		$prefix = self::getInstance()::$PREFIX;
+		$cronAttr1 = array("cron_name" => "Test Cron 1", "cron_method" => "testMethod1", "cron_hour" => 1, "cron_minute" => 0);
+		$cronAttr2 = array("cron_name" => "Test Cron 2", "cron_method" => "testMethod2", "cron_hour" => 2, "cron_minute" => 0);
+		$cronAttr3 = array("cron_name" => "Test Cron 3", "cron_method" => "testMethod3", "cron_hour" => 3);
+		$cronAttr4 = array("cron_name" => "Test Cron 4", "cron_method" => "testMethod4", "cron_weekday" => "2", "cron_hour" => 4, "cron_minute" => 0);
+		$cronAttr5 = array("cron_name" => "Test Cron 5", "cron_method" => "testMethod5", "cron_monthday" => "1", "cron_hour" => 5, "cron_minute" => 0);
+		$validCrons = array($cronAttr, $cronAttr2, $cronAttr4, $cronAttr5);
+		$invalidCrons = array($cronAttr, $cronAttr2, $cronAttr3, $cronAttr4, $cronAttr5);
+
+		ExternalModules::setModifiedCrons($prefix, $validCrons);
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue($crons == $validCrons);
+
+		$this->assertThrowsException(function() use ($invalidCrons){
+			ExternalModules::setModifiedCrons($prefix, $invalidCrons);
+		}, $exceptionExcerpt);
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue($crons != $invalidCrons);
+
+		ExternalModules::removeModifiedCrons($prefix);
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue(empty($crons));
+
+		# check for config backup
+		$config = [
+			'system-settings' => [
+				['key' => 'key1']
+			],
+			'project-settings' => [
+				['key' => 'key-two']
+			],
+			'crons' => [
+				[
+					'cron_name' => 'Test Cron 10',
+					'cron_method' => 'testMethod10',
+					'cron_hour' => 10,
+					'cron_minute' => 0,
+				],
+			],
+		];
+
+		$newCron = [
+			'cron_name' => 'Test Cron 11',
+			'cron_method' => 'testMethod11',
+			'cron_hour' => 11,
+			'cron_minute' => 0,
+		];
+
+		ExternalModules::removeModifiedCrons($prefix);
+		$this->setConfig($config);
+		$crons = ExternalModules::getCronSchedule($prefix);
+		$this->assertTrue($crons == $config['crons']);
+		ExternalModules::setModifiedCrons($prefix, $validCrons);
+		$crons = ExternalModules::getCronSchedule($prefix);
+		$this->assertTrue($crons != $config['crons']);
+		$this->assertTrue($crons == $validCrons);
+
+		# set new crons
+		array_push($config['crons'], $newCron);
+		$this->setConfig($config);
+		$crons = ExternalModules::getCronSchedule($prefix);
+		$this->assertTrue($crons != $config['crons']);
+		$this->assertTrue(count($crons) == count($config['crons']));
+}
+
 
 	function testGetProjectSettingsAsArray_systemOnly()
 	{
