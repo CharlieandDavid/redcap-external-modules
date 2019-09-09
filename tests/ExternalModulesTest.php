@@ -125,7 +125,7 @@ class ExternalModulesTest extends BaseTest
 				// We don't want the clock to turn over to the next minute in the middle of this test.
 				// Go ahead and wait for the next minute to come to ensure the test always passes.
 				sleep(1);
-				
+				$currentTime = time();
 			}
 
 			// Simulate the process starting now.
