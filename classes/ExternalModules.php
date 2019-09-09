@@ -4154,62 +4154,39 @@ class ExternalModules
 	}
 
 	public static function removeModifiedCrons($modulePrefix) {
-		$module = self::getModuleInstance($modulePrefix);
-		if ($module) {
-			if ($module->getModifiedCrons($modulePrefix)) {
-				$module->removeSystemSetting(KEY_RESERVED_CRON_MODIFICATION_NAME);
-			}
-		} else {
-			throw new \Exception("Could not instantiate module '$modulePrefix'!");
-		}
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
 	}
 
 	public static function getModifiedCrons($modulePrefix) {
-		$module = self::getModuleInstance($modulePrefix);
-		if ($module) {
-			return $module->getSystemSetting(KEY_RESERVED_CRON_MODIFICATION_NAME);
-		} else {
-			throw new \Exception("Could not instantiate module '$modulePrefix'!");
-		}
-		return array();
+		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
 	}
 
 	# overwrites previously saved version
 	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
-		$module = self::getModuleInstance($modulePrefix);
-		if ($module) {
-			foreach ($cronSchedule as $cronAttr) {
-				if (!ExternalModules::isValidCron($cronAttr)) {
-					throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
-				}
+		foreach ($cronSchedule as $cronAttr) {
+			if (!ExternalModules::isValidCron($cronAttr)) {
+				throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
 			}
-			$module->setSystemSetting(KEY_RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
-		} else {
-			throw new \Exception("Could not instantiate module '$modulePrefix'!");
 		}
+		
+		self::setSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
 	}
 
 	public static function getCronSchedules($modulePrefix) {
-		$module = self::getModuleInstance($modulePrefix);
-		if ($module) {
-			$modifications = $module->getModifiedCrons();
-			$config = $module->getConfig();
-			$finalVersion = array();
-			if (isset($config['crons'])) {
-				foreach ($config['crons'] as $cronAttr) {
-					$finalVersion[$cronAttr['name']] = $cronAttr;
-				}
+		$modifications = self::getModifiedCrons($modulePrefix);
+		$config = self::getConfig($modulePrefix);
+		$finalVersion = array();
+		if (isset($config['crons'])) {
+			foreach ($config['crons'] as $cronAttr) {
+				$finalVersion[$cronAttr['name']] = $cronAttr;
 			}
-			if ($modifications) {
-				foreach ($modifications as $cronAttr) {
-					# overwrite config's if modifications exist
-					$finalVersion[$cronAttr['name']] = $cronAttr;
-				}
-			}
-			return array_values($finalVersion);
-		} else {
-			throw new \Exception("Could not instantiate module '$modulePrefix'!");
 		}
-		return array();
+		if ($modifications) {
+			foreach ($modifications as $cronAttr) {
+				# overwrite config's if modifications exist
+				$finalVersion[$cronAttr['name']] = $cronAttr;
+			}
+		}
+		return array_values($finalVersion);
 	}
 }
