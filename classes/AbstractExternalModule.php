@@ -24,7 +24,6 @@ class AbstractExternalModule
 	private static $RESERVED_LOG_PARAMETER_NAMES_FLIPPED;
 	public static $OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE = ['timestamp', 'username', 'ip', 'project_id', 'record', 'message'];
 	private static $LOG_PARAMETERS_ON_MAIN_TABLE;
-	public static $RESERVED_CRON_MODIFICATION_NAME = "___RESERVED___MODIFIED_CRON___";
 
 	public $PREFIX;
 	public $VERSION;

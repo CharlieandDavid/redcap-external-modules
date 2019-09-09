@@ -68,6 +68,7 @@ class ExternalModules
 	const WEEK_IN_SECONDS = 7 * self::DAY_IN_SECONDS;
 	const MONTH_IN_SECONDS = 30 * self::DAY_IN_SECONDS;
 	const YEAR_IN_SECONDS = 365 * self::DAY_IN_SECONDS;
+	const RESERVED_CRON_MODIFICATION_NAME = "___RESERVED___MODIFIED_CRON___";
 
 	private static $SERVER_NAME;
 
@@ -4156,7 +4157,7 @@ class ExternalModules
 		$module = self::getModuleInstance($modulePrefix);
 		if ($module) {
 			if ($module->getModifiedCrons($modulePrefix)) {
-				$module->removeSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+				$module->removeSystemSetting(RESERVED_CRON_MODIFICATION_NAME);
 			}
 		} else {
 			throw new \Exception("Could not instantiate module '$modulePrefix'!");
@@ -4166,7 +4167,7 @@ class ExternalModules
 	public static function getModifiedCrons($modulePrefix) {
 		$module = self::getModuleInstance($modulePrefix);
 		if ($module) {
-			return $module->getSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME);
+			return $module->getSystemSetting(RESERVED_CRON_MODIFICATION_NAME);
 		} else {
 			throw new \Exception("Could not instantiate module '$modulePrefix'!");
 		}
@@ -4182,7 +4183,7 @@ class ExternalModules
 					throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
 				}
 			}
-			$module->setSystemSetting(self::$RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
+			$module->setSystemSetting(RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
 		} else {
 			throw new \Exception("Could not instantiate module '$modulePrefix'!");
 		}
