@@ -6,10 +6,6 @@ use ExternalModules\FrameworkVersion2;
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
-if (!defined(__DIR__)){
-	define(__DIR__, dirname(__FILE__));
-}
-
 require_once __DIR__ . "/AbstractExternalModule.php";
 
 if(PHP_SAPI == 'cli'){
