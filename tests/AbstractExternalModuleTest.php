@@ -403,6 +403,23 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
+		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'");
+		$row = $result->fetch_assoc();
+		$maxAllowedPacket = $row['Value'];
+		$threshold = $maxAllowedPacket - ExternalModules::SETTING_SIZE_LIMIT+1;
+		$allowedThreshold = 1024; // MySQL only allows increasing 'max_allowed_packet' in increments of 1024
+		
+		if($threshold <= 0){
+			// Don't run this test, since it will fail.
+			// Skipping the test is safe since max_allowed_packet will cause an error instead of truncation (this test intends to prevent the latter).
+			$this->markTestSkipped();
+			return;
+		}
+		else if($threshold < $allowedThreshold){
+			$recommendedMaxAllowedPacket = $maxAllowedPacket + $allowedThreshold;
+			throw new Exception("Your MySQL server's 'max_allowed_packet' setting is very close to the maximum setting size.  Please increase this value to at least $recommendedMaxAllowedPacket for the " . __FUNCTION__ . "() test to run properly, and to avoid errors when saving large module setting values.");
+		}
+
 		$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT);
 		$this->setProjectSetting($data);
 		$this->assertSame($data, $this->getProjectSetting());
