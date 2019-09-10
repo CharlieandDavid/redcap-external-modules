@@ -2,12 +2,7 @@
 
 set -e
 
-phpunitPath='vendor/bin/phpunit'
+composer install
 
-if [ ! -f $phpunitPath ]; then
-    composer install
-fi
-
-$phpunitPath
-
+vendor/bin/phpunit
 vendor/bin/phpcs -p --runtime-set testVersion 5.5- --standard=vendor/phpcompatibility/php-compatibility/PHPCompatibility --extensions=php --ignore=/vendor .
