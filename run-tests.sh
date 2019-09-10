@@ -2,7 +2,7 @@
 
 set -e
 
-if hash composer; then
+if hash composer 2>/dev/null; then
     composer install
 fi
 
