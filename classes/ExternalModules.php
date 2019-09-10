@@ -3409,7 +3409,7 @@ class ExternalModules
 			return FALSE;
 		}
 
-		if (empty($minute)) {
+		if (is_array($minute) && empty($minute)) {
 			return FALSE;
 		}
 		if (!is_numeric($hour) || !is_numeric($minute)) {
@@ -4164,8 +4164,8 @@ class ExternalModules
 	# overwrites previously saved version
 	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
 		foreach ($cronSchedule as $cronAttr) {
-			if (!ExternalModules::isValidCron($cronAttr)) {
-				throw new \Exception("The following cron is not valid! ".json_encode($cronAttr));
+			if (!ExternalModules::isValidTimedCron($cronAttr)) {
+				throw new \Exception("A cron is not valid! ".json_encode($cronAttr));
 			}
 		}
 		
@@ -4178,13 +4178,13 @@ class ExternalModules
 		$finalVersion = array();
 		if (isset($config['crons'])) {
 			foreach ($config['crons'] as $cronAttr) {
-				$finalVersion[$cronAttr['name']] = $cronAttr;
+				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
 			}
 		}
 		if ($modifications) {
 			foreach ($modifications as $cronAttr) {
 				# overwrite config's if modifications exist
-				$finalVersion[$cronAttr['name']] = $cronAttr;
+				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
 			}
 		}
 		return array_values($finalVersion);
