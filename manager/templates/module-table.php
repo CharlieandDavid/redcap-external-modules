@@ -26,7 +26,7 @@
 					}
 				}
 				if (count($names) > 0) {
-					echo "by ".implode($names, ", ");
+					echo "by ".implode(", ", $names);
 				}
 			}
 		}

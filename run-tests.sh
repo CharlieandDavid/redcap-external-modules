@@ -1,9 +1,13 @@
 #!/bin/sh
 
-phpunitPath='vendor/phpunit/phpunit/phpunit'
+set -e
 
-if [ ! -f $phpunitPath ]; then
+if hash composer; then
     composer install
 fi
 
-$phpunitPath
+echo Running tests...
+vendor/bin/phpunit
+
+echo Ensuring PHP version compatibility...
+vendor/bin/phpcs -p --runtime-set testVersion 5.5- --standard=vendor/phpcompatibility/php-compatibility/PHPCompatibility --extensions=php --ignore=/vendor .

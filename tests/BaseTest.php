@@ -153,18 +153,18 @@ abstract class BaseTest extends TestCase
 		return call_user_func_array([$this, 'callPrivateMethodForClass'], $args);
 	}
 
-	protected function callPrivateMethodForClass($classInstanceOrName, $methodName)
+	protected function callPrivateMethodForClass()
 	{
+		$args = func_get_args();
+		$classInstanceOrName = array_shift($args); // remove the $classInstanceOrName
+		$methodName = array_shift($args); // remove the $methodName
+
 		if(gettype($classInstanceOrName) == 'string'){
 			$instance = null;
 		}
 		else{
 			$instance = $classInstanceOrName;
 		}
-
-		$args = func_get_args();
-		array_shift($args); // remove the $classInstanceOrName
-		array_shift($args); // remove the $methodName
 
 		$class = new \ReflectionClass($classInstanceOrName);
 		$method = $class->getMethod($methodName);
