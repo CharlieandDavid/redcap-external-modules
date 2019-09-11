@@ -6,10 +6,6 @@ use ExternalModules\FrameworkVersion2;
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
-if (!defined(__DIR__)){
-	define(__DIR__, dirname(__FILE__));
-}
-
 require_once __DIR__ . "/AbstractExternalModule.php";
 
 if(PHP_SAPI == 'cli'){
@@ -62,13 +58,13 @@ class ExternalModules
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
 
-	// Copy WordPress's time conveneience constants
+	// Copy WordPress's time convenience constants
 	const MINUTE_IN_SECONDS = 60;
-	const HOUR_IN_SECONDS = 60 * self::MINUTE_IN_SECONDS;
-	const DAY_IN_SECONDS = 24 * self::HOUR_IN_SECONDS;
-	const WEEK_IN_SECONDS = 7 * self::DAY_IN_SECONDS;
-	const MONTH_IN_SECONDS = 30 * self::DAY_IN_SECONDS;
-	const YEAR_IN_SECONDS = 365 * self::DAY_IN_SECONDS;
+	const HOUR_IN_SECONDS = 3600;
+	const DAY_IN_SECONDS = 86400;
+	const WEEK_IN_SECONDS = 604800;
+	const MONTH_IN_SECONDS = 2592000;
+	const YEAR_IN_SECONDS = 31536000;
 
 	private static $SERVER_NAME;
 

@@ -852,7 +852,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$assertIp($ip);
 
-		$_SERVER['REQUEST_URI'] = '/surveys/';
+		$_SERVER['REQUEST_URI'] = APP_PATH_SURVEY;
 		$assertIp(null);
 
 		$_SERVER['REQUEST_URI'] = '';

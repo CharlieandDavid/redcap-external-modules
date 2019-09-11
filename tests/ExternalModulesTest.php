@@ -195,7 +195,18 @@ class ExternalModulesTest extends BaseTest
 					);
 
 		foreach ($offsets as $offset => $validationMethod) {
-			$time = time() + $offset;
+			$currentTime = time();
+			if($currentTime%60 >= 59){
+				// We don't want the clock to turn over to the next minute in the middle of this test.
+				// Go ahead and wait for the next minute to come to ensure the test always passes.
+				sleep(1);
+				$currentTime = time();
+			}
+
+			// Simulate the process starting now.
+			$_SERVER["REQUEST_TIME_FLOAT"] = microtime(true);
+
+			$time = $currentTime + $offset;
 			$cron = array(
                 			'cron_hour' => date("G", $time),
                 			'cron_minute' => date("i", $time),
