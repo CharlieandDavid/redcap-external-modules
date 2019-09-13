@@ -136,6 +136,7 @@ $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 	$cronAttrs = ExternalModules::getCronSchedules($moduleDirectoryPrefix);
 	if (!empty($cronAttrs)) {
+		$moduleInstance = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
 		echo "<h3>Module ".$moduleInstance->getModuleName()." ".$version."</h3>\n";
 	}
 	foreach ($cronAttrs as $cronAttr) {
