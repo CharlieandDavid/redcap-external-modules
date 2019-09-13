@@ -4160,7 +4160,7 @@ class ExternalModules
 	# overwrites previously saved version
 	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
 		foreach ($cronSchedule as $cronAttr) {
-			if (!ExternalModules::isValidTimedCron($cronAttr)) {
+			if (!ExternalModules::isValidCron($cronAttr)) {
 				throw new \Exception("A cron is not valid! ".json_encode($cronAttr));
 			}
 		}
