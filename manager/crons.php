@@ -40,44 +40,41 @@ if (count($_POST) > 0) {
 				$different[$prefix][$version][$name] = array();
 			}
 
-			$moduleInstance = ExternalModules::getModuleInstance($prefix);
-			if ($moduleInstance) {
-				# copy over modifications
-				if (in_array($attr, $timedAttrs)) {
-					# always change the requested value if specified
-					if ($value !== "") {
-						$changes[$prefix][$version][$name][$attr] = $value;
-					}
+			# copy over modifications
+			if (in_array($attr, $timedAttrs)) {
+				# always change the requested value if specified
+				if ($value !== "") {
+					$changes[$prefix][$version][$name][$attr] = $value;
+				}
 
-					# now, mark if different from before; also, copy over remaining items in the cron from before
-					$origCronAttrs = $moduleInstance->getCronSchedules();
-					foreach ($origCronAttrs as $origCronAttrAry) {
-						if ($origCronAttrAry['cron_name'] == $name) {
-							# save whether the new value is different from the original
-							$different[$prefix][$version][$name][$attr] = (strval($value) === strval($origCronAttrAry[$attr]));
-	
-							# save in changes all values that aren't specifically for timed crons
-							# need entire cron array in order to save in setModifiedCrons if applicable
-							foreach ($origCronAttrAry as $key => $keyValue) {
-								# only set if not previously set; if previously set, it's been changed manually
-								if (!in_array($key, $timedAttrs) && !isset($changes[$prefix][$version][$name][$key])) {
-									$changes[$prefix][$version][$name][$key] = $keyValue;
-								}
+				# now, mark if different from before; also, copy over remaining items in the cron from before
+				$origCronAttrs = ExternalModules::getCronSchedules($prefix);
+				foreach ($origCronAttrs as $origCronAttrAry) {
+					if ($origCronAttrAry['cron_name'] == $name) {
+						# save whether the new value is different from the original
+						$different[$prefix][$version][$name][$attr] = (strval($value) === strval($origCronAttrAry[$attr]));
+
+						# save in changes all values that aren't specifically for timed crons
+						# need entire cron array in order to save in setModifiedCrons if applicable
+						foreach ($origCronAttrAry as $key => $keyValue) {
+							# only set if not previously set; if previously set, it's been changed manually
+							if (!in_array($key, $timedAttrs) && !isset($changes[$prefix][$version][$name][$key])) {
+								$changes[$prefix][$version][$name][$key] = $keyValue;
 							}
 						}
 					}
 				}
+			}
 
-				# copy remaining crons from module that aren't already set
-				$config = $moduleInstance->getConfig();
-				if (isset($config['crons']) && is_array($config['crons'])) {
-					foreach ($config['crons'] as $cronAttr) {
-						if (($name != $cronAttr['cron_name']) && !isset($changes[$prefix][$version][$cronAttr['cron_name']]))  {
-							# copy cron into hash
-							$changes[$prefix][$version][$cronAttr['cron_name']] = array();
-							foreach ($cronAttr as $key => $keyValue) {
-								$changes[$prefix][$version][$cronAttr['cron_name']][$key] = $keyValue;
-							}
+			# copy remaining crons from module that aren't already set
+			$config = ExternalModules::getConfig($prefix);
+			if (isset($config['crons']) && is_array($config['crons'])) {
+				foreach ($config['crons'] as $cronAttr) {
+					if (($name != $cronAttr['cron_name']) && !isset($changes[$prefix][$version][$cronAttr['cron_name']]))  {
+						# copy cron into hash
+						$changes[$prefix][$version][$cronAttr['cron_name']] = array();
+						foreach ($cronAttr as $key => $keyValue) {
+							$changes[$prefix][$version][$cronAttr['cron_name']][$key] = $keyValue;
 						}
 					}
 				}
@@ -136,8 +133,8 @@ $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
 	$cronAttrs = ExternalModules::getCronSchedules($moduleDirectoryPrefix);
 	if (!empty($cronAttrs)) {
-		$moduleInstance = ExternalModules::getModuleInstance($moduleDirectoryPrefix);
-		echo "<h3>Module ".$moduleInstance->getModuleName()." ".$version."</h3>\n";
+		$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
+		echo "<h3>Module ".$config['name']." ".$version."</h3>\n";
 	}
 	foreach ($cronAttrs as $cronAttr) {
 		$cronId = $moduleDirectoryPrefix.$sep.$version.$sep.$cronAttr['cron_name'];
