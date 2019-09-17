@@ -3437,6 +3437,9 @@ class ExternalModules
 		if (!isset($name) || !isset($descr) || !isset($method)) {
 			return FALSE; 
 		}
+		if (!self::isValidTimedCron($cronAttr) && !self::isValidTabledCron($cronAttr)) {
+			return FALSE;
+		}
 
 		return TRUE;
 	}
