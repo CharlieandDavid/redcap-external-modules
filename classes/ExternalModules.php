@@ -3397,7 +3397,7 @@ class ExternalModules
 		$weekday = $cronAttr['cron_weekday'];
 		$monthday = $cronAttr['cron_monthday'];
 
-		if (!self::isValidCron($cronAttr)) {
+		if (!self::isValidGenericCron($cronAttr)) {
 			return FALSE;
 		}
 
@@ -3429,7 +3429,7 @@ class ExternalModules
 	}
 
 	# for all generic crons; all must have the following attributes
-	public static function isValidCron($cronAttr) {
+	private static function isValidGenericCron($cronAttr) {
 		$name = $cronAttr['cron_name'];
 		$descr = $cronAttr['cron_description'];
 		$method = $cronAttr['method'];
@@ -3437,19 +3437,16 @@ class ExternalModules
 		if (!isset($name) || !isset($descr) || !isset($method)) {
 			return FALSE; 
 		}
-		if (!self::isValidTimedCron($cronAttr) && !self::isValidTabledCron($cronAttr)) {
-			return FALSE;
-		}
 
 		return TRUE;
 	}
 
 	# only for crons stored in redcap_crons table
-	private static function isValidTabledCron($cronAttr) {
+	public static function isValidTabledCron($cronAttr) {
 		$frequency = $cronAttr['cron_frequency'];
 		$maxRunTime = $cronAttr['cron_max_run_time'];
 
-		if (!self::isValidCron($cronAttr)) {
+		if (!self::isValidGenericCron($cronAttr)) {
 			return FALSE;
 		}
 
@@ -4163,7 +4160,7 @@ class ExternalModules
 	# overwrites previously saved version
 	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
 		foreach ($cronSchedule as $cronAttr) {
-			if (!ExternalModules::isValidTimedCron($cronAttr)) {
+			if (!self::isValidTimedCron($cronAttr) && !self::isValidTabledCron($cronAttr)) {
 				throw new \Exception("A cron is not valid! ".json_encode($cronAttr));
 			}
 		}

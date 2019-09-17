@@ -88,7 +88,7 @@ if (count($_POST) > 0) {
 			$shouldSet = FALSE;
 			$cronAry = array();
 			foreach ($crons as $name => $attrs) {
-				if (ExternalModules::isValidCron($attrs)) {
+				if (ExternalModules::isValidTimedCron($attrs) || ExternalModules::isValidTabledCron($attrs)) {
 					foreach ($attrs as $attr => $value) {
 						if ($different[$prefix][$version][$name][$attr]) {
 							$shouldSet = TRUE;
