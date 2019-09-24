@@ -3533,7 +3533,7 @@ class ExternalModules
 				# do not run twice in the same minute
 				$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
 				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
-				if (!empty($moduleInstance) && !empty($moduleId) && !empty($cronAttrs)) {
+				if (!empty($moduleId) && !empty($cronAttrs)) {
 					foreach ($cronAttrs as $cronAttr) {
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
