@@ -52,7 +52,7 @@ if (count($_POST) > 0) {
 				foreach ($origCronAttrs as $origCronAttrAry) {
 					if ($origCronAttrAry['cron_name'] == $name) {
 						# save whether the new value is different from the original
-						$different[$prefix][$version][$name][$attr] = (strval($value) === strval($origCronAttrAry[$attr]));
+						$different[$prefix][$version][$name][$attr] = (strval($value) !== strval($origCronAttrAry[$attr]));
 
 						# save in changes all values that aren't specifically for timed crons
 						# need entire cron array in order to save in setModifiedCrons if applicable
