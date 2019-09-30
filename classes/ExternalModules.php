@@ -6,10 +6,6 @@ use ExternalModules\FrameworkVersion2;
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
-if (!defined(__DIR__)){
-	define(__DIR__, dirname(__FILE__));
-}
-
 require_once __DIR__ . "/AbstractExternalModule.php";
 
 if(PHP_SAPI == 'cli'){
@@ -40,6 +36,7 @@ class ExternalModules
 
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
 	const KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME = 'reserved-last-long-running-cron-notification-time';
+	const KEY_RESERVED_CRON_MODIFICATION_NAME = "reserved-modification-name";
 
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
@@ -3394,7 +3391,7 @@ class ExternalModules
 	}
 
 	# for crons specified to run at a specific time
-	private static function isValidTimedCron($cronAttr) {
+	public static function isValidTimedCron($cronAttr) {
 		$hour = $cronAttr['cron_hour'];
 		$minute = $cronAttr['cron_minute'];
 		$weekday = $cronAttr['cron_weekday'];
@@ -3408,7 +3405,7 @@ class ExternalModules
 			return FALSE;
 		}
 
-		if (empty($minute)) {
+		if (is_array($minute) && empty($minute)) {
 			return FALSE;
 		}
 		if (!is_numeric($hour) || !is_numeric($minute)) {
@@ -3432,7 +3429,7 @@ class ExternalModules
 	}
 
 	# for all generic crons; all must have the following attributes
-	private static function isValidCron($cronAttr) {
+	public static function isValidCron($cronAttr) {
 		$name = $cronAttr['cron_name'];
 		$descr = $cronAttr['cron_description'];
 		$method = $cronAttr['method'];
@@ -3476,7 +3473,7 @@ class ExternalModules
 	}
 
 	# only for timed crons
-	private static function isTimeToRun($cronAttr) {
+	public static function isTimeToRun($cronAttr, $cronStartTime=NULL) {
 		$hour = $cronAttr['cron_hour'];
 		$minute = $cronAttr['cron_minute'];
 		$weekday = $cronAttr['cron_weekday'];
@@ -3493,7 +3490,9 @@ class ExternalModules
 
 		// We check the cron start time instead of the current time
 		// in case another module's cron job ran us into the next minute.
-		$cronStartTime = self::getLastTimeRun();
+		if (!$cronStartTime) {
+			$cronStartTime = self::getLastTimeRun();
+		}
 		$currentHour = (int) date('G', $cronStartTime);
 		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
 		$currentWeekday = (int) date('w', $cronStartTime);
@@ -3532,13 +3531,14 @@ class ExternalModules
 				$cronName = "";
 
 				# do not run twice in the same minute
-				$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
-				if (!empty($config) && isset($config['crons']) && !empty($config['crons'])) {
-					foreach ($config['crons'] as $cronKey=>$cronAttr) {
+				$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
+				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+				if (!empty($moduleInstance) && !empty($moduleId) && !empty($cronAttrs)) {
+					foreach ($cronAttrs as $cronAttr) {
 						$cronName = $cronAttr['cron_name'];
 						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
 							# if isTimeToRun, run method
-							$cronMethod = $config['crons'][$cronKey]['method'];
+							$cronMethod = $cronAttr['method'];
 							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
 							$mssg = self::callTimedCronMethod($moduleDirectoryPrefix, $cronName);
 							if ($mssg) {
@@ -3635,7 +3635,7 @@ class ExternalModules
 			$lastNotificationTime = self::getSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
 			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
 			if($notificationNeeded) {
-				$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run more than $x past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely manually killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '" . self::KEY_RESERVED_IS_CRON_RUNNING . "'";
+				$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run more than $x past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely manually killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '" . self::KEY_RESERVED_IS_CRON_RUNNING . "'<br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='".APP_URL_EXTMOD."manager/crons.php'>Manager for Timed Crons</a>";
 				self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
 				self::setSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, time());
 			}
@@ -3977,6 +3977,37 @@ class ExternalModules
 		];
 	}
 
+	# timespan is number of seconds
+	public static function getCronConflictTimestamps($timespan) {
+		$currTime = time();
+		$conflicts = array();
+
+		// keep these for debugging purposes
+		$timesRun = array();
+		$skipped = array();
+
+		$enabledModules = self::getEnabledModules();
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
+			foreach ($cronAttrs as $cronAttr) {
+				# check every minute
+				for ($i = 0; $i < $timespan; $i += 60) {
+					$timeToCheck = $currTime + $i;
+					if (self::isTimeToRun($cronAttr, $timeToCheck)) {
+						if (in_array($timeToCheck, $timesRun)) {
+							array_push($conflicts, $timeToCheck);
+						} else {
+							array_push($timesRun, $timeToCheck);
+						}
+					} else {
+						array_push($skipped, $timeToCheck);
+					}
+				}
+			}
+		}
+		return $conflicts;
+	}
+
 	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
 	{
 		self::requireNonEmptyValues(func_get_args());
@@ -4122,5 +4153,42 @@ class ExternalModules
 		}
 
 		return $unsafeReferences;
+	}
+
+	public static function removeModifiedCrons($modulePrefix) {
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
+	}
+
+	public static function getModifiedCrons($modulePrefix) {
+		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
+	}
+
+	# overwrites previously saved version
+	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
+		foreach ($cronSchedule as $cronAttr) {
+			if (!ExternalModules::isValidTimedCron($cronAttr)) {
+				throw new \Exception("A cron is not valid! ".json_encode($cronAttr));
+			}
+		}
+		
+		self::setSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
+	}
+
+	public static function getCronSchedules($modulePrefix) {
+		$modifications = self::getModifiedCrons($modulePrefix);
+		$config = self::getConfig($modulePrefix);
+		$finalVersion = array();
+		if (isset($config['crons'])) {
+			foreach ($config['crons'] as $cronAttr) {
+				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
+			}
+		}
+		if ($modifications) {
+			foreach ($modifications as $cronAttr) {
+				# overwrite config's if modifications exist
+				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
+			}
+		}
+		return array_values($finalVersion);
 	}
 }

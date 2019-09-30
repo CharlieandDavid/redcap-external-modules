@@ -69,6 +69,9 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 
             disabledModal.modal('show');
         });
+	$('#external-modules-configure-crons').click(function() {
+			window.location.href='<?=APP_URL_EXTMOD?>manager/crons.php';
+		});
         $('#external-modules-download-modules-button').click(function(){
 			$('#download-new-mod-form').submit();
 		});
