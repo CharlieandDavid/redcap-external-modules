@@ -1086,10 +1086,21 @@ class AbstractExternalModule
         $formName = db_real_escape_string(key($instrumentNames));
 
         $sql ="
-			select h.hash from redcap_surveys s join redcap_surveys_participants h on s.survey_id = h.survey_id
-			where form_name = '$formName' and participant_email is null
+			select h.hash
+			from redcap_surveys s
+			join redcap_surveys_participants h
+				on s.survey_id = h.survey_id
+			join redcap_metadata m
+				on m.project_id = s.project_id
+				and m.form_name = s.form_name
+				and field_order = 1 -- getting the first field is the easiest way to get the first form
+			where
+				s.project_id = " . $this->getProjectId() . "
+				and s.form_name = '$formName'
+				and participant_email is null
 		";
-        $result = db_query($sql);
+		
+        $result = $this->query($sql);
         $row = db_fetch_assoc($result);
         $hash = @$row['hash'];
 
