@@ -378,7 +378,7 @@ class ExternalModules
 					return;
 				}
 				else{
-					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module which needs to be replaced with \$module->exitAfterHook() to allow other modules to execute for the current hook.";
+					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module which needs to be replaced with an exception to provide more details, or a \$module->exitAfterHook() call to allow other modules to execute for the current hook.";
 				}
 			}
 
