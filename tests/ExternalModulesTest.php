@@ -1198,4 +1198,49 @@ class ExternalModulesTest extends BaseTest
 		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
 		$assert("false", 'column_name', []);
 	}
+
+	function testQuery_noParameters(){
+		$value = (string)rand();
+		$result = ExternalModules::query("select $value");
+		$row = $result->fetch_row();
+		$this->assertSame($value, $row[0]);
+	}
+
+	function testQuery_invalidQuery(){
+		$this->assertThrowsException(function(){
+			ob_start();
+			ExternalModules::query("select * from some_table_that_doesnt_exist");
+		}, ExternalModules::QUERY_EXCEPTION_MESSAGE);
+
+		ob_end_clean();
+	}
+
+	function testQuery_paramTypes(){
+		$values = [
+			true,
+			2,
+			3.3,
+			'four',
+			null
+		];
+
+		$row = ExternalModules::query(
+			'select ' . implode(', ', array_fill(0, count($values), '?')),
+			$values
+		)->fetch_row();
+
+		$values[0] = 1; // The boolean 'true' will get converted to the integer '1'.  This is excepted.
+
+		$this->assertSame($values, $row);
+	}
+
+	function testQuery_invalidParamType(){
+		$this->assertThrowsException(function(){
+			ob_start();
+			$invalidParam = new \stdClass();
+			ExternalModules::query("select ?", [$invalidParam]);
+		}, "type 'object' is not supported");
+
+		ob_end_clean();
+	}
 }

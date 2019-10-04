@@ -66,6 +66,8 @@ class ExternalModules
 	const MONTH_IN_SECONDS = 2592000;
 	const YEAR_IN_SECONDS = 31536000;
 
+	const QUERY_EXCEPTION_MESSAGE = 'An error occurred while running an External Module query';
+
 	private static $SERVER_NAME;
 
 	# base URL for external modules
@@ -80,11 +82,19 @@ class ExternalModules
 	public static $MODULES_PATH;
 
 	private static $USERNAME;
+	private static $INCLUDED_RESOURCES;
+
+	private static $MYSQLI_TYPE_MAP = [
+		'boolean' => 'i',
+		'integer' => 'i',
+		'double' => 'd',
+		'string' => 's',
+		'NULL' => 's',
+	];
 
 	# index is hook $name, then $prefix, then $version
 	private static $delayed;
 	private static $delayedLastRun;
-	private static $INCLUDED_RESOURCES;
 
 	private static $exitAfterHook = false;
 	private static $hookStartTime;
@@ -1339,20 +1349,79 @@ class ExternalModules
 	}
 
 	# executes a database query and returns the result
-	public static function query($sql)
+	public static function query($sql, $parameterValues = null)
 	{
-		$result = db_query($sql);
+		try{
+			if($parameterValues){
+				$result = self::queryWithParameters($sql, $parameterValues);
+			}
+			else{
+				$result = db_query($sql);
+			}
+		
+			if($result == FALSE){
+				throw new Exception("Query execution failed");
+			}
+		}
+		catch(Exception $e){
+			$message = $e->getMessage();
 
-		if($result == FALSE){
-			$message = "An error occurred while running an External Module query";
-
-			error_log($message . ": \nDB Error: " . db_error() . "\nSQL: $sql");
-
-			// Do not show sql or error details to minimize risk of exploitation.
-			throw new Exception($message . " (see the server error log for more details).");
+			// Log query details instead of showing them to the user to minimize risk of exploitation (it could appear on a public URL).
+			self::errorLog(self::QUERY_EXCEPTION_MESSAGE . ': ' . json_encode([
+				'Message' => $message,
+				'DB Error' => db_error(),
+				'Code' => $e->getCode(),
+				'File' => $e->getFile(),
+				'Line' => $e->getLine(),
+				'Trace' => $e->getTrace()
+			], JSON_PRETTY_PRINT));
+			
+			$message = self::QUERY_EXCEPTION_MESSAGE . ". $message (see the server error log for more details).";
+			throw new Exception($message);
 		}
 
 		return $result;
+	}
+
+	private static function queryWithParameters($sql, $parameterValues)
+	{
+		$parameterTypes = [];
+		foreach($parameterValues as $value){
+			$phpType = gettype($value);
+			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
+			
+			if(empty($mysqliType)){
+				throw new Exception("The query parameter type '$phpType' is not supported");
+			}
+
+			$parameterTypes[] = $mysqliType;
+		}
+
+		array_unshift($parameterValues, implode('', $parameterTypes));
+		
+		global $rc_connection;
+		$statement = $rc_connection->prepare($sql);
+
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterValues)){
+			throw new Exception("Binding query parameters failed");
+		}
+
+		if(!$statement->execute()){
+			throw new Exception("Prepared statement execution failed");
+		}
+		
+		return $statement->get_result();
+	}
+
+	private static function errorLog($message)
+	{
+		if(self::isTesting()){
+			// Echo the message to STDOUT instead so it can be output buffered if desired (used in unit tests).
+			echo $message;
+		}
+		else{
+			error_log($message);
+		}
 	}
 
 	# converts an equals clause into SQL
