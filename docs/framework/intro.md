@@ -19,7 +19,7 @@ To allow existing modules to remain backward compatible, a new framework version
 
 ### Framework versions vs REDCap versions
 
-Specifying a module frame has implications for the minimum REDCap version. A module's config.json should specify a `redcap-version-min` at least as high as that needed to get the framework code it requires.
+Specifying a module framework version has implications for the minimum REDCap version. A module's config.json should specify a `redcap-version-min` at least as high as that needed to get the framework code it requires.
 
 The frameworks were released in these REDCap versions:
 
