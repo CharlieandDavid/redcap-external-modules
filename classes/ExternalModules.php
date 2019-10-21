@@ -3405,9 +3405,6 @@ class ExternalModules
 			return FALSE;
 		}
 
-		if (is_array($minute) && empty($minute)) {
-			return FALSE;
-		}
 		if (!is_numeric($hour) || !is_numeric($minute)) {
 			return FALSE;
 		}
@@ -3418,7 +3415,7 @@ class ExternalModules
 			return FALSE;
 		}
 
-		if (!empty($hour) && (($hour < 0) || ($hour >= 24))) {
+		if (($hour < 0) || ($hour >= 24)) {
 			return FALSE;
 		}
 		if (($minute < 0) || ($minute >= 60)) { 
