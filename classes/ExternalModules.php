@@ -1110,28 +1110,31 @@ class ExternalModules
 
 	static function getSystemSettingsAsArray($moduleDirectoryPrefixes)
 	{
-		return self::getSettingsAsArray($moduleDirectoryPrefixes);
+		return self::getSettingsAsArray($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
 	}
 
-	static function getProjectSettingsAsArray($moduleDirectoryPrefixes, $projectId)
+	static function getProjectSettingsAsArray($moduleDirectoryPrefixes, $projectId, $includeSystemSettings = true)
 	{
 		if (!$projectId) {
 			throw new Exception("The Project Id cannot be null!");
 		}
-		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectId);
+
+		$projectIds = [$projectId];
+
+		if($includeSystemSettings){
+			$projectIds[] = self::SYSTEM_SETTING_PROJECT_ID;
+		}
+
+		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectIds);
 	}
 
-	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
+	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectIds)
 	{
 		if(empty($moduleDirectoryPrefixes)){
 			throw new Exception('One or more module prefixes must be specified!');
 		}
-
-		if ($projectId === NULL) {
-			$result = self::getSettings($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
-		} else {
-			$result = self::getSettings($moduleDirectoryPrefixes, array(self::SYSTEM_SETTING_PROJECT_ID, $projectId));
-		}
+		
+		$result = self::getSettings($moduleDirectoryPrefixes, $projectIds);
 
 		$settings = array();
 		while($row = self::validateSettingsRow(db_fetch_assoc($result))){
