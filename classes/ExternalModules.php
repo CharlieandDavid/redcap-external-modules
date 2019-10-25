@@ -1344,7 +1344,7 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		$result = db_query($sql);
+		$result = self::queryWithRetries($sql, 2);
 
 		if($result == FALSE){
 			$message = "An error occurred while running an External Module query";
@@ -1357,6 +1357,29 @@ class ExternalModules
 
 		return $result;
 	}
+
+	private function queryWithRetries($sql, $retriesLeft)
+    {
+        $result = db_query($sql);
+
+        if(
+            $result === FALSE
+            &&
+            in_array(db_errno(), [
+                1213 // Deadlock found when trying to get lock; try restarting transaction
+            ])
+            &&
+            $retriesLeft > 0
+        ){
+			$message = "The following query deadlocked and is being retried.  It may be worth considering modifying this query to reduce the chance of deadlock:\n\n$sql";
+			$prefix = self::getActiveModulePrefix();
+			self::sendAdminEmail("REDCap External Module Deadlocked Query - $prefix", $message, $prefix);
+
+            $result = self::queryWithRetries($sql, $retriesLeft-1);
+        }
+
+        return $result;
+    }
 
 	# converts an equals clause into SQL
 	private static function getSQLEqualClause($columnName, $value)
