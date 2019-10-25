@@ -2802,7 +2802,7 @@ class ExternalModules
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 
 		if(empty($moduleFolderName) || $moduleFolderName == "ERROR"){
-			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
+			throw new Exception("The request to retrieve the name for module $module_id from the repo failed: $moduleFolderName");
 		}
 
 		// The following concurrent download detect was added to prevent a download/delete loop that we believe
