@@ -840,14 +840,14 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
-		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+		$assertToEquals(['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org']);
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
-		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
+		$expectedTo = ['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org', 'datacore@vumc.org'];
 		$assertToEquals($expectedTo);
 
 		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
-		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
+		$assertToEquals($expectedTo, 'someone@vumc.org');
 
 		$otherDomain = 'other.edu';
 		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");

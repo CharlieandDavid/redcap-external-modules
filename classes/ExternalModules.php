@@ -468,7 +468,7 @@ class ExternalModules
 		}
 
 		if (self::isVanderbilt()) {
-			$from = 'datacore@vanderbilt.edu';
+			$from = 'datacore@vumc.org';
 			$to = self::getDatacoreEmails([]);
 		}
 		else{
@@ -3146,11 +3146,11 @@ class ExternalModules
 
 	private static function getDatacoreEmails($to){
 		if (self::isVanderbilt()) {
-			$to[] = 'mark.mcever@vanderbilt.edu';
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+			$to[] = 'mark.mcever@vumc.org';
+			$to[] = 'kyle.mcguffin@vumc.org';
 
 			if (self::$SERVER_NAME == 'redcap.vanderbilt.edu') {
-				$to[] = 'datacore@vanderbilt.edu';
+				$to[] = 'datacore@vumc.org';
 			}
 		}
 
