@@ -228,7 +228,7 @@ class ExternalModulesTest extends BaseTest
 				'cron_minute' => date("i", $time3),
 				'cron_weekday' => date("w", $time3),
 				);
-		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
+		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
 
 		$cron3_2 = array(
 				'cron_hour' => date("G", $time3),
