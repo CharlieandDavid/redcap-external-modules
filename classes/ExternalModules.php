@@ -1123,7 +1123,7 @@ class ExternalModules
 
 		if($includeSystemSettings){
 			$projectIds[] = self::SYSTEM_SETTING_PROJECT_ID;
-		}
+	}
 
 		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectIds);
 	}
@@ -1133,7 +1133,7 @@ class ExternalModules
 		if(empty($moduleDirectoryPrefixes)){
 			throw new Exception('One or more module prefixes must be specified!');
 		}
-		
+
 		$result = self::getSettings($moduleDirectoryPrefixes, $projectIds);
 
 		$settings = array();
@@ -1376,10 +1376,10 @@ class ExternalModules
 			self::sendAdminEmail("REDCap External Module Deadlocked Query - $prefix", $message, $prefix);
 
             $result = self::queryWithRetries($sql, $retriesLeft-1);
-        }
+		}
 
-        return $result;
-    }
+		return $result;
+	}
 
 	# converts an equals clause into SQL
 	private static function getSQLEqualClause($columnName, $value)
@@ -2827,77 +2827,81 @@ class ExternalModules
 			return 4;
 		}
 
-		$logDescription = "Download external module \"$moduleFolderName\" from repository";
-		// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
-		// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
-		// https://github.com/vanderbilt/redcap-external-modules/issues/136
-		// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
-		self::throttleEvent($logDescription, 2, 3);
-		\REDCap::logEvent($logDescription);
+		try{
+			// The temp dir was created successfully.  Open a `try` block so we can ensure it gets removed in the `finally`.
 
-		// Send user info?
-		if ($sendUserInfo) {
-			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
-								'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
-		} else {
-			$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
-		}
-		// Call the module download service to download the module zip
-		$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
-		// Errors?
-		if ($moduleZipContents == 'ERROR') {
-			// 0 = Module does not exist in library
-			return "0";
-		}
-		// Place the file in the temp directory before extracting it
-		$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
-		if (file_put_contents($filename, $moduleZipContents) === false) {
-			// 1 = Module zip couldn't be written to temp
-			return "1";
-		}
-		// Extract the module to /redcap/modules
-		$zip = new \ZipArchive;
-		if ($zip->open($filename) !== TRUE) {
-		  return "2";
-		}
-		// First, we need to rename the parent folder in the zip because GitHub has it as something else
-		$i = 0;
-		while ($item_name = $zip->getNameIndex($i)){
-			$item_name_end = substr($item_name, strpos($item_name, "/"));
-			$zip->renameIndex($i++, $moduleFolderName . $item_name_end);
-		}
-		$zip->close();
-		// Now extract the zip to the modules folder
-		$zip = new \ZipArchive;
-		if ($zip->open($filename) === TRUE) {
-			$zip->extractTo($tempDir);
+			$logDescription = "Download external module \"$moduleFolderName\" from repository";
+			// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
+			// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
+			// https://github.com/vanderbilt/redcap-external-modules/issues/136
+			// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
+			self::throttleEvent($logDescription, 2, 3);
+			\REDCap::logEvent($logDescription);
+
+			// Send user info?
+			if ($sendUserInfo) {
+				$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
+									'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+			} else {
+				$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+			}
+			// Call the module download service to download the module zip
+			$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
+			// Errors?
+			if ($moduleZipContents == 'ERROR') {
+				// 0 = Module does not exist in library
+				return "0";
+			}
+			// Place the file in the temp directory before extracting it
+			$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
+			if (file_put_contents($filename, $moduleZipContents) === false) {
+				// 1 = Module zip couldn't be written to temp
+				return "1";
+			}
+			// Extract the module to /redcap/modules
+			$zip = new \ZipArchive;
+			if ($zip->open($filename) !== TRUE) {
+			return "2";
+			}
+			// First, we need to rename the parent folder in the zip because GitHub has it as something else
+			$i = 0;
+			while ($item_name = $zip->getNameIndex($i)){
+				$item_name_end = substr($item_name, strpos($item_name, "/"));
+				$zip->renameIndex($i++, $moduleFolderName . $item_name_end);
+			}
 			$zip->close();
+			// Now extract the zip to the modules folder
+			$zip = new \ZipArchive;
+			if ($zip->open($filename) === TRUE) {
+				$zip->extractTo($tempDir);
+				$zip->close();
+			}
+			// Remove temp file
+			unlink($filename);
+
+			// Move the extracted directory to it's final location
+			$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
+			rename($tempDir.DS.$moduleFolderName, $moduleFolderDir);
+
+			// Now double check that the new module directory got created
+			if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
+			return "3";
+			}
+			// Add row to redcap_external_modules_downloads table
+			$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
+					values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+					on duplicate key update 
+					module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
+			db_query($sql);
+			// Remove module_id from external_modules_updates_available config variable		
+			self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
+			
+			// Give success message
+			return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
 		}
-		// Remove temp file
-		unlink($filename);
-
-		// Move the extracted directory to it's final location
-		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
-		rename($tempDir.DS.$moduleFolderName, $moduleFolderDir);
-
-		// Remove temp dir
-		rmdir($tempDir);
-
-		// Now double check that the new module directory got created
-		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
-		   return "3";
+		finally{
+			self::rrmdir($tempDir);
 		}
-		// Add row to redcap_external_modules_downloads table
-		$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
-				values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
-				on duplicate key update 
-				module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
-		db_query($sql);
-		// Remove module_id from external_modules_updates_available config variable		
-		self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
-
-		// Give success message
-		return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
 	}
 
 	public static function deleteModuleDirectory($moduleFolderName=null, $bypass=false){
