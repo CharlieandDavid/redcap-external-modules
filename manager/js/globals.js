@@ -1,4 +1,10 @@
-var ExternalModules = {
+// It is possible that a module may have already defined the ExternalModules object
+// via one more more initializeJavascriptModuleObject() calls.
+if(!ExternalModules){
+	var ExternalModules = {}
+}
+
+ExternalModules = $.extend(ExternalModules, {
 	sortModuleTable: function(table){
 		table.find('tr').sort(function(a, b){
 			a = $(a).find('.external-modules-title').text()
@@ -86,7 +92,7 @@ var ExternalModules = {
 
 		return errorMessage
 	}
-};
+})
 
 ExternalModules.Settings = function(){}
 
