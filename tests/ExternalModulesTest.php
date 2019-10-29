@@ -215,7 +215,7 @@ class ExternalModulesTest extends BaseTest
 		}
 
 		# move forward one day => should fail on weekday
-		$datetime2 = new DateTime();
+		$datetime2 = new \DateTime();
 		$datetime2->add(new DateInterval("PT1D"));
 		$time2 = time() + 24 * 3600;
 		$cron2 = array(
@@ -226,7 +226,7 @@ class ExternalModulesTest extends BaseTest
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
 
 		# move forward one week => should call cron on weekday but not monthday
-		$datetime3 = new DateTime();
+		$datetime3 = new \DateTime();
 		$datetime3->add(new DateInterval("PT7D"));
 		$cron3 = array(
 				'cron_hour' => $datetime3->format("G"),
