@@ -4203,14 +4203,17 @@ class ExternalModules
 	}
 
 	public static function getCronSchedules($modulePrefix) {
-		$modifications = self::getModifiedCrons($modulePrefix);
 		$config = self::getConfig($modulePrefix);
 		$finalVersion = array();
-		if (isset($config['crons'])) {
-			foreach ($config['crons'] as $cronAttr) {
-				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
-			}
+		if (!isset($config['crons'])) {
+			return $finalVersion;	
 		}
+
+		foreach ($config['crons'] as $cronAttr) {
+			$finalVersion[$cronAttr['cron_name']] = $cronAttr;
+		}
+
+		$modifications = self::getModifiedCrons($modulePrefix);
 		if ($modifications) {
 			foreach ($modifications as $cronAttr) {
 				# overwrite config's if modifications exist
