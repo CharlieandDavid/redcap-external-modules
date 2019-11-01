@@ -1203,4 +1203,46 @@ class ExternalModulesTest extends BaseTest
 		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
 		$assert("false", 'column_name', []);
 	}
+
+	function testIsCompatibleWithREDCapPHP_minVersions(){
+		$versionTypes = [
+			'PHP' => PHP_VERSION,
+			'REDCap' => REDCAP_VERSION
+		];
+		
+		foreach($versionTypes as $versionType=>$systemVersion){
+			$settingKey = strtolower($versionType) . "-version-min";
+
+			$test = function($configMinVersion) use ($settingKey, $systemVersion){
+				$this->setConfig([
+					'compatibility' => [
+						$settingKey => $configMinVersion
+					]
+				]);
+	
+				$this->callPrivateMethod('isCompatibleWithREDCapPHP', TEST_MODULE_PREFIX, TEST_MODULE_VERSION);
+			};
+
+			$assertValid = function($configMinVersion) use ($settingKey, $test){
+				// Simply make sure the following call completes without an Exception.
+				$test($configMinVersion);
+			};
+	
+			$assertInvalid = function($configMinVersion) use ($settingKey, $test, $versionType){
+				$expectedMessage = "minimum required $versionType version";
+
+				$this->assertThrowsException(function() use ($configMinVersion, $test){
+					$test($configMinVersion);
+				}, $expectedMessage);
+			};
+	
+			list($major, $minor, $patch) = explode('.', $systemVersion);
+
+			$assertValid("$major.$minor.$patch");
+			$assertInvalid("$major.$minor." . ($patch+1));
+			$assertValid($major);
+			$assertValid($major-1);
+			$assertInvalid($major+1);
+		}
+	}
 }
