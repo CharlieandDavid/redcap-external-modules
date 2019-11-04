@@ -180,13 +180,13 @@ class ExternalModulesTest extends BaseTest
 		$method = 'isTimeToRun';
 
 		$offsets = array(
-				0 => "assertTrue",
-				3600 => "assertFalse",
-				-3600 => "assertFalse",
-				60 => "assertFalse",
-				-60 => "assertFalse",
-				24 * 3600 => "assertTrue",
-				-24 * 3600 => "assertTrue",
+				"nul" => "assertTrue",
+				"addP1H" => "assertFalse",
+				"subP1H" => "assertFalse",
+				"addP1M" => "assertFalse",
+				"subP1M" => "assertFalse",
+				"addP1D" => "assertTrue",
+				"subP1D" => "assertTrue",
 				);
 		$defaultCron = array(
 					'cron_name' => 'test_name',
@@ -194,7 +194,7 @@ class ExternalModulesTest extends BaseTest
 					'method' => 'test_method',
 					);
 
-		foreach ($offsets as $offset => $validationMethod) {
+		foreach ($offsets as $displacement => $validationMethod) {
 			$currentTime = time();
 			if($currentTime%60 >= 59){
 				// We don't want the clock to turn over to the next minute in the middle of this test.
@@ -206,10 +206,16 @@ class ExternalModulesTest extends BaseTest
 			// Simulate the process starting now.
 			$_SERVER["REQUEST_TIME_FLOAT"] = microtime(true);
 
-			$time = $currentTime + $offset;
+			$func = substr($displacement, 0, 3);
+			$offset = substr($displacement, 3);
+
+			$datetime = new \DateTime();
+			if ($func != "nul") {
+				$datetime->$func(new \DateInterval($offset));
+			}
 			$cron = array(
-                			'cron_hour' => date("G", $time),
-                			'cron_minute' => date("i", $time),
+					'cron_hour' => $datetime->format("G"),
+					'cron_minute' => $datetime->format("i"),
 					);
 			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
 		}
@@ -217,7 +223,6 @@ class ExternalModulesTest extends BaseTest
 		# move forward one day => should fail on weekday
 		$datetime2 = new \DateTime();
 		$datetime2->add(new \DateInterval("P1D"));
-		$time2 = time() + 24 * 3600;
 		$cron2 = array(
 				'cron_hour' => $datetime2->format("G"),
 				'cron_minute' => $datetime2->format("i"),
