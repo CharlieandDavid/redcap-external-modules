@@ -272,7 +272,8 @@ Note: If you are building links to plugin pages in your module, you should use t
          {
             "name": "VoteCap",
             "icon": "fas fa-receipt",
-            "url": "index.php"
+            "url": "index.php",
+            "show-header-and-footer": true
          }
       ]
    }

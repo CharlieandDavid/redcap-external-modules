@@ -981,7 +981,7 @@ class AbstractExternalModule
 	private function updateRecordCount($pid){
 		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
 		$count = $results->fetch_assoc()['count'];
-		$this->query("update redcap_record_counts set record_count = $count where project_id = $pid");
+		$this->query("update redcap_record_counts set record_count = $count, time_of_count = '".NOW."' where project_id = $pid");
 	}
 
 	private function getNextAutoNumberedRecordId($pid){
