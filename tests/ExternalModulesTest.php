@@ -181,10 +181,10 @@ class ExternalModulesTest extends BaseTest
 
 		$offsets = array(
 				"nul" => "assertTrue",
-				"addP1H" => "assertFalse",
-				"subP1H" => "assertFalse",
-				"addP1M" => "assertFalse",
-				"subP1M" => "assertFalse",
+				"addPT1H" => "assertFalse",
+				"subPT1H" => "assertFalse",
+				"addPT1M" => "assertFalse",
+				"subPT1M" => "assertFalse",
 				"addP1D" => "assertTrue",
 				"subP1D" => "assertTrue",
 				);
