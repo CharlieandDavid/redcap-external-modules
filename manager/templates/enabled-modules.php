@@ -159,7 +159,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 		<span class="fas fa-download" aria-hidden="true"></span>
 		View modules available in the REDCap Repo
 	</button> &nbsp;
-	<button id='external-modules-configure-crons'  class="btn btn-primary btn-primaryrc btn-sm">
+	<button id='external-modules-configure-crons'  class="btn btn-primary btn-defaultrc btn-sm">
 		<span class="fas fa-calendar-alt" aria-hidden="true"></span>
 		Configure Cron Start Times
 	</button>

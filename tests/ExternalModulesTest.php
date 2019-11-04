@@ -214,26 +214,31 @@ class ExternalModulesTest extends BaseTest
 			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
 		}
 
+		# move forward one day => should fail on weekday
+		$datetime2 = new DateTime();
+		$datetime2->add(new DateInterval("PT1D"));
 		$time2 = time() + 24 * 3600;
 		$cron2 = array(
-				'cron_hour' => date("G", $time2),
-				'cron_minute' => date("i", $time2),
-				'cron_weekday' => date("w", $time2),
+				'cron_hour' => $datetime2->format("G"),
+				'cron_minute' => $datetime2->format("i"),
+				'cron_weekday' => $datetime2->format("w"),
 				);
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
 
-		$time3 = time() + 7 * 24 * 3600;
+		# move forward one week => should call cron on weekday but not monthday
+		$datetime3 = new DateTime();
+		$datetime3->add(new DateInterval("PT7D"));
 		$cron3 = array(
-				'cron_hour' => date("G", $time3),
-				'cron_minute' => date("i", $time3),
-				'cron_weekday' => date("w", $time3),
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_weekday' => $datetime3->format("w"),
 				);
 		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
 
 		$cron3_2 = array(
-				'cron_hour' => date("G", $time3),
-				'cron_minute' => date("i", $time3),
-				'cron_monthday' => date("j", $time3),
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_monthday' => $datetime3->format("j"),
 				);
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
@@ -840,14 +845,14 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
-		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+		$assertToEquals(['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org']);
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
-		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
+		$expectedTo = ['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org', 'datacore@vumc.org'];
 		$assertToEquals($expectedTo);
 
 		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
-		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
+		$assertToEquals($expectedTo, 'someone@vumc.org');
 
 		$otherDomain = 'other.edu';
 		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");

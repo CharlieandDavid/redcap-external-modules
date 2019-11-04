@@ -9,15 +9,15 @@ If you have created a module and wish to share it with the REDCap community, you
 ### Naming a module
 
 Modules must follow a specific naming scheme for the module directory that will sit on the REDCap web server. Each version of a module will have its own directory (like REDCap) and will be located in the `/redcap/modules/` directory on the server. A module directory name consists of three parts: 
-1. a **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
-1. "_v" = an underscore + letter "v"
-1. a **module version number in X.Y or X.Y.Z format** that consists of a major version X and minor version Y (e.g., 1.0 or 3.25), and in some cases a sub-minor version Z if in X.Y.X format (e.g., 1.0.0 or 3.25.2), in which X, Y, and Z must be an integer beginning with 0 and going up to 100 at most.
+1. A **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
+1. "_v" (an underscore followed by the letter "v")
+1. A **module version number**.  [Semantic Versioning](https://semver.org/) is recommended (ex: `1.2.3`), although simpler `#.#` versioning is also supported (ex: `1.2`).
 
 The diagram below shows the general directory structure of some hypothetical  modules to illustrate how modules will sit on the REDCap web server alongside other REDCap files and directories.
 ```
 redcap
 |-- modules
-|   |-- mymodulename_v1.0.0
+|   |-- my_module_name_v1.0.0
 |   |-- other_module_v2.9
 |   |-- other_module_v2.10
 |   |-- other_module_v2.11
