@@ -20,7 +20,10 @@ if (!empty($extModLinks)) {
                     }
                 }
             } catch(\Exception $e) {
-                ExternalModules::sendAdminEmail("An exception was thrown when generating control center links", $e->__toString(), $prefix);
+                ExternalModules::sendAdminEmail(
+					//= An exception was thrown when generating control center links
+					ExternalModules::tt("em_errors_78"),
+					$e->__toString(), $prefix);
             }
 
             ?>
@@ -32,7 +35,7 @@ if (!empty($extModLinks)) {
 			var menu = $('#control_center_menu');
 			menu.append('<div class="cc_menu_divider"></div>');
 			menu.append('<div class="cc_menu_section">');
-			menu.append('<div class="cc_menu_header">External Modules</div>');
+			menu.append('<div class="cc_menu_header"><?=strip_tags(ExternalModules::tt("em_manage_57"))?></div>'); //= External Modules
 			menu.append(items);
 			menu.append('</div>');
 		}
