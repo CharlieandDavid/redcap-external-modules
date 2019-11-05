@@ -25,7 +25,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 	}
 
 	function getSafePath($path, $root=null){
-		$moduleDirectory = $this->module->getModuleDirectoryName();
+		$moduleDirectory = $this->module->getModulePath();
 		if(!$root){
 			$root = $moduleDirectory;
 		}

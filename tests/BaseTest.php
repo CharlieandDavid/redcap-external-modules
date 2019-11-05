@@ -262,6 +262,11 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		parent::__construct();
 	}
 
+	function getModulePath()
+	{
+		return __DIR__;
+	}
+
 	function redcap_test_delay($delayTestFunction)
 	{
 		// Although it perhaps shouldn't be, it is sometimes possible for getModuleInstance() to
