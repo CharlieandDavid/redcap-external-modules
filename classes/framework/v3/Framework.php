@@ -4,6 +4,7 @@ namespace ExternalModules\FrameworkVersion3;
 require_once __DIR__ . '/../v2/Framework.php';
 
 use Exception;
+use ExternalModules\ExternalModules;
 use SplFileInfo;
 
 class Framework extends \ExternalModules\FrameworkVersion2\Framework
@@ -34,7 +35,8 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 		}
 
 		if(!file_exists($root)){
-			throw new Exception("The specified root ($root) does not exist as either an absolute path or a relative path to the module directory.");
+			//= The specified root ({0}) does not exist as either an absolute path or a relative path to the module directory.
+			throw new Exception(ExternalModules::tt("em_errors_103", $root));
 		}
 
 		$root = realpath($root);
@@ -49,14 +51,16 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 			$dirname = dirname($fullPath);
 				
 			if(!file_exists($dirname)){
-				throw new Exception("The parent directory ($dirname) does not exist.  Please create it before calling getSafePath() since the realpath() function only works on directories that exist.");
+				//= The parent directory ({0}) does not exist.  Please create it before calling getSafePath() since the realpath() function only works on directories that exist.
+				throw new Exception(ExternalModules::tt("em_errors_104", $dirname));
 			}
 
 			$fullPath = realpath($dirname) . DIRECTORY_SEPARATOR . basename($fullPath);
 		}
 
 		if(strpos($fullPath, $root) !== 0){
-			throw new Exception("You referenced a path ($fullPath) that is outside of your allowed parent directory ($root).");
+			//= You referenced a path ({0}) that is outside of your allowed parent directory ({1}).
+			throw new Exception(ExternalModules::tt("em_errors_105", $fullPath, $root));
 		}
 
 		return $fullPath;
