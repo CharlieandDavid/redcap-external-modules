@@ -280,7 +280,8 @@ class ExternalModulesTest extends BaseTest
 			$lockInfo = self::callPrivateMethod('getCronLockInfo', TEST_MODULE_PREFIX);
 			$lockInfo['time'] = time() - $aLittleLessThanADay;
 			ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING, $lockInfo);
-			$assertConcurrentCallSkipped(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+			//= External Module Long-Running Cron
+			$assertConcurrentCallSkipped(ExternalModules::tt("em_errors_100")); 
 		};
 
 		$childAction = function() use ($callCronMethod){
@@ -316,7 +317,9 @@ class ExternalModulesTest extends BaseTest
 		$callCronMethod(function(){
 			throw new Exception();
 		});
-		$this->assertSame(ExternalModules::CRON_EXCEPTION_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+		//= External Module Exception in Cron Job
+		$emailSubject = ExternalModules::tt("em_errors_56"); 
+		$this->assertSame($emailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
 
 		$secondCronRan = false;
 		$callCronMethod(function() use (&$secondCronRan){
@@ -327,10 +330,12 @@ class ExternalModulesTest extends BaseTest
 
 	function testCheckForALongRunningCronJob()
 	{
-		$assertLongRunningCronEmailSent = function($expected, $lockTime){
+		//= External Module Long-Running Cron
+		$longRunningCronEmailSubject = ExternalModules::tt("em_errors_100"); 
+		$assertLongRunningCronEmailSent = function($expected, $lockTime) use ($longRunningCronEmailSubject){
 			ExternalModulesTest::$lastSendAdminEmailArgs = null;
 			self::callPrivateMethod('checkForALongRunningCronJob', TEST_MODULE_PREFIX, null, ['time' => $lockTime]);
-			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === $longRunningCronEmailSubject);
 		};
 
 		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
