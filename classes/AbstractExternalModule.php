@@ -62,7 +62,8 @@ class AbstractExternalModule
 				self::checkSettingKey($key);
 
 				if (isset($settingKeys[$key])) {
-					throw new Exception(ExternalModules::tt("em_errors_61", $this->PREFIX, $key)); //= The '{0}' module defines the '{1}' setting multiple times!
+					//= The '{0}' module defines the '{1}' setting multiple times!
+					throw new Exception(ExternalModules::tt("em_errors_61", $this->PREFIX, $key)); 
 				} else {
 					$settingKeys[$key] = true;
 				}
@@ -82,7 +83,8 @@ class AbstractExternalModule
 	private function checkSettingKey($key)
 	{
 		if(!self::isSettingKeyValid($key)){
-			throw new Exception(ExternalModules::tt("em_errors_62", $this->PREFIX, $key)); //= The '{0}' module has a setting named '{1}' that contains invalid characters. Only lowercase characters, numbers, and dashes are allowed.
+			//= The '{0}' module has a setting named '{1}' that contains invalid characters. Only lowercase characters, numbers, and dashes are allowed.
+			throw new Exception(ExternalModules::tt("em_errors_62", $this->PREFIX, $key)); 
 		}
 	}
 
@@ -102,7 +104,8 @@ class AbstractExternalModule
 		$permissionName = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', $methodName)), '_');
 
 		if (!$this->hasPermission($permissionName)) {
-			throw new Exception(ExternalModules::tt("em_errors_64", $permissionName, $methodName())); //= This module must request the '{0}' permission in order to call the '{1}' method.
+			//= This module must request the '{0}' permission in order to call the '{1}' method.
+			throw new Exception(ExternalModules::tt("em_errors_64", $permissionName, $methodName())); 
 		}
 	}
 
@@ -633,7 +636,8 @@ class AbstractExternalModule
 		$value = self::detectParameter($parameterName, $value);
 
 		if(!isset($value)){
-			throw new Exception(ExternalModules::tt("em_errors_65", $parameterName)); //= You must supply the following either as a GET parameter or as the last argument to this method: {0}
+			//= You must supply the following either as a GET parameter or as the last argument to this method: {0}
+			throw new Exception(ExternalModules::tt("em_errors_65", $parameterName)); 
 		}
 
 		return $value;
@@ -903,7 +907,8 @@ class AbstractExternalModule
 	public function setData($record, $fieldName, $values){
 		$instanceId = db_escape(self::requireInstanceId());
 		if($instanceId != 1){
-			throw new Exception(ExternalModules::tt("em_errors_66")); //= Multiple instances are not currently supported!
+			//= Multiple instances are not currently supported!
+			throw new Exception(ExternalModules::tt("em_errors_66")); 
 		}
 
 		$pid = db_escape(self::requireProjectId());
@@ -961,7 +966,8 @@ class AbstractExternalModule
 			return $this->addAutoNumberedRecord($pid);
 		}
 		else if($count == 0){
-			throw new Exception(ExternalModules::tt("em_errors_67", $pid)); //= An error occurred while adding an auto numbered record for project {0}.
+			//= An error occurred while adding an auto numbered record for project {0}.
+			throw new Exception(ExternalModules::tt("em_errors_67", $pid)); 
 		}
 
 		$this->updateRecordCount($pid);
@@ -1306,7 +1312,8 @@ class AbstractExternalModule
 		if (in_array($name, $i18n_funcs, true) && isset($this->framework) && method_exists($this->framework, $name)) {
 			return call_user_func_array([$this->framework, $name], $arguments);
 		}
-		throw new Exception(ExternalModules::tt("em_errors_69", $name)); //= The following method does not exist: {0}
+		//= The following method does not exist: {0}
+		throw new Exception(ExternalModules::tt("em_errors_69", $name)); 
 	}
 
 	private function log_internal($message, $parameters = [])

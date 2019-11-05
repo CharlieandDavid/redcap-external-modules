@@ -438,7 +438,8 @@ class ExternalModules
 			}
 
 			if (self::isSuperUser() && !self::isLocalhost()) {
-				$message .= "\n".self::tt("em_errors_2")."\n"; //= The current user is a super user, so this module will be automatically disabled
+				//= The current user is a super user, so this module will be automatically disabled
+				$message .= "\n".self::tt("em_errors_2")."\n"; 
 
 				// We can't just call disable() from here because the database connection has been destroyed.
 				// Disable this module via AJAX instead.
@@ -458,7 +459,8 @@ class ExternalModules
 								//= The <?=$activeModulePrefix?> external module was automatically disabled in order to allow REDCap to function properly. The REDCap administrator has been notified. Please save a copy of the above error and fix it before re-enabling the module.
 							}
 							else {
-								messageElement.innerHTML += '<br>' + <?=json_encode(self::tt("em_errors_5", $activeModulePrefix))?> + ' ' + request.responseText; //= 'An error occurred while disabling the "<?=$activeModulePrefix?>" module:
+								//= 'An error occurred while disabling the "<?=$activeModulePrefix?>" module:
+								messageElement.innerHTML += '<br>' + <?=json_encode(self::tt("em_errors_5", $activeModulePrefix))?> + ' ' + request.responseText; 
 							}
 						}
 					};
@@ -965,13 +967,15 @@ class ExternalModules
 			$templates = array (
 				"system-settings" => array(
 					"key" => self::KEY_LANGUAGE_SYSTEM,
-					"name" => self::tt("em_config_4"), //= Language file: Language file to use for this module. This setting can be overridden in the project configuration of this module
+					//= Language file: Language file to use for this module. This setting can be overridden in the project configuration of this module
+					"name" => self::tt("em_config_4"), 
 					"type" => "dropdown",
 					"choices" => $choices
 				),
 				"project-settings" => array(
 					"key" => self::KEY_LANGUAGE_PROJECT, 
-					"name" => self::tt("em_config_5"), //= Language file: Language file to use for this module in this project (leave blank for system setting to apply)
+					//= Language file: Language file to use for this module in this project (leave blank for system setting to apply)
+					"name" => self::tt("em_config_5"), 
 					"type" => "dropdown",
 					"choices" => $choices
 				)
@@ -990,7 +994,8 @@ class ExternalModules
 			foreach (array_keys($templates) as $type) {
 				$key = $templates[$type]['key'];
 				if(isset($existingSettingKeys[$key])){
-					throw new Exception(self::tt("em_errors_6", $key)); //= The '{0}' setting key is reserved for internal use.  Please use a different setting key in your module.
+					//= The '{0}' setting key is reserved for internal use.  Please use a different setting key in your module.
+					throw new Exception(self::tt("em_errors_6", $key)); 
 				}
 				// Merge arrays so that the language setting always end up at the top of the list.
 				$config[$type] = array_merge(array($templates[$type]), $config[$type]);

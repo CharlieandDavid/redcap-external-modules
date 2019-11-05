@@ -165,7 +165,8 @@ class Framework
 	function getUser($username = null){
 		if(empty($username)){
 			if(!defined('USERID')){
-				throw new Exception(ExternalModules::tt("em_errors_71")); //= A username was not specified and could not be automatically detected.
+				//= A username was not specified and could not be automatically detected.
+				throw new Exception(ExternalModules::tt("em_errors_71")); 
 			}
 
 			$username = USERID;
