@@ -6,6 +6,31 @@ use \Exception;
 
 class ExternalModulesTest extends BaseTest
 {
+	const TABLED_CRON_EXAMPLE = '{
+		"cron_name": "schedulednotifications",
+		"cron_description": "Daily cron to generate new notifications",
+		"method": "scheduledNotifications",
+		"cron_frequency": "3600",
+		"cron_max_run_time": "300"
+	}';
+
+	const TIMED_CRON_EXAMPLE = '{
+		"cron_name": "cron4",
+		"cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
+		"method": "some_other_method_4",
+		"cron_hour": 14,
+		"cron_minute": 25,
+		"cron_weekday": 1
+	}';
+
+	public static $lastSendAdminEmailArgs;
+
+	protected function tearDown()
+	{
+		self::$lastSendAdminEmailArgs = null;
+		parent::tearDown();
+	}
+
 	function testInitializeSettingDefaults()
 	{
 		$defaultValue = rand();
@@ -30,6 +55,81 @@ class ExternalModulesTest extends BaseTest
 		ExternalModules::initializeSettingDefaults($m);
 		$this->assertNotEquals($defaultValue, $this->getSystemSetting());
 	}
+        function testCheckCronModifications() {
+		$prefix = self::getInstance()->PREFIX;
+		$cronAttr1 = array("cron_name" => "Test Cron 1", "cron_description" => "Test", "method" => "testMethod1", "cron_hour" => 1, "cron_minute" => 0);
+		$cronAttr2 = array("cron_name" => "Test Cron 2", "cron_description" => "Test", "method" => "testMethod2", "cron_hour" => 2, "cron_minute" => 0);
+		$cronAttr3 = array("cron_name" => "Test Cron 3", "cron_description" => "Test", "method" => "testMethod3", "cron_hour" => 3);
+		$cronAttr4 = array("cron_name" => "Test Cron 4", "cron_description" => "Test", "method" => "testMethod4", "cron_weekday" => "2", "cron_hour" => 4, "cron_minute" => 0);
+		$cronAttr5 = array("cron_name" => "Test Cron 5", "cron_description" => "Test", "method" => "testMethod5", "cron_monthday" => "1", "cron_hour" => 5, "cron_minute" => 0);
+		$validCrons = array($cronAttr1, $cronAttr2, $cronAttr4, $cronAttr5);
+		$invalidCrons = array($cronAttr1, $cronAttr2, $cronAttr3, $cronAttr4, $cronAttr5);
+
+		ExternalModules::setModifiedCrons($prefix, $validCrons);
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue($crons == $validCrons);
+
+		$this->assertThrowsException(function() use ($invalidCrons, $prefix){
+			ExternalModules::setModifiedCrons($prefix, $invalidCrons);
+		}, "A cron is not valid! ".json_encode($cronAttr3));
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue($crons != $invalidCrons);
+
+		ExternalModules::removeModifiedCrons($prefix);
+		$crons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue(empty($crons));
+
+		# check for config backup
+		$config = [
+			'system-settings' => [
+				['key' => 'key1']
+			],
+			'project-settings' => [
+				['key' => 'key-two']
+			],
+			'crons' => [
+				[
+					'cron_name' => 'Test Cron 10',
+					'method' => 'testMethod10',
+					'cron_description' => "descript",
+					'cron_hour' => 10,
+					'cron_minute' => 0,
+				],
+			],
+		];
+
+		$newCron = [
+			'cron_name' => 'Test Cron 11',
+			'method' => 'testMethod11',
+			'cron_description' => "descript",
+			'cron_hour' => 11,
+			'cron_minute' => 0,
+		];
+
+		ExternalModules::removeModifiedCrons($prefix);
+		$this->setConfig($config);
+		$crons = ExternalModules::getCronSchedules($prefix);
+		$this->assertTrue($crons == $config['crons']);
+		ExternalModules::setModifiedCrons($prefix, $validCrons);
+		$crons = ExternalModules::getCronSchedules($prefix);
+		$modifiedCrons = ExternalModules::getModifiedCrons($prefix);
+		$this->assertTrue($crons != $config['crons']);
+		$this->assertTrue(in_array($cronAttr1, $crons));
+		$this->assertTrue(in_array($cronAttr2, $crons));
+		$this->assertTrue(in_array($cronAttr4, $crons));
+		$this->assertTrue(in_array($cronAttr5, $crons));
+
+		# set new crons
+		array_push($config['crons'], $newCron);
+		$this->setConfig($config);
+		$crons = ExternalModules::getCronSchedules($prefix);
+		$this->assertTrue($crons != $config['crons']);
+		$this->assertTrue(in_array($cronAttr1, $crons));
+		$this->assertTrue(in_array($cronAttr2, $crons));
+		$this->assertTrue(in_array($cronAttr4, $crons));
+		$this->assertTrue(in_array($cronAttr5, $crons));
+	}
+
 
 	function testGetProjectSettingsAsArray_systemOnly()
 	{
@@ -73,6 +173,175 @@ class ExternalModulesTest extends BaseTest
 		$this->assertThrowsException(function(){
 			ExternalModules::getSystemSettingsAsArray(null);
 		}, 'One or more module prefixes must be specified!');
+	}
+
+	function testIsTimeToRun()
+	{
+		$method = 'isTimeToRun';
+
+		$offsets = array(
+				"nul" => "assertTrue",
+				"addPT1H" => "assertFalse",
+				"subPT1H" => "assertFalse",
+				"addPT1M" => "assertFalse",
+				"subPT1M" => "assertFalse",
+				"addP1D" => "assertTrue",
+				"subP1D" => "assertTrue",
+				);
+		$defaultCron = array(
+					'cron_name' => 'test_name',
+					'cron_description' => 'This is a test',
+					'method' => 'test_method',
+					);
+
+		foreach ($offsets as $displacement => $validationMethod) {
+			$currentTime = time();
+			if($currentTime%60 >= 59){
+				// We don't want the clock to turn over to the next minute in the middle of this test.
+				// Go ahead and wait for the next minute to come to ensure the test always passes.
+				sleep(1);
+				$currentTime = time();
+			}
+
+			// Simulate the process starting now.
+			$_SERVER["REQUEST_TIME_FLOAT"] = microtime(true);
+
+			$func = substr($displacement, 0, 3);
+			$offset = substr($displacement, 3);
+
+			$datetime = new \DateTime();
+			if ($func != "nul") {
+				$datetime->$func(new \DateInterval($offset));
+			}
+			$cron = array(
+					'cron_hour' => $datetime->format("G"),
+					'cron_minute' => $datetime->format("i"),
+					);
+			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
+		}
+
+		# move forward one day => should fail on weekday
+		$datetime2 = new \DateTime();
+		$datetime2->add(new \DateInterval("P1D"));
+		$cron2 = array(
+				'cron_hour' => $datetime2->format("G"),
+				'cron_minute' => $datetime2->format("i"),
+				'cron_weekday' => $datetime2->format("w"),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
+
+		# move forward one week => should call cron on weekday but not monthday
+		$datetime3 = new \DateTime();
+		$datetime3->add(new \DateInterval("P7D"));
+		$cron3 = array(
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_weekday' => $datetime3->format("w"),
+				);
+		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
+
+		$cron3_2 = array(
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_monthday' => $datetime3->format("j"),
+				);
+		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
+	}
+
+	function testCallTimedCronMethod_concurrency()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => json_decode(self::TIMED_CRON_EXAMPLE)]);
+
+		$callCronMethod = function($action) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = $action;
+
+			self::callPrivateMethod('callTimedCronMethod', TEST_MODULE_PREFIX, $methodName);
+		};
+
+		$parentAction = function() use ($callCronMethod){
+			sleep(1); // wait until the child is in progress
+
+			$assertConcurrentCallSkipped = function($expectedEmailSubject) use ($callCronMethod){
+				$callCronMethod(function(){
+					throw new Exception('This cron call should have been automatically skipped due to another recent cron call running.');
+				});
+
+				$this->assertSame($expectedEmailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+			};
+
+			$assertConcurrentCallSkipped(null);
+
+			// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
+			$aLittleLessThanADay = ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+
+			$lockInfo = self::callPrivateMethod('getCronLockInfo', TEST_MODULE_PREFIX);
+			$lockInfo['time'] = time() - $aLittleLessThanADay;
+			ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING, $lockInfo);
+			$assertConcurrentCallSkipped(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+		};
+
+		$childAction = function() use ($callCronMethod){
+			$callCronMethod(function(){
+				sleep(2);
+			});
+
+			$this->assertTrue(true); // We have to have an assertion or the phpunit process will fail.
+		};
+
+		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
+	}
+
+	function testCallCronMethod_unlockOnException()
+	{
+		$methodName = 'redcap_test_call_function';
+
+		$this->setConfig(['crons' => [[
+			'cron_name' => $methodName,
+			'cron_description' => 'Test Cron',
+			'method' => $methodName,
+		]]]);
+
+		$callCronMethod = function($function) use ($methodName){
+			$m = $this->getInstance();
+			$m->function = $function;
+
+			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+			ExternalModules::callCronMethod($moduleId, $methodName);
+		};
+
+
+		$callCronMethod(function(){
+			throw new Exception();
+		});
+		$this->assertSame(ExternalModules::CRON_EXCEPTION_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+
+		$secondCronRan = false;
+		$callCronMethod(function() use (&$secondCronRan){
+			$secondCronRan = true;
+		});
+		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
+	}
+
+	function testCheckForALongRunningCronJob()
+	{
+		$assertLongRunningCronEmailSent = function($expected, $lockTime){
+			ExternalModulesTest::$lastSendAdminEmailArgs = null;
+			self::callPrivateMethod('checkForALongRunningCronJob', TEST_MODULE_PREFIX, null, ['time' => $lockTime]);
+			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+		};
+
+		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
+		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+
+		$assertLongRunningCronEmailSent(false, time() - ExternalModules::HOUR_IN_SECONDS*22);
+		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
+		$assertLongRunningCronEmailSent(false, $aLittleLessThanADayAgo); // The email should not send again (yet).
+
+		ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, $aLittleLessThanADayAgo);
+		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
 	}
 
 	function testAddReservedSettings()
@@ -245,8 +514,8 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame($edocIdProject, $array[FILE_SETTING_KEY]['value']);
 		$this->assertSame($edocIdSystem, $array[FILE_SETTING_KEY]['system_value']);
 
-		ExternalModules::removeFileSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
-		ExternalModules::removeSystemFileSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
+		ExternalModules::removeProjectSetting($this->getInstance()->PREFIX, TEST_SETTING_PID, FILE_SETTING_KEY);
+		ExternalModules::removeSystemSetting($this->getInstance()->PREFIX, FILE_SETTING_KEY);
 		$array = ExternalModules::getProjectSettingsAsArray($this->getInstance()->PREFIX, TEST_SETTING_PID);
 
 		$this->assertNull(@$array[FILE_SETTING_KEY]['value']);
@@ -581,14 +850,14 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
-		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+		$assertToEquals(['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org']);
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
-		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
+		$expectedTo = ['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org', 'datacore@vumc.org'];
 		$assertToEquals($expectedTo);
 
 		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
-		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
+		$assertToEquals($expectedTo, 'someone@vumc.org');
 
 		$otherDomain = 'other.edu';
 		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");
@@ -704,6 +973,281 @@ class ExternalModulesTest extends BaseTest
 			$this->assertThrowsException(function() use ($assertFrameworkVersion, $value){
 				$assertFrameworkVersion($value);
 			}, 'must be specified as an integer');
+		}
+	}
+
+	function testCopySettingValues()
+	{
+		$value = [rand(), rand()];
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY, $value);
+
+		self::callPrivateMethod('copySettingValues', TEST_SETTING_PID, TEST_SETTING_PID_2);
+
+		$this->assertSame($value, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID_2, TEST_SETTING_KEY));
+	}
+
+	function testRecreateAllEDocs_fileSettings()
+	{
+		$edocIds = [];
+		$edocFilenames = [];
+
+		$minEdocs = 5;
+		$result = ExternalModules::query("
+			select * from redcap_edocs_metadata
+			where
+				date_deleted_server is null
+				and doc_size < 1000000
+				and project_id not in (".TEST_SETTING_PID.", ".TEST_SETTING_PID_2.")
+			limit $minEdocs
+		");
+
+		while($row = db_fetch_assoc($result)){
+			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
+			$edocIds[] = (string)$row['doc_id'];
+			$edocFilenames[] = $row['stored_name'];
+		}
+
+		$edocsNeeded = $minEdocs - count($edocIds);
+		if($edocsNeeded !== 0){
+			throw new Exception("Please upload $edocsNeeded more edocs to any project in order for unit tests to run properly.");
+		}
+
+		$key1 = 'test-key-1';
+		$key2 = 'test-key-2';
+		$key3 = 'test-key-3';
+
+		$this->setConfig([
+			'project-settings' => [
+					[
+						'key' => $key1,
+						'type' => 'file'
+					],
+					[
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key2,
+								'type' => 'file'
+							]
+						]
+					],
+					[
+						'key' => $key3,
+						'type' => 'text'
+					]
+				]
+			]
+		);
+
+		$value1 = $edocIds[0];
+
+		// simulate repeatable sub-settings
+		$value2 = [
+			[
+				$edocIds[1],
+				$edocIds[2],
+				$edocIds[3],
+			],
+			[
+				$edocIds[4],
+			]
+		];
+
+		ExternalModules::setFileSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $value1);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $value2);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3, $value2);
+
+		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
+
+		$newValue1 = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1);
+		$newValue2 = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2);
+
+		$newEdocIds = array_merge([$newValue1], $newValue2[0], $newValue2[1]);
+		for($i=0; $i<$minEdocs; $i++){
+			$oldId = $edocIds[$i];
+			$newId = $newEdocIds[$i];
+
+			$this->assertEdocsEqual($oldId, $newId);
+		}
+
+		// Make sure non-file settings are not touched.
+		$this->assertSame($value2, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3));
+
+		foreach($newEdocIds as $id){
+			ExternalModules::deleteEDoc($id);
+		}
+	}
+
+	private function assertEdocsEqual($expected, $actual)
+	{
+		// Make sure edoc IDs are stored as strings because of a bug on the js processing side for file fields that prevents integers from working.
+		$this->assertSame('string', gettype($expected));
+		$this->assertSame('string', gettype($actual));
+
+		// If the expected and actual edoc IDs are the same, something in the calling test isn't right.
+		$this->assertNotEquals($expected, $actual);
+
+		$this->assertFileEquals(self::getEdocPath($expected), self::getEdocPath($actual));
+	}
+
+	private function getEdocPath($edocId)
+	{
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = " . $edocId));
+		return EDOC_PATH . $row['stored_name'];
+	}
+
+	function testRecreateAllEDocs_richText()
+	{
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1"));
+		if(empty($row)){
+			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
+		}
+
+		$oldProjectId = $row['project_id'];
+		$oldEdocId = $row['doc_id'];
+		$edocName = $row['doc_name'];
+		$oldFiles = [
+			[
+				'edocId' => $oldEdocId,
+				'name' => $edocName
+			]
+		];
+
+		$key1 = 'test-key-1';
+		$key2 = 'test-key-2';
+		$key3 = 'test-key-3';
+		$this->setConfig([
+			'project-settings' => [
+					[
+						'key' => $key1,
+						'type' => 'rich-text'
+					],
+					[
+						'key' => $key2,
+						'type' => 'text'
+					],
+					[
+						'key' => 'sub-settings-key',
+						'type' => 'sub_settings',
+						'sub_settings' => [
+							[
+								'key' => $key3,
+								'type' => 'rich-text'
+							]
+						]
+					],
+				]
+			]
+		);
+
+		$getRichTextExampleContent = function($pid, $edocId) use ($edocName){
+			return '<p><img src="' . htmlspecialchars(ExternalModules::getRichTextFileUrl(TEST_MODULE_PREFIX, $pid, $edocId, $edocName)) . '" alt="" width="150" height="190" /></p>';
+		};
+
+		$oldRichTextContent = $getRichTextExampleContent($oldProjectId, $oldEdocId);
+
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2, $oldRichTextContent);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3, [$oldRichTextContent]);
+		ExternalModules::setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $oldFiles);
+		ExternalModules::recreateAllEDocs(TEST_SETTING_PID);
+		$newFiles = ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+
+		$newRichTextContent = $getRichTextExampleContent(TEST_SETTING_PID, $newFiles[0]['edocId']);
+		$this->assertSame($newRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key1));
+
+		// Make sure non-rich-text fields are not changed
+		$this->assertSame($oldRichTextContent, ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key2));
+
+		// Rich text content within sub_settings is also JSON escaped.  Make sure we are still able replace URLs properly.
+		$this->assertSame([$newRichTextContent], ExternalModules::getProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, $key3));
+
+		$this->assertSame(count($oldFiles), count($newFiles));
+		for($i=0; $i<count($oldFiles); $i++){
+			$oldFile = $oldFiles[$i];
+			$newFile = $newFiles[$i];
+
+			$oldEdocId = (string)$oldFile['edocId'];
+			$newEdocId = $newFile['edocId'];
+
+			$this->assertEdocsEqual($oldEdocId, $newEdocId);
+			$this->assertSame($oldFile['name'], $newFile['name']);
+
+			ExternalModules::deleteEDoc($newEdocId);
+		}
+	}
+
+	function testIsValidTabledCron(){
+		$assertTabledCron = function($valid, $json){
+			$this->assertSame($valid, self::callPrivateMethod('isValidTabledCron', json_decode($json, true)));
+		};
+
+		$assertTabledCron(true, self::TABLED_CRON_EXAMPLE);
+		$assertTabledCron(false, self::TIMED_CRON_EXAMPLE);
+	}
+
+	function testIsValidTimedCron(){
+		$assertTimedCron = function($valid, $json){
+			$this->assertSame($valid, self::callPrivateMethod('isValidTimedCron', json_decode($json, true)));
+		};
+
+		$assertTimedCron(false, self::TABLED_CRON_EXAMPLE);
+		$assertTimedCron(true, self::TIMED_CRON_EXAMPLE);
+	}
+
+	function testGetSQLInClause(){
+		$assert = function($expected, $columnName, $array){
+			$this->assertSame("($expected)", ExternalModules::getSQLInClause($columnName, $array));
+		};
+
+		$assert("column_name IN ('1')", 'column_name', 1);
+		$assert("column_name IN ('1')", 'column_name', '1');
+		$assert("column_name IN ('1', '2')", 'column_name', [1, 2]);
+		$assert("column_name IN ('1') OR column_name IS NULL", 'column_name', [1, 'NULL']);
+		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
+		$assert("false", 'column_name', []);
+	}
+
+	function testIsCompatibleWithREDCapPHP_minVersions(){
+		$versionTypes = [
+			'PHP' => PHP_VERSION,
+			'REDCap' => REDCAP_VERSION
+		];
+		
+		foreach($versionTypes as $versionType=>$systemVersion){
+			$settingKey = strtolower($versionType) . "-version-min";
+
+			$test = function($configMinVersion) use ($settingKey, $systemVersion){
+				$this->setConfig([
+					'compatibility' => [
+						$settingKey => $configMinVersion
+					]
+				]);
+	
+				$this->callPrivateMethod('isCompatibleWithREDCapPHP', TEST_MODULE_PREFIX, TEST_MODULE_VERSION);
+			};
+
+			$assertValid = function($configMinVersion) use ($settingKey, $test){
+				// Simply make sure the following call completes without an Exception.
+				$test($configMinVersion);
+			};
+	
+			$assertInvalid = function($configMinVersion) use ($settingKey, $test, $versionType){
+				$expectedMessage = "minimum required $versionType version";
+
+				$this->assertThrowsException(function() use ($configMinVersion, $test){
+					$test($configMinVersion);
+				}, $expectedMessage);
+			};
+	
+			list($major, $minor, $patch) = explode('.', $systemVersion);
+
+			$assertValid("$major.$minor.$patch");
+			$assertInvalid("$major.$minor." . ($patch+1));
+			$assertValid($major);
+			$assertValid($major-1);
+			$assertInvalid($major+1);
 		}
 	}
 }

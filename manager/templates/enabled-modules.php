@@ -158,6 +158,10 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-primaryrc btn-sm">
 		<span class="fas fa-download" aria-hidden="true"></span>
 		View modules available in the REDCap Repo
+	</button> &nbsp;
+	<button id='external-modules-configure-crons'  class="btn btn-primary btn-defaultrc btn-sm">
+		<span class="fas fa-calendar-alt" aria-hidden="true"></span>
+		Configure Cron Start Times
 	</button>
 	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="user" value="<?=USERID?>">

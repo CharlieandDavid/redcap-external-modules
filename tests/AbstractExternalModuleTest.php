@@ -403,6 +403,23 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
+		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'");
+		$row = $result->fetch_assoc();
+		$maxAllowedPacket = $row['Value'];
+		$threshold = $maxAllowedPacket - ExternalModules::SETTING_SIZE_LIMIT+1;
+		$allowedThreshold = 1024; // MySQL only allows increasing 'max_allowed_packet' in increments of 1024
+		
+		if($threshold <= 0){
+			// Don't run this test, since it will fail.
+			// Skipping the test is safe since max_allowed_packet will cause an error instead of truncation (this test intends to prevent the latter).
+			$this->markTestSkipped();
+			return;
+		}
+		else if($threshold < $allowedThreshold){
+			$recommendedMaxAllowedPacket = $maxAllowedPacket + $allowedThreshold;
+			throw new Exception("Your MySQL server's 'max_allowed_packet' setting is very close to the maximum setting size.  Please increase this value to at least $recommendedMaxAllowedPacket for the " . __FUNCTION__ . "() test to run properly, and to avoid errors when saving large module setting values.");
+		}
+
 		$data = str_repeat('a', ExternalModules::SETTING_SIZE_LIMIT);
 		$this->setProjectSetting($data);
 		$this->assertSame($data, $this->getProjectSetting());
@@ -852,7 +869,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$assertIp($ip);
 
-		$_SERVER['REQUEST_URI'] = '/surveys/';
+		$_SERVER['REQUEST_URI'] = APP_PATH_SURVEY;
 		$assertIp(null);
 
 		$_SERVER['REQUEST_URI'] = '';
@@ -1102,49 +1119,63 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->removeProjectSetting();
 		};
 
-		// The parenthesis are included in the argument and check below so we can still filter for this function manually (WITHOUT the parenthesis)  when testing for testing and avoid triggering the recursion.
-		$functionName = __FUNCTION__ . '()';
-
-		global $argv;
-		if(end($argv) === $functionName){
-			// This is the child process.
-
-			while($iterations < $maxIterations){
+		$parentAction = function ($isChildRunning) use ($concurrentOperations, $iterations, $maxIterations) {
+			while($isChildRunning()){
 				$concurrentOperations();
 				$iterations++;
-			}
-			
-			$this->assertSame($iterations, $maxIterations);
-		}
-		else{
-			// This is the parent process.
-
-			$cmd = "vendor/phpunit/phpunit/phpunit --filter " . escapeshellarg($functionName);
-			$process = proc_open(
-				$cmd, [
-					0 => ['pipe', 'r'],
-					1 => ['pipe', 'w'],
-					2 => ['pipe', 'w'],
-				],
-				$pipes
-			);
-
-			do{
-				$concurrentOperations();
-				$status = proc_get_status($process);
-				$iterations++;
-			}
-			while($status["running"]);
-
-			$exitCode = $status['exitcode'];
-			if($exitCode !== 0){
-				$output = stream_get_contents($pipes[1]);
-				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
 			}
 
 			// The parent will generally run more iterations than the child, but apparently not always.
 			// Consider the text successful if $iterations is at least 90% of $maxIterations.
-			$this->assertGreaterThan($maxIterations*0.9, $iterations);
-		}
+			$this->assertGreaterThan($maxIterations * 0.9, $iterations);
+		};
+
+		$childAction = function () use ($iterations, $maxIterations, $concurrentOperations) {
+			while ($iterations < $maxIterations) {
+				$concurrentOperations();
+				$iterations++;
+			}
+
+			$this->assertSame($iterations, $maxIterations);
+		};
+
+		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
+	}
+
+	function testGetPublicSurveyUrl(){
+		$m = $this->getInstance();
+
+		$result = $m->query("
+			select *
+			from (
+				select s.project_id, h.hash, count(*)
+				from redcap_surveys s
+				join redcap_surveys_participants h
+					on s.survey_id = h.survey_id
+				join redcap_metadata m
+					on m.project_id = s.project_id
+					and m.form_name = s.form_name
+					and field_order = 1 -- getting the first field is the easiest way to get the first form
+				where participant_email is null
+				group by s.form_name -- test a form name that exists on multiple projects
+				order by count(*) desc
+				limit 100
+			) a
+			order by rand() -- select a random row to make sure we often end up with a different project ID than getPublicSurveyUrl() would by default if it didn't specific a project ID in it's query
+			limit 1
+		");
+
+		$row = $result->fetch_assoc();
+		$projectId = $row['project_id'];
+		$hash = $row['hash'];
+
+		global $Proj;
+		$Proj = new \Project($projectId);
+		$_GET['pid'] = $projectId;
+		
+		$expected = APP_PATH_SURVEY_FULL . "?s=$hash";
+		$actual = $m->getPublicSurveyUrl();
+
+		$this->assertSame($expected, $actual);
 	}
 }

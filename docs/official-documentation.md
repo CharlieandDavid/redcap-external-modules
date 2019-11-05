@@ -9,15 +9,15 @@ If you have created a module and wish to share it with the REDCap community, you
 ### Naming a module
 
 Modules must follow a specific naming scheme for the module directory that will sit on the REDCap web server. Each version of a module will have its own directory (like REDCap) and will be located in the `/redcap/modules/` directory on the server. A module directory name consists of three parts: 
-1. a **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
-1. "_v" = an underscore + letter "v"
-1. a **module version number in X.Y or X.Y.Z format** that consists of a major version X and minor version Y (e.g., 1.0 or 3.25), and in some cases a sub-minor version Z if in X.Y.X format (e.g., 1.0.0 or 3.25.2), in which X, Y, and Z must be an integer beginning with 0 and going up to 100 at most.
+1. A **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
+1. "_v" (an underscore followed by the letter "v")
+1. A **module version number**.  [Semantic Versioning](https://semver.org/) is recommended (ex: `1.2.3`), although simpler `#.#` versioning is also supported (ex: `1.2`).
 
 The diagram below shows the general directory structure of some hypothetical  modules to illustrate how modules will sit on the REDCap web server alongside other REDCap files and directories.
 ```
 redcap
 |-- modules
-|   |-- mymodulename_v1.0.0
+|   |-- my_module_name_v1.0.0
 |   |-- other_module_v2.9
 |   |-- other_module_v2.10
 |   |-- other_module_v2.11
@@ -105,6 +105,8 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 		* project-id
 		* form-list
 		* event-list
+		* color-picker
+			* This option is backward compatible with older versions of REDCap where it will appear as a text field into which an HTML color can be entered.  
 		* sub_settings
 		* radio
 		* file
@@ -270,7 +272,8 @@ Note: If you are building links to plugin pages in your module, you should use t
          {
             "name": "VoteCap",
             "icon": "fas fa-receipt",
-            "url": "index.php"
+            "url": "index.php",
+            "show-header-and-footer": true
          }
       ]
    }
@@ -348,7 +351,11 @@ Method documentation has moved [here](https://github.com/vanderbilt/redcap-exter
 
 Modules can actually have their own cron jobs that are run at a given interval by REDCap (alongside REDCap's internal cron jobs). This allows modules to have processes that are not run in real time but are run in the background at a given interval. There is no limit on the number of cron jobs that a module can have, and each can be configured to run at different times for different purposes. 
 
-Module cron jobs must be defined in the config.json as seen below, in which each has a `cron_name` (alphanumeric name that is unique within the module), a `cron_description` (text that describes what the cron does), and a `method` (refers to a PHP method in the module class that will be executed when the cron is run). The `cron_frequency` and `cron_max_run_time` must be defined as integers (in units of seconds). The cron_max_run_time refers to the maximum time that the cron job is expected to run (once that time is passed, if the cron is still listed in the state of "processing", it assumes it has failed/crashed and thus will automatically enable it to run again at the next scheduled interval). Note: If any of the cron attributes are missing, it will prevent the module from being enabled.
+Module cron jobs must be defined in the config.json as seen below, in which each has a `cron_name` (alphanumeric name that is unique within the module), a `cron_description` (text that describes what the cron does), and a `method` (refers to a PHP method in the module class that will be executed when the cron is run). The `cron_frequency` and `cron_max_run_time` must be defined as integers (in units of seconds). The cron_max_run_time refers to the maximum time that the cron job is expected to run (once that time is passed, if the cron is still listed in the state of "processing", it assumes it has failed/crashed and thus will automatically enable it to run again at the next scheduled interval).
+
+A `cron_frequency` and a `cron_max_run_time` can be specified, --OR-- an `cron_hour` and a `cron_minute` can be specified, but not both. In addition to an cron_hour and a cron_minute, a `cron_weekday` (0 [Sundays] - 6 [Saturdays]) or a `cron_monthday` (day of the month) can be specified.
+
+Note: If any of the cron attributes (including cron_frequency/cron_max_run_time or cron_hour/cron_minute, but not both) are missing, it will prevent the module from being enabled.
 
 ``` json
 {
@@ -362,10 +369,33 @@ Module cron jobs must be defined in the config.json as seen below, in which each
       },
       {
          "cron_name": "cron2",
-         "cron_description": "Cron that runs daily to do Y",
+         "cron_description": "Cron that runs daily to do YY",
          "method": "some_other_method",
          "cron_frequency": "86400",
          "cron_max_run_time": "1200"
+      },
+      {
+         "cron_name": "cron3",
+         "cron_description": "Cron that runs daily at 1:15 am to do YYY",
+         "method": "some_other_method_3",
+         "cron_hour": 1,
+         "cron_minute": 15
+      },
+      {
+         "cron_name": "cron4",
+         "cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
+         "method": "some_other_method_4",
+         "cron_hour": 14,
+         "cron_minute": 25,
+         "cron_weekday": 1
+      },
+      {
+         "cron_name": "cron5",
+         "cron_description": "Cron that runs on the second of each month at 4:30 pm to do YYYYY",
+         "method": "some_other_method_5",
+         "cron_hour": 16,
+         "cron_minute": 30,
+         "cron_monthday": 2
       }
    ]
 }
@@ -657,17 +687,39 @@ For reference, below is a nearly comprehensive example of the types of things th
    "crons": [
       {
          "cron_name": "cron1",
-         "cron_description": "Cron that runs every 30 minutes to do X",
+         "cron_description": "Cron that runs every 30 minutes to do Y",
          "method": "cron1",
          "cron_frequency": "1800",
          "cron_max_run_time": "60"
-       },
+      },
       {
          "cron_name": "cron2",
-         "cron_description": "Cron that runs daily to do Y",
+         "cron_description": "Cron that runs daily to do YY",
          "method": "some_other_method",
          "cron_frequency": "86400",
          "cron_max_run_time": "1200"
+      },
+      {
+         "cron_name": "cron3",
+         "cron_description": "Cron that runs daily at 1:15 am to do YYY",
+         "method": "some_other_method_3",
+         "cron_hour": 1,
+         "cron_minute": 15
+      },
+      {
+         "cron_name": "cron4",
+         "cron_description": "Cron that runs on Mondays at 2:25 pm to do YYYY",
+         "method": "some_other_method_4",
+         "cron_hour": 14,
+         "cron_minute": 25,
+         "cron_weekday": 1
+      },
+      {
+         "cron_name": "cron5",
+         "cron_description": "Cron that runs on the second of each month at 4:30 pm to do YYYYY",
+         "method": "some_other_method_5",
+         "cron_hour": 16,
+         "cron_minute": 30,
       }
    ],
    "compatibility": {

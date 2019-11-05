@@ -10,7 +10,7 @@
 	"authors": [
 		{
 			"name": "Kyle McGuffin",
-			"email": "kyle.mcguffin@vanderbilt.edu",
+			"email": "kyle.mcguffin@vumc.org",
 			"institution": "Vanderbilt University Medical Center"
 		}
 	],
@@ -19,12 +19,15 @@
 		""
 	],
 
+	"enable-every-page-hooks-on-system-pages": false,
+
 	"links": {
 		"project": [
 			{
 				"name": "Configuration Page",
 				"icon": "report",
-				"url": "configure.php"
+				"url": "configure.php",
+				"show-header-and-footer": true
 			}
 		]
 	},
@@ -229,6 +232,11 @@
 			"name": "For Super Users Only",
 			"type": "text",
 			"super-users-only": true
+		},
+		{
+			"key": "color-picker",
+			"name": "Color Picker",
+			"type": "color-picker"
 		}
 	]
 }

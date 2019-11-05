@@ -6,7 +6,7 @@ header('Content-type: application/json');
 if (isset($_POST['pid']) && $_POST['pid']) {
 	echo json_encode(array(
 		'status' => 'success',
-		'settings' => ExternalModules::getProjectSettingsAsArray($_POST['moduleDirectoryPrefix'], @$_POST['pid'])
+		'settings' => ExternalModules::getProjectSettingsAsArray($_POST['moduleDirectoryPrefix'], @$_POST['pid'], false)
 	));
 } else {
 	echo json_encode(array(

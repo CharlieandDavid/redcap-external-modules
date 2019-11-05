@@ -6,10 +6,6 @@ use ExternalModules\FrameworkVersion2;
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
-if (!defined(__DIR__)){
-	define(__DIR__, dirname(__FILE__));
-}
-
 require_once __DIR__ . "/AbstractExternalModule.php";
 
 if(PHP_SAPI == 'cli'){
@@ -38,6 +34,10 @@ class ExternalModules
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
+	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
+	const KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME = 'reserved-last-long-running-cron-notification-time';
+	const KEY_RESERVED_CRON_MODIFICATION_NAME = "reserved-modification-name";
+
 	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
 
 	const DISABLE_EXTERNAL_MODULE_HOOKS = 'disable-external-module-hooks';
@@ -52,8 +52,19 @@ class ExternalModules
 
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
 
+	const LONG_RUNNING_CRON_EMAIL_SUBJECT = 'External Module Long-Running Cron';
+	const CRON_EXCEPTION_EMAIL_SUBJECT = 'External Module Exception in Cron Job';
+
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
+
+	// Copy WordPress's time convenience constants
+	const MINUTE_IN_SECONDS = 60;
+	const HOUR_IN_SECONDS = 3600;
+	const DAY_IN_SECONDS = 86400;
+	const WEEK_IN_SECONDS = 604800;
+	const MONTH_IN_SECONDS = 2592000;
+	const YEAR_IN_SECONDS = 31536000;
 
 	private static $SERVER_NAME;
 
@@ -94,6 +105,8 @@ class ExternalModules
 	private static $deletedModules;
 
 	private static $configs = array();
+
+	
 
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
@@ -315,6 +328,7 @@ class ExternalModules
 		self::$MODULES_PATH = $modulesDirectories;
 		self::$INCLUDED_RESOURCES = [];
 
+		# runs whenever a cron/hook functions
 		register_shutdown_function(function () {
 			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
 			$error = error_get_last();
@@ -337,6 +351,15 @@ class ExternalModules
 				$message = 'Could not instantiate';
 			} else {
 				$message = "The '" . self::$hookBeingExecuted . "' hook did not complete for";
+
+				// If the current "hook" was a cron, we need to unlock it so it can run again.
+				$config = self::getConfig($activeModulePrefix);
+				foreach ($config['crons'] as $cron) {
+					if ($cron['cron_name'] == self::$hookBeingExecuted) {
+						self::unlockCron($activeModulePrefix);
+						break;
+					}
+				}
 			}
 
 			$message .= " the '$activeModulePrefix' module";
@@ -355,7 +378,7 @@ class ExternalModules
 					return;
 				}
 				else{
-					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module which needs to be replaced with \$module->exitAfterHook() to allow other modules to execute for the current hook.";
+					$message .= ", but a specific cause could not be detected.  This could be caused by a die() or exit() call in the module which needs to be replaced with an exception to provide more details, or a \$module->exitAfterHook() call to allow other modules to execute for the current hook.";
 				}
 			}
 
@@ -445,7 +468,7 @@ class ExternalModules
 		}
 
 		if (self::isVanderbilt()) {
-			$from = 'datacore@vanderbilt.edu';
+			$from = 'datacore@vumc.org';
 			$to = self::getDatacoreEmails([]);
 		}
 		else{
@@ -498,6 +521,12 @@ class ExternalModules
 
 	public static function sendAdminEmail($subject, $message, $prefix = null)
 	{
+		if(self::isTesting()){
+			// Report back to our test class instead of sending an email.
+			ExternalModulesTest::$lastSendAdminEmailArgs = func_get_args();
+			return;
+		}
+
 		if(self::isVanderbilt() && in_array(gethostname(), ['ori1007lt', 'ori1007lr', 'ori1007lp', 'ori1008lp', 'ori3007lp', 'ori3008lp'])){
 			// This is one of the new Vandy REDCap servers that are just being tested currently.
 			// Log errors on these servers for now instead of emailing (until they're stable).
@@ -609,6 +638,7 @@ class ExternalModules
 		try {
 			self::enable($moduleDirectoryPrefix, $version);
 		} catch (\Exception $e) {
+			self::disable($moduleDirectoryPrefix, true); // Disable the module in case the exception occurred after it was enabled in the DB.
 			self::setActiveModulePrefix(null); // Unset the active module prefix, so an error email is not sent out.
 			return $e;
 		}
@@ -617,6 +647,7 @@ class ExternalModules
 	}
 
 	# initializes any crons contained in the config, and adds them to the redcap_crons table
+	# timed crons are read from the config, so they are not entered into any table
 	static function initializeCronJobs($moduleInstance, $moduleDirectoryPrefix=null)
 	{
 		// First, try and remove any crons that exist for this module (just in case)
@@ -640,30 +671,51 @@ class ExternalModules
 		// Get external module ID
 		$externalModuleId = self::getIdForPrefix($moduleInstance->PREFIX);
 		if (empty($externalModuleId) || empty($moduleInstance)) return false;
-		// Add to table
-		$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
-				('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
-				'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
-		if (!db_query($sql)) {
-			// If fails on one cron, then delete any added so far for this module
-			self::removeCronJobs($moduleInstance->PREFIX);
-			// Return error
-			throw new Exception("One or more cron jobs for this module failed to be created.");
+
+		if (self::isValidTabledCron($cron)) {
+			// Add to table
+			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
+					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
+					'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
+			if (!db_query($sql)) {
+				// If fails on one cron, then delete any added so far for this module
+				self::removeCronJobs($moduleInstance->PREFIX);
+				// Return error
+				throw new Exception("One or more cron jobs for this module failed to be created.");
+			}
 		}
 	}
 
 	# validate module config's cron jobs' attributes. pass in the $cron job as an array of attributes.
 	static function validateCronAttributes(&$cron=array(), $moduleInstance=null)
 	{
+		$isValidTabledCron = self::isValidTabledCron($cron);
+		$isValidTimedCron = self::isValidTimedCron($cron);
+
 		// Ensure certain attributes are integers
-		$cron['cron_frequency'] = (int)$cron['cron_frequency'];
-		$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		if ($isValidTabledCron) {
+			$cron['cron_frequency'] = (int)$cron['cron_frequency'];
+			$cron['cron_max_run_time'] = (int)$cron['cron_max_run_time'];
+		} else if ($isValidTimedCron) {
+			$cron['cron_minute'] = (int) $cron['cron_minute'];
+			if (isset($cron['cron_hour'])) {
+				$cron['cron_hour'] = (int) $cron['cron_hour'];
+			}
+			if (isset($cron['cron_weekday'])) {
+				$cron['cron_weekday'] = (int) $cron['cron_weekday'];
+			}
+			if (isset($cron['cron_monthday'])) {
+				$cron['cron_monthday'] = (int) $cron['cron_monthday'];
+			}
+		}
 		// Make sure we have what we need
-		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method']) 
-			|| !isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time']))
-		{
+		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method'])) {
 			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
 		}
+		if ((!isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time'])) && (!isset($cron['cron_hour']) && !isset($cron['cron_minute']))) {
+			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing (cron_frequency/cron_max_run_time or hour/minute).");
+		}
+
 		// Name must be no more than 100 characters
 		if (strlen($cron['cron_name']) > 100) {
 			throw new Exception("Cron job 'name' must be no more than 100 characters.");
@@ -672,11 +724,15 @@ class ExternalModules
 		if (!preg_match("/^([a-z0-9_-]+)$/", $cron['cron_name'])) {
 			throw new Exception("Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).");
 		}
+
 		// Make sure integer attributes are integers
-		if (!is_numeric($cron['cron_frequency']) || !is_numeric($cron['cron_max_run_time']) || $cron['cron_frequency'] <= 0 || $cron['cron_max_run_time'] <= 0)
-		{
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero.");
+		if ($isValidTabledCron && $isValidTimedCron) { 
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'cron_hour' and 'cron_minute'. Please choose one timing setting or the other, but not both.");
 		}
+		if (!$isValidTabledCron && !$isValidTimedCron) {
+			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'cron_hour' and 'cron_minute' must be numeric and valid.");
+		}
+
 		// If method does not exist, then disable module
 		if (!empty($moduleInstance) && !method_exists($moduleInstance, $cron['method'])) {
 			throw new Exception("The external module \"{$moduleInstance->PREFIX}_{$moduleInstance->VERSION}\" has a cron job named \"{$cron['cron_name']}\" that is trying to call a method \"{$cron['method']}\", which does not exist in the module class.");
@@ -725,21 +781,23 @@ class ExternalModules
 				foreach ($config['crons'] as $cron) {
 					// Validate the cron's attributes
 					self::validateCronAttributes($cron, $moduleInstance);
-					// Ensure the cron job's info in the db table are all correct
-					$cronInfoTable = self::getCronJobFromTable($cron['cron_name'], $externalModuleId);
-					if (empty($cronInfoTable)) {
-						// If this cron is somehow missing, then add it to the redcap_crons table
-						self::addCronJobToTable($cron, $moduleInstance);
-					}
-					// If any info is different, then correct it in table
-					foreach ($cronAttrCheck as $attr) {
-						if ($cron[$attr] != $cronInfoTable[$attr]) {
-							// Fix the cron
-							if (self::updateCronJobInTable($cron, $externalModuleId)) {
-								$fixedModules[] = "\"$moduleDirectoryPrefix\"";
+					if (self::isValidTabledCron($cron)) {
+						// Ensure the cron job's info in the db table are all correct
+						$cronInfoTable = self::getCronJobFromTable($cron['cron_name'], $externalModuleId);
+						if (empty($cronInfoTable)) {
+							// If this cron is somehow missing, then add it to the redcap_crons table
+							self::addCronJobToTable($cron, $moduleInstance);
+						}
+						// If any info is different, then correct it in table
+						foreach ($cronAttrCheck as $attr) {
+							if ($cron[$attr] != $cronInfoTable[$attr]) {
+								// Fix the cron
+								if (self::updateCronJobInTable($cron, $externalModuleId)) {
+									$fixedModules[] = "\"$moduleDirectoryPrefix\"";
+								}
+								// Go to next cron
+								continue;
 							}
-							// Go to next cron
-							continue;
 						}
 					}
 				}
@@ -764,6 +822,7 @@ class ExternalModules
 		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
 	}
 
+	# prerequisite: is a valid tabled cron
 	# obtain the info of a cron job for a module in the redcap_crons table
 	static function updateCronJobInTable($cron=array(), $externalModuleId)
 	{
@@ -827,17 +886,8 @@ class ExternalModules
 	# value is edoc ID
 	static function setFileSetting($moduleDirectoryPrefix, $projectId, $key, $value)
 	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, "file");
-	}
-
-	static function removeSystemFileSetting($moduleDirectoryPrefix, $key)
-	{
-		self::removeFileSetting($moduleDirectoryPrefix, self::SYSTEM_SETTING_PROJECT_ID, $key);
-	}
-
-	static function removeFileSetting($moduleDirectoryPrefix, $projectId, $key)
-	{
-		self::setSetting($moduleDirectoryPrefix, $projectId, $key, null, "file");
+		// The string type parameter is only needed because of some incorrect handling on the js side that needs to be refactored.
+		self::setSetting($moduleDirectoryPrefix, $projectId, $key, $value, 'string');
 	}
 
 	# returns boolean
@@ -915,7 +965,7 @@ class ExternalModules
 		}
 
 		$releaseLock = function() use ($lockName, $releaseLockSql) {
-			self::query($releaseLockSql);
+			ExternalModules::query($releaseLockSql);
 		};
 
 		try{
@@ -932,10 +982,10 @@ class ExternalModules
 				}
 			}
 
+			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
+
 			$projectId = db_real_escape_string($projectId);
 			$key = db_real_escape_string($key);
-
-			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 
 			$oldType = gettype($oldValue);
 			if ($oldType == 'array' || $oldType == 'object') {
@@ -1060,28 +1110,31 @@ class ExternalModules
 
 	static function getSystemSettingsAsArray($moduleDirectoryPrefixes)
 	{
-		return self::getSettingsAsArray($moduleDirectoryPrefixes);
+		return self::getSettingsAsArray($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
 	}
 
-	static function getProjectSettingsAsArray($moduleDirectoryPrefixes, $projectId)
+	static function getProjectSettingsAsArray($moduleDirectoryPrefixes, $projectId, $includeSystemSettings = true)
 	{
 		if (!$projectId) {
 			throw new Exception("The Project Id cannot be null!");
 		}
-		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectId);
+
+		$projectIds = [$projectId];
+
+		if($includeSystemSettings){
+			$projectIds[] = self::SYSTEM_SETTING_PROJECT_ID;
 	}
 
-	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectId = NULL)
+		return self::getSettingsAsArray($moduleDirectoryPrefixes, $projectIds);
+	}
+
+	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectIds)
 	{
 		if(empty($moduleDirectoryPrefixes)){
 			throw new Exception('One or more module prefixes must be specified!');
 		}
 
-		if ($projectId === NULL) {
-			$result = self::getSettings($moduleDirectoryPrefixes, self::SYSTEM_SETTING_PROJECT_ID);
-		} else {
-			$result = self::getSettings($moduleDirectoryPrefixes, array(self::SYSTEM_SETTING_PROJECT_ID, $projectId));
-		}
+		$result = self::getSettings($moduleDirectoryPrefixes, $projectIds);
 
 		$settings = array();
 		while($row = self::validateSettingsRow(db_fetch_assoc($result))){
@@ -1162,14 +1215,17 @@ class ExternalModules
 		$type = $row['type'];
 		$value = $row['value'];
 
+		if ($type == 'file') {
+			// This is a carry over from the old way edoc IDs were stored.  Convert it to the new way.
+			// Really this should be 'integer', but it must be 'string' currently because of some incorrect handling on the js side that needs to be corrected.
+			$type = 'string';
+		}
+
 		if ($type == "json" || $type == "json-array") {
 			$json = json_decode($value,true);
 			if ($json !== false) {
 				$value = $json;
 			}
-		}
-		else if ($type == 'file') {
-			// do nothing
 		}
 		else if ($type == "boolean") {
 			if ($value === "true") {
@@ -1181,10 +1237,8 @@ class ExternalModules
 		else if ($type == "json-object") {
 			$value = json_decode($value,false);
 		}
-		else {
-			if (!settype($value, $type)) {
-				throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
-			}
+		else if (!settype($value, $type)) {
+			throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
 		}
 
 		$row['value'] = $value;
@@ -1290,7 +1344,7 @@ class ExternalModules
 	# executes a database query and returns the result
 	public static function query($sql)
 	{
-		$result = db_query($sql);
+		$result = self::queryWithRetries($sql, 2);
 
 		if($result == FALSE){
 			$message = "An error occurred while running an External Module query";
@@ -1299,6 +1353,29 @@ class ExternalModules
 
 			// Do not show sql or error details to minimize risk of exploitation.
 			throw new Exception($message . " (see the server error log for more details).");
+		}
+
+		return $result;
+	}
+
+	private function queryWithRetries($sql, $retriesLeft)
+    {
+        $result = db_query($sql);
+
+        if(
+            $result === FALSE
+            &&
+            in_array(db_errno(), [
+                1213 // Deadlock found when trying to get lock; try restarting transaction
+            ])
+            &&
+            $retriesLeft > 0
+        ){
+			$message = "The following query deadlocked and is being retried.  It may be worth considering modifying this query to reduce the chance of deadlock:\n\n$sql";
+			$prefix = self::getActiveModulePrefix();
+			self::sendAdminEmail("REDCap External Module Deadlocked Query - $prefix", $message, $prefix);
+
+            $result = self::queryWithRetries($sql, $retriesLeft-1);
 		}
 
 		return $result;
@@ -1326,7 +1403,7 @@ class ExternalModules
 		}
 
 		if(empty($array)){
-			throw new Exception('You must provide an array of values.');
+			return '(false)';
 		}
 
 		$columnName = db_real_escape_string($columnName);
@@ -1335,16 +1412,16 @@ class ExternalModules
 		$nullSql = "";
 
 		foreach($array as $item){
-			if(!empty($valueListSql)){
-				$valueListSql .= ', ';
-			}
-
 			$item = db_real_escape_string($item);
 
 			if($item == 'NULL'){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
+				if(!empty($valueListSql)){
+					$valueListSql .= ', ';
+				}
+
 				$valueListSql .= "'$item'";
 			}
 		}
@@ -1653,16 +1730,16 @@ class ExternalModules
 		if (!isset($config['compatibility'])) return;
 		$Exceptions = array();
 		$compat = $config['compatibility'];
-		if (isset($compat['php-version-max']) && !empty($compat['php-version-max']) && !version_compare(PHP_VERSION, $compat['php-version-max'], '<=') && self::isCompatibleFormatCorrect($compat['php-version-max'])) {
+		if (isset($compat['php-version-max']) && !empty($compat['php-version-max']) && !version_compare(PHP_VERSION, $compat['php-version-max'], '<=')) {
 			$Exceptions[] = "This module's maximum compatible PHP version is {$compat['php-version-max']}, but you are currently running PHP " . PHP_VERSION . ".";
 		}
-		elseif (isset($compat['php-version-min']) && !empty($compat['php-version-min']) && !version_compare(PHP_VERSION, $compat['php-version-min'], '>=') && self::isCompatibleFormatCorrect($compat['php-version-min'])) {
+		elseif (isset($compat['php-version-min']) && !empty($compat['php-version-min']) && !version_compare(PHP_VERSION, $compat['php-version-min'], '>=')) {
 			$Exceptions[] = "This module's minimum required PHP version is {$compat['php-version-min']}, but you are currently running PHP " . PHP_VERSION . ".";
 		}
-		if (isset($compat['redcap-version-max']) && !empty($compat['redcap-version-max']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-max'], '<=') && self::isCompatibleFormatCorrect($compat['redcap-version-max'])) {
+		if (isset($compat['redcap-version-max']) && !empty($compat['redcap-version-max']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-max'], '<=')) {
 			$Exceptions[] = "This module's maximum compatible REDCap version is {$compat['redcap-version-max']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
 		}
-		elseif (isset($compat['redcap-version-min']) && !empty($compat['redcap-version-min']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-min'], '>=') && self::isCompatibleFormatCorrect($compat['redcap-version-min'])) {
+		elseif (isset($compat['redcap-version-min']) && !empty($compat['redcap-version-min']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-min'], '>=')) {
 			$Exceptions[] = "This module's minimum required REDCap version is {$compat['redcap-version-min']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
 		}
 
@@ -1672,20 +1749,6 @@ class ExternalModules
 								REDCap server at this time. Details:<ul><li>" . implode("</li><li>", $Exceptions) . "</li></ul>");
 		}
 	}
-
-	private static function isCompatibleFormatCorrect($compatibility){
-        $version = explode('.',$compatibility);
-        if(count($version) == 3){
-            foreach ($version as $number){
-                if($number == ""){
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
 	# this is where a module has its code loaded
 	public static function getModuleInstance($prefix, $version = null)
 	{
@@ -1777,7 +1840,7 @@ class ExternalModules
 		}
 	}
 
-	private static function getSystemwideEnabledVersions()
+	static function getSystemwideEnabledVersions()
 	{
 		if(!isset(self::$systemwideEnabledVersions)){
 			self::cacheAllEnableData();
@@ -1848,7 +1911,7 @@ class ExternalModules
 		// The fake unit testing modules are not currently ever enabled in the DB,
 		// but we may as well leave this check in place in case that changes in the future.
 		$isTestPrefix = strpos($prefix, self::TEST_MODULE_PREFIX) === 0;
-		if($isTestPrefix && !self::isTesting($prefix)){
+		if($isTestPrefix && !self::isTesting()){
 			// This php process is not running unit tests.
 			// Ignore the test prefix so it doesn't interfere with this process.
 			return true;
@@ -1869,54 +1932,51 @@ class ExternalModules
 		$projectEnabledOverrides = array();
 		$projectEnabledDefaults = array();
 
-		// Only attempt to detect enabled modules if the external module tables exist.
-		if (self::areTablesPresent()) {
-			$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
+		$result = self::getSettings(null, null, array(self::KEY_VERSION, self::KEY_ENABLED));
 
-			// Split results into version and enabled arrays: this seems wasteful, but using one
-            // query above, we can then validate which EMs/versions are valid before we build
-            // out which are enabled and how they are enabled
-            $result_versions = array();
-			$result_enabled = array();
-			while($row = self::validateSettingsRow(db_fetch_assoc($result))) {
-				$key = $row['key'];
-				if ($key == self::KEY_VERSION) {
-					$result_versions[] = $row;
-				} else if($key == self::KEY_ENABLED) {
-					$result_enabled[] = $row;
-				} else {
-					throw new Exception("Unexpected key: $key");
-				}
+		// Split results into version and enabled arrays: this seems wasteful, but using one
+		// query above, we can then validate which EMs/versions are valid before we build
+		// out which are enabled and how they are enabled
+		$result_versions = array();
+		$result_enabled = array();
+		while($row = self::validateSettingsRow(db_fetch_assoc($result))) {
+			$key = $row['key'];
+			if ($key == self::KEY_VERSION) {
+				$result_versions[] = $row;
+			} else if($key == self::KEY_ENABLED) {
+				$result_enabled[] = $row;
+			} else {
+				throw new Exception("Unexpected key: $key");
+			}
+		}
+
+		// For each version, verify if the module folder exists and is valid
+		foreach ($result_versions as $row) {
+			$prefix = $row['directory_prefix'];
+			$value = $row['value'];
+			if (self::shouldExcludeModule($prefix, $value)) {
+				continue;
+			} else {
+				$systemwideEnabledVersions[$prefix] = $value;
+			}
+		}
+
+		// Set enabled arrays for EMs
+		foreach ($result_enabled as $row) {
+			$pid = $row['project_id'];
+			$prefix = $row['directory_prefix'];
+			$value = $row['value'];
+
+			// If EM was not valid above, then skip
+			if (!isset($systemwideEnabledVersions[$prefix])) {
+				continue;
 			}
 
-			// For each version, verify if the module folder exists and is valid
-            foreach ($result_versions as $row) {
-				$prefix = $row['directory_prefix'];
-				$value = $row['value'];
-				if (self::shouldExcludeModule($prefix, $value)) {
-					continue;
-				} else {
-					$systemwideEnabledVersions[$prefix] = $value;
-				}
-			}
-
-			// Set enabled arrays for EMs
-			foreach ($result_enabled as $row) {
-				$pid = $row['project_id'];
-				$prefix = $row['directory_prefix'];
-				$value = $row['value'];
-
-				// If EM was not valid above, then skip
-				if (!isset($systemwideEnabledVersions[$prefix])) {
-					continue;
-				}
-
-				// Set enabled global or project
-				if (isset($pid)) {
-					$projectEnabledOverrides[$pid][$prefix] = $value;
-				} else if ($value) {
-					$projectEnabledDefaults[$prefix] = true;
-				}
+			// Set enabled global or project
+			if (isset($pid)) {
+				$projectEnabledOverrides[$pid][$prefix] = $value;
+			} else if ($value) {
+				$projectEnabledDefaults[$prefix] = true;
 			}
 		}
 
@@ -1924,13 +1984,6 @@ class ExternalModules
 		self::$systemwideEnabledVersions = $systemwideEnabledVersions;
 		self::$projectEnabledDefaults = $projectEnabledDefaults;
 		self::$projectEnabledOverrides = $projectEnabledOverrides;
-	}
-
-	# tests whether External Modules has been initially configured
-	static function areTablesPresent()
-	{
-		$result = self::query("SHOW TABLES LIKE 'redcap_external_module%'");
-		return db_num_rows($result) > 0;
 	}
 
 	# echo's HTML for adding an approriate resource; also prepends appropriate directory structure
@@ -2488,13 +2541,36 @@ class ExternalModules
 	{
 		$config = self::getConfig($prefix);
 
-		$settingsTypes = [$config['system-settings'], $config['project-settings']];
+		$settingGroups = [
+			$config['system-settings'],
+			$config['project-settings'],
 
-		foreach($settingsTypes as $type){
-			foreach($type as $details){
+			// The following was added so that the recreateAllEDocs() function would work on Email Alerts module settings.
+			// Adding module specific code in the framework is not a good idea, but the fixing the duplicate edocs issue
+			// for the Email Alerts module seemed like the right think to do since it's so popular.
+			$config['email-dashboard-settings']
+		];
+
+		$handleSettingGroup = function($group) use ($prefix, $key, &$handleSettingGroup){
+			foreach($group as $details){
 				if($details['key'] == $key){
 					return $details;
 				}
+				else if($details['type'] === 'sub_settings'){
+					$returnValue = $handleSettingGroup($details['sub_settings']);
+					if($returnValue){
+						return $returnValue;
+					}
+				}
+			}
+
+			return null;
+		};
+
+		foreach($settingGroups as $group){
+			$returnValue = $handleSettingGroup($group);
+			if($returnValue){
+				return $returnValue;
 			}
 		}
 
@@ -2630,6 +2706,14 @@ class ExternalModules
 	// Display alert message in Control Center if any modules have updates in the REDCap Repo
 	public static function renderREDCapRepoUpdatesAlert()
 	{
+		if(!ExternalModules::haveUnsafeEDocReferencesBeenChecked()) {
+			?>
+			<div class='yellow repo-updates'>
+				<b>WARNING:</b> Unsafe references exist to files uploaded for modules. See <a href="<?=self::$BASE_URL?>/manager/show-duplicated-edocs.php">this page</a> for more details.
+			</div>
+			<?php
+		}
+
 		global $lang, $external_modules_updates_available;
 		$moduleUpdates = json_decode($external_modules_updates_available, true);
 		if (!is_array($moduleUpdates) || empty($moduleUpdates)) return false;
@@ -2703,8 +2787,8 @@ class ExternalModules
 		// Also obtain the folder name of the module
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 
-		if(empty($moduleFolderName)){
-			throw new Exception("The request to retrieve the name for module $module_id from the repo failed.");
+		if(empty($moduleFolderName) || $moduleFolderName == "ERROR"){
+			throw new Exception("The request to retrieve the name for module $module_id from the repo failed: $moduleFolderName");
 		}
 
 		// The following concurrent download detect was added to prevent a download/delete loop that we believe
@@ -2729,77 +2813,81 @@ class ExternalModules
 			return 4;
 		}
 
-		$logDescription = "Download external module \"$moduleFolderName\" from repository";
-		// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
-		// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
-		// https://github.com/vanderbilt/redcap-external-modules/issues/136
-		// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
-		self::throttleEvent($logDescription, 2, 3);
-		\REDCap::logEvent($logDescription);
+		try{
+			// The temp dir was created successfully.  Open a `try` block so we can ensure it gets removed in the `finally`.
 
-		// Send user info?
-		if ($sendUserInfo) {
-			$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
-								'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
-		} else {
-			$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
-		}
-		// Call the module download service to download the module zip
-		$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
-		// Errors?
-		if ($moduleZipContents == 'ERROR') {
-			// 0 = Module does not exist in library
-			return "0";
-		}
-		// Place the file in the temp directory before extracting it
-		$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
-		if (file_put_contents($filename, $moduleZipContents) === false) {
-			// 1 = Module zip couldn't be written to temp
-			return "1";
-		}
-		// Extract the module to /redcap/modules
-		$zip = new \ZipArchive;
-		if ($zip->open($filename) !== TRUE) {
-		  return "2";
-		}
-		// First, we need to rename the parent folder in the zip because GitHub has it as something else
-		$i = 0;
-		while ($item_name = $zip->getNameIndex($i)){
-			$item_name_end = substr($item_name, strpos($item_name, "/"));
-			$zip->renameIndex($i++, $moduleFolderName . $item_name_end);
-		}
-		$zip->close();
-		// Now extract the zip to the modules folder
-		$zip = new \ZipArchive;
-		if ($zip->open($filename) === TRUE) {
-			$zip->extractTo($tempDir);
+			$logDescription = "Download external module \"$moduleFolderName\" from repository";
+			// This event must be allowed twice within any time frame (once for each webserver node at Vandy as of this writing).
+			// The time frame is semi-arbitrary and is meant to catch the scenarios documented here:
+			// https://github.com/vanderbilt/redcap-external-modules/issues/136
+			// Even if #136 is completely solved, we should leave this in place to ensure possible future issues are immediately detected.
+			self::throttleEvent($logDescription, 2, 3);
+			\REDCap::logEvent($logDescription);
+
+			// Send user info?
+			if ($sendUserInfo) {
+				$postParams = array('user'=>USERID, 'name'=>$GLOBALS['user_firstname']." ".$GLOBALS['user_lastname'], 
+									'email'=>$GLOBALS['user_email'], 'institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+			} else {
+				$postParams = array('institution'=>$GLOBALS['institution'], 'server'=>SERVER_NAME);
+			}
+			// Call the module download service to download the module zip
+			$moduleZipContents = http_post(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id", $postParams);
+			// Errors?
+			if ($moduleZipContents == 'ERROR') {
+				// 0 = Module does not exist in library
+				return "0";
+			}
+			// Place the file in the temp directory before extracting it
+			$filename = APP_PATH_TEMP . date('YmdHis') . "_externalmodule_" . substr(sha1(rand()), 0, 6) . ".zip";
+			if (file_put_contents($filename, $moduleZipContents) === false) {
+				// 1 = Module zip couldn't be written to temp
+				return "1";
+			}
+			// Extract the module to /redcap/modules
+			$zip = new \ZipArchive;
+			if ($zip->open($filename) !== TRUE) {
+			return "2";
+			}
+			// First, we need to rename the parent folder in the zip because GitHub has it as something else
+			$i = 0;
+			while ($item_name = $zip->getNameIndex($i)){
+				$item_name_end = substr($item_name, strpos($item_name, "/"));
+				$zip->renameIndex($i++, $moduleFolderName . $item_name_end);
+			}
 			$zip->close();
+			// Now extract the zip to the modules folder
+			$zip = new \ZipArchive;
+			if ($zip->open($filename) === TRUE) {
+				$zip->extractTo($tempDir);
+				$zip->close();
+			}
+			// Remove temp file
+			unlink($filename);
+
+			// Move the extracted directory to it's final location
+			$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
+			rename($tempDir.DS.$moduleFolderName, $moduleFolderDir);
+
+			// Now double check that the new module directory got created
+			if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
+			return "3";
+			}
+			// Add row to redcap_external_modules_downloads table
+			$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
+					values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+					on duplicate key update 
+					module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
+			db_query($sql);
+			// Remove module_id from external_modules_updates_available config variable		
+			self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
+			
+			// Give success message
+			return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
 		}
-		// Remove temp file
-		unlink($filename);
-
-		// Move the extracted directory to it's final location
-		$moduleFolderDir = $modulesDir . $moduleFolderName . DS;
-		rename($tempDir.DS.$moduleFolderName, $moduleFolderDir);
-
-		// Remove temp dir
-		rmdir($tempDir);
-
-		// Now double check that the new module directory got created
-		if (!(file_exists($moduleFolderDir) && is_dir($moduleFolderDir))) {
-		   return "3";
+		finally{
+			self::rrmdir($tempDir);
 		}
-		// Add row to redcap_external_modules_downloads table
-		$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
-				values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
-				on duplicate key update 
-				module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
-		db_query($sql);
-		// Remove module_id from external_modules_updates_available config variable		
-		self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
-
-		// Give success message
-		return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
 	}
 
 	public static function deleteModuleDirectory($moduleFolderName=null, $bypass=false){
@@ -3048,11 +3136,11 @@ class ExternalModules
 
 	private static function getDatacoreEmails($to){
 		if (self::isVanderbilt()) {
-			$to[] = 'mark.mcever@vanderbilt.edu';
-			$to[] = 'kyle.mcguffin@vanderbilt.edu';
+			$to[] = 'mark.mcever@vumc.org';
+			$to[] = 'kyle.mcguffin@vumc.org';
 
 			if (self::$SERVER_NAME == 'redcap.vanderbilt.edu') {
-				$to[] = 'datacore@vanderbilt.edu';
+				$to[] = 'datacore@vumc.org';
 			}
 		}
 
@@ -3318,6 +3406,192 @@ class ExternalModules
 		return strpos($_SERVER['REQUEST_URI'], APP_PATH_WEBROOT . 'DataEntry') === 0;
 	}
 
+	# for crons specified to run at a specific time
+	public static function isValidTimedCron($cronAttr) {
+		$hour = $cronAttr['cron_hour'];
+		$minute = $cronAttr['cron_minute'];
+		$weekday = $cronAttr['cron_weekday'];
+		$monthday = $cronAttr['cron_monthday'];
+
+		if (!self::isValidGenericCron($cronAttr)) {
+			return FALSE;
+		}
+
+		if (!empty($cronAttr['cron_frequency']) || !empty($cronAttr['cron_max_run_time'])) {
+			return FALSE;
+		}
+
+		if (!is_numeric($hour) || !is_numeric($minute)) {
+			return FALSE;
+		}
+		if ($weekday && !is_numeric($weekday)) {
+			return FALSE;
+		}
+		if ($monthday && !is_numeric($monthday)) {
+			return FALSE;
+		}
+
+		if (($hour < 0) || ($hour >= 24)) {
+			return FALSE;
+		}
+		if (($minute < 0) || ($minute >= 60)) { 
+			return FALSE;
+		}
+
+		return TRUE;
+	}
+
+	# for all generic crons; all must have the following attributes
+	private static function isValidGenericCron($cronAttr) {
+		$name = $cronAttr['cron_name'];
+		$descr = $cronAttr['cron_description'];
+		$method = $cronAttr['method'];
+
+		if (!isset($name) || !isset($descr) || !isset($method)) {
+			return FALSE; 
+		}
+
+		return TRUE;
+	}
+
+	# only for crons stored in redcap_crons table
+	public static function isValidTabledCron($cronAttr) {
+		$frequency = $cronAttr['cron_frequency'];
+		$maxRunTime = $cronAttr['cron_max_run_time'];
+
+		if (!self::isValidGenericCron($cronAttr)) {
+			return FALSE;
+		}
+
+		if (!isset($frequency) || !isset($maxRunTime)) {
+			return FALSE;
+		}
+
+		if (isset($cronAttr['cron_hour']) || isset($cronAttr['cron_minute'])) {
+			return FALSE;
+		}
+
+		if (!is_numeric($frequency) || !is_numeric($maxRunTime)) {
+			return FALSE;
+		}
+
+		if ($frequency <= 0) {
+			return FALSE;
+		}
+		if ($maxRunTime <= 0) {
+			return FALSE;
+		}
+
+		return TRUE;
+	}
+
+	# only for timed crons
+	public static function isTimeToRun($cronAttr, $cronStartTime=NULL) {
+		$hour = $cronAttr['cron_hour'];
+		$minute = $cronAttr['cron_minute'];
+		$weekday = $cronAttr['cron_weekday'];
+		$monthday = $cronAttr['cron_monthday'];
+
+		if(!self::isValidTimedCron($cronAttr)){
+			return FALSE;
+		}
+
+		$hour = (int) $hour;
+		$minute = (int) $minute;
+		$weekday = (int) $weekday;
+		$monthday = (int) $monthday;
+
+		// We check the cron start time instead of the current time
+		// in case another module's cron job ran us into the next minute.
+		if (!$cronStartTime) {
+			$cronStartTime = self::getLastTimeRun();
+		}
+		$currentHour = (int) date('G', $cronStartTime);
+		$currentMinute = (int) date('i', $cronStartTime);  // The cast is especially important here to get rid of a possible leading zero.
+		$currentWeekday = (int) date('w', $cronStartTime);
+		$currentMonthday = (int) date('j', $cronStartTime);
+
+		if (isset($cronAttr['cron_weekday'])) {
+			if ($currentWeekday != $weekday) {
+				return FALSE;
+			}
+		}
+
+		if (isset($cronAttr['cron_monthday'])) {
+			if ($currentMonthday != $monthday) {
+				return FALSE;
+			}
+		}
+
+		return ($hour === $currentHour) && ($minute === $currentMinute);
+	}
+
+	private static function getLastTimeRun() {
+		return $_SERVER["REQUEST_TIME_FLOAT"];
+	}
+
+	private static function makeTimestamp() {
+		return date("Y-m-d H:i:s");
+	}
+
+	public static function callTimedCronMethods() {
+		# get array of modules
+		$enabledModules = self::getEnabledModules();
+		$returnMessages = array();
+
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			try{
+				$cronName = "";
+
+				# do not run twice in the same minute
+				$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
+				$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+				if (!empty($moduleId) && !empty($cronAttrs)) {
+					foreach ($cronAttrs as $cronAttr) {
+						$cronName = $cronAttr['cron_name'];
+						if (self::isValidTimedCron($cronAttr) && self::isTimeToRun($cronAttr)) {
+							# if isTimeToRun, run method
+							$cronMethod = $cronAttr['method'];
+							array_push($returnMessages, "Timed cron running $cronName->$cronMethod (".self::makeTimestamp().")");
+							$mssg = self::callTimedCronMethod($moduleDirectoryPrefix, $cronName);
+							if ($mssg) {
+								array_push($returnMessages, $mssg." (".self::makeTimestamp().")");
+							}
+						}
+					}
+				}
+			} catch(Exception $e) {
+				$currentReturnMessage = "Timed Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
+				$emailMessage = "$currentReturnMessage with the following Exception: $e";
+
+				self::sendAdminEmail('External Module Exception in Timed Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+				array_push($returnMessages, $currentReturnMessage);
+			}
+		}
+		
+		return $returnMessages;
+	}
+
+	private static function callTimedCronMethod($moduleDirectoryPrefix, $cronName)
+	{
+		$lockInfo = self::getCronLockInfo($moduleDirectoryPrefix);
+		if($lockInfo){
+			self::checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo);
+			return "Skipping cron '$cronName' for module '$moduleDirectoryPrefix' because an existing job is already running for this module.";
+		}
+
+		try{
+			self::lockCron($moduleDirectoryPrefix);
+
+			$moduleId = self::getIdForPrefix($moduleDirectoryPrefix);
+			return $returnMessage = self::callCronMethod($moduleId, $cronName);
+		}
+		finally{
+			self::unlockCron($moduleDirectoryPrefix);
+		}
+	}
+
+	// This method is called both internally and by the REDCap Core code.
 	public static function callCronMethod($moduleId, $cronName)
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
@@ -3334,6 +3608,7 @@ class ExternalModules
 					// Loop through all crons to find the one we're looking for
 					foreach ($config['crons'] as $cronKey=>$cronAttr) {
 						if ($cronAttr['cron_name'] != $cronName) continue;
+
 						// Find and validate the cron method in the module class
 						$cronMethod = $config['crons'][$cronKey]['method'];
 
@@ -3347,13 +3622,55 @@ class ExternalModules
 			$returnMessage = "Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
 			$emailMessage = "$returnMessage with the following Exception: $e";
 
-			self::sendAdminEmail('External Module Exception in Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+			self::sendAdminEmail(self::CRON_EXCEPTION_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
 		}
 
 		self::setActiveModulePrefix(null);
 		self::$hookBeingExecuted = "";
 		
 		return $returnMessage;
+	}
+
+	private static function checkForALongRunningCronJob($moduleDirectoryPrefix, $cronName, $lockInfo) {
+		/* There are currently two scenarios under which this method will get called:
+		 *
+		 * 1. A long running cron module method delays the start time of another cron module method in the same cron process,
+		 * and that method ends up running concurrently with itself in a later cron process.  This scenario can safely be ignored.
+		 *
+		 * 2. A cron module method has run longer than the $notificationThreshold below.  No matter how often a job is scheduled to run,
+		 * notifications for long running jobs will not be sent more often than the following threshold.  It's currently set
+		 * to a little less than 24 hours to ensure that a notification is sent at least once a day for long running daily jobs
+		 * (even if they were started a little late due to a previous job).
+		 */
+		$notificationThreshold = time() - 23*self::HOUR_IN_SECONDS;
+		$jobRunningLong = $lockInfo['time'] <= $notificationThreshold;
+		if($jobRunningLong){
+			$lastNotificationTime = self::getSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
+			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
+			if($notificationNeeded) {
+				$moduleId = ExternalModules::getIdForPrefix($moduleDirectoryPrefix);
+				$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run more than $x past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely manually killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '" . self::KEY_RESERVED_IS_CRON_RUNNING . "'<br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='".APP_URL_EXTMOD."manager/crons.php'>Manager for Timed Crons</a>";
+				self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+				self::setSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, time());
+			}
+		}
+	}
+
+	private static function getCronLockInfo($modulePrefix) {
+		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
+	}
+
+	private static function unlockCron($modulePrefix) {
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
+	}
+
+	private static function lockCron($modulePrefix) {
+		self::setSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING, [
+			'process-id' => getmypid(),
+			'time' => time()
+		]);
+
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
 	}
 
 	// Throttles actions by using the redcap_log_event.description.
@@ -3417,8 +3734,15 @@ class ExternalModules
 		}
 
 		$path = __DIR__ . "/framework/v$version/Framework.php";
+
+		global $redcap_version;
+		if($version === 3 && version_compare($redcap_version, '9.0.3', '<')){
+			// This line and surrounding 'if' can be removed once the LTS release is greater than 9.0.3.
+			$path = null;
+		}
+
 		if(!file_exists($path)) {
-			throw new Exception("The {$module->getModuleName()} module requires framework version '$version', which is not available on your REDCap instance.");
+			throw new Exception("The {$module->getModuleName()} module requires framework version $version, which is not available on your REDCap instance.");
 		}
 
 		require_once $path;
@@ -3510,5 +3834,378 @@ class ExternalModules
 				<a href='$linkUrl' target='{$link["target"]}'>{$link["name"]}</a>
 			</div>
 		";
+	}
+
+	static function copySettings($sourceProjectId, $destinationProjectId){
+		// Prevent SQL Injection
+		$sourceProjectId = (int) $sourceProjectId;
+		$destinationProjectId = (int) $destinationProjectId;
+
+		self::copySettingValues($sourceProjectId, $destinationProjectId);
+		self::recreateAllEDocs($destinationProjectId);
+	}
+
+	private static function copySettingValues($sourceProjectId, $destinationProjectId){
+		self::query("
+			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
+			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
+		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
+		");
+	}
+
+	// We recreate edocs when copying settings between projects so that edocs removed from
+	// one project are not also removed from other projects.
+	// This method is currently undocumented/unsupported in modules.
+	// It is public because it is used by Carl's settings import/export module.
+	static function recreateAllEDocs($pid)
+	{
+		// Temporarily override the pid so that hasProjectSettingSavePermission() works properly.
+		$originalPid = $_GET['pid'];
+		$_GET['pid'] = $pid;
+
+		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
+		self::recreateRichTextEDocs($pid, $richTextSettingsByPrefix);
+
+		$_GET['pid'] = $originalPid;
+	}
+
+	private static function recreateEDocSettings($pid)
+	{
+		// Prevent SQL Injection
+		$pid = (int) $pid;
+
+		$handleValue = function($value) use ($pid, &$handleValue){
+			if(gettype($value) === 'array'){
+				for($i=0; $i<count($value); $i++){
+					$value[$i] = $handleValue($value[$i]);
+				}
+			}
+			else{
+				list($oldPid, $value) = self::recreateEdoc($pid, $value);
+			}
+
+			return $value;
+		};
+
+		$result = self::query("select * from redcap_external_module_settings where project_id = $pid");
+		$richTextSettingsByPrefix = [];
+		while($row = db_fetch_assoc($result)){
+			$prefix = self::getPrefixForID($row['external_module_id']);
+			$key = $row['key'];
+
+			$details = self::getSettingDetails($prefix, $key);
+
+			$type = $details['type'];
+			if($type === 'file'){
+				$value = self::getProjectSetting($prefix, $pid, $key);
+				$value = $handleValue($value);
+				self::setProjectSetting($prefix, $pid, $key, $value);
+			}
+			else if($type === 'rich-text'){
+				// Replace the value with the version returned by getProjectSetting() to handle arrays for subsettings/repeatables.
+				$row['value'] = self::getProjectSetting($prefix, $pid, $key);;
+				$richTextSettingsByPrefix[$prefix][] = $row;
+			}
+		}
+
+		return $richTextSettingsByPrefix;
+	}
+
+	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
+	{
+		$results = ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' and project_id = $pid");
+		while($row = db_fetch_assoc($results)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
+			$settings = &$richTextSettingsByPrefix[$prefix];
+
+			foreach($files as &$file){
+				$name = $file['name'];
+
+				$oldId = $file['edocId'];
+				list($oldPid, $newId) = self::recreateEdoc($pid, $oldId);
+				if(empty($newId)){
+					// The edocId was either invalid or the file has been deleted.  Just skip this one.
+					continue;
+				}
+
+				$file['edocId'] = $newId;
+
+				$handleValue = function($value) use ($pid, $prefix, $oldPid, $oldId, $newId, $name, &$handleValue){
+					if(gettype($value) === 'array'){
+						for($i=0; $i<count($value); $i++){
+							$value[$i] = $handleValue($value[$i]);
+						}
+					}
+					else{ // it's a string
+						$search = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $oldPid, $oldId, $name));
+						$replace = htmlspecialchars(ExternalModules::getRichTextFileUrl($prefix, $pid, $newId, $name));
+						$value = str_replace($search, $replace, $value);
+					}
+
+					return $value;
+				};
+
+				foreach($settings as $i=>$setting){
+					$setting['value'] = $handleValue($setting['value']);
+					$settings[$i] = $setting;
+				}
+			}
+
+			ExternalModules::setProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $files);
+		}
+
+		foreach($richTextSettingsByPrefix as $prefix=>$settings){
+			foreach($settings as $setting){
+				ExternalModules::setProjectSetting($prefix, $pid, $setting['key'], $setting['value']);
+			}
+		}
+	}
+
+	private static function recreateEdoc($pid, $edocId)
+	{
+		if(empty($edocId)){
+			// The stored id is already empty.
+			return '';
+		}
+
+		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
+		$result = self::query($sql);
+		$row = db_fetch_assoc($result);
+		if(!$row){
+			return '';
+		}
+
+		$oldPid = $row['project_id'];
+		if($oldPid === $pid){
+			// This edoc is already associated with this project.  No need to recreate it.
+			$newEdocId = $edocId;
+		}
+		else{
+			$newEdocId = copyFile($edocId, $pid);
+		}
+
+		return [
+			$oldPid,
+			(string)$newEdocId // We must cast to a string to avoid an issue on the js side when it comes to handling file fields if stored as integers.
+		];
+	}
+
+	# timespan is number of seconds
+	public static function getCronConflictTimestamps($timespan) {
+		$currTime = time();
+		$conflicts = array();
+
+		// keep these for debugging purposes
+		$timesRun = array();
+		$skipped = array();
+
+		$enabledModules = self::getEnabledModules();
+		foreach ($enabledModules as $moduleDirectoryPrefix=>$version) {
+			$cronAttrs = self::getCronSchedules($moduleDirectoryPrefix);
+			foreach ($cronAttrs as $cronAttr) {
+				# check every minute
+				for ($i = 0; $i < $timespan; $i += 60) {
+					$timeToCheck = $currTime + $i;
+					if (self::isTimeToRun($cronAttr, $timeToCheck)) {
+						if (in_array($timeToCheck, $timesRun)) {
+							array_push($conflicts, $timeToCheck);
+						} else {
+							array_push($timesRun, $timeToCheck);
+						}
+					} else {
+						array_push($skipped, $timeToCheck);
+					}
+				}
+			}
+		}
+		return $conflicts;
+	}
+
+	public function getRichTextFileUrl($prefix, $pid, $edocId, $name)
+	{
+		self::requireNonEmptyValues(func_get_args());
+
+		$extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+		$url = ExternalModules::getModuleAPIUrl() . "page=/manager/rich-text/get-file.php&file=$edocId.$extension&prefix=$prefix&pid=$pid";
+
+		return $url;
+	}
+
+	private function requireNonEmptyValues($a){
+		foreach($a as $key=>$value){
+			if(empty($value)){
+				throw new Exception("The array value for key '$key' was unexpectedly empty!");
+			}
+		}
+	}
+
+	public function haveUnsafeEDocReferencesBeenChecked()
+	{
+		$fieldName = 'external_modules_unsafe_edoc_references_checked';
+		if(isset($GLOBALS[$fieldName])){
+			return true;
+		}
+
+		if(empty(ExternalModules::getUnsafeEDocReferences())){
+			self::query("insert into redcap_config values ('$fieldName', 1)");
+			return true;
+		}
+
+		return false;
+	}
+
+	public function getUnsafeEDocReferences()
+	{
+		$keysByPrefix = [];
+		$handleSetting = function($prefix, $setting) use (&$handleSetting, &$keysByPrefix){
+			$type = $setting['type'];
+			if($type === 'file'){
+				$keysByPrefix[$prefix][] = $setting['key'];
+			}
+			else if ($type === 'sub_settings'){
+				foreach($setting['sub_settings'] as $subSetting){
+					$handleSetting($prefix, $subSetting);
+				}
+			}
+		};
+
+		foreach(ExternalModules::getSystemwideEnabledVersions() as $prefix=>$version){
+			$config = ExternalModules::getConfig($prefix, $version);
+			foreach(['system-settings', 'project-settings', 'email-dashboard-settings'] as $settingType){
+				$settings = @$config[$settingType];
+				if(!$settings){
+					continue;
+				}
+
+				foreach($settings as $setting){
+					$handleSetting($prefix, $setting);
+				}
+			}
+		}
+
+		$edocs = [];
+		$addEdoc = function($prefix, $pid, $key, $edocId) use (&$edocs){
+			if(empty($edocId)){
+				return;
+			}
+
+			$edocs[$edocId][] = [
+				'prefix' => $prefix,
+				'pid' => $pid,
+				'key' => $key
+			];
+		};
+
+		$parseRichTextValue = function($prefix, $pid, $key, $files) use ($addEdoc){
+			foreach($files as $file){
+				$addEdoc($prefix, $pid, $key, $file['edocId']);
+			}
+		};
+
+		$parseFileSettingValue = function($prefix, $pid, $key, $value) use (&$parseFileSettingValue, &$addEdoc){
+			if(is_array($value)){
+				foreach($value as $subValue){
+					$parseFileSettingValue($prefix, $pid, $key, $subValue);
+				}
+			}
+			else{
+				$addEdoc($prefix, $pid, $key, $value);
+			}
+		};
+
+		$clauses = [
+			"`key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "'"
+		];
+
+		foreach($keysByPrefix as $prefix=>$keys){
+			$moduleId = ExternalModules::getIdForPrefix($prefix);
+			$clauses[] = "(external_module_id = $moduleId and " . ExternalModules::getSQLInClause('`key`', $keys) .  ")";
+		}
+
+		$sql = "
+			select * from redcap_external_module_settings
+			where
+			" . implode("\n\t or ", $clauses) . "
+		";
+
+		$result = ExternalModules::query($sql);
+		while($row = db_fetch_assoc($result)){
+			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
+			$pid = $row['project_id'];
+			$key = $row['key'];
+			$value = json_decode($row['value'], true);
+
+			if($key === ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST){
+				$parseRichTextValue($prefix, $pid, $key, $value);
+			}
+			else{
+				$parseFileSettingValue($prefix, $pid, $key, $value);
+			}
+		}
+
+		$result = ExternalModules::query("select * from redcap_edocs_metadata where " . ExternalModules::getSQLInClause('doc_id', array_keys($edocs)));
+		$sourceProjectsByEdocId = [];
+		while($row = db_fetch_assoc($result)){
+			$sourceProjectsByEdocId[$row['doc_id']] = $row['project_id'];
+		}
+
+		$unsafeReferences = [];
+		ksort($edocs);
+		foreach($edocs as $edocId=>$references){
+			foreach($references as $reference){
+				$sourcePid = $sourceProjectsByEdocId[$edocId];
+				$referencePid = $reference['pid'];
+				if($referencePid === $sourcePid){
+					continue;
+				}
+
+				$reference['edocId'] = $edocId;
+				$reference['sourcePid'] = $sourcePid;
+				$unsafeReferences[$referencePid][] = $reference;
+			}
+		}
+
+		return $unsafeReferences;
+	}
+
+	public static function removeModifiedCrons($modulePrefix) {
+		self::removeSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
+	}
+
+	public static function getModifiedCrons($modulePrefix) {
+		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME);
+	}
+
+	# overwrites previously saved version
+	public static function setModifiedCrons($modulePrefix, $cronSchedule) {
+		foreach ($cronSchedule as $cronAttr) {
+			if (!self::isValidTimedCron($cronAttr) && !self::isValidTabledCron($cronAttr)) {
+				throw new \Exception("A cron is not valid! ".json_encode($cronAttr));
+			}
+		}
+		
+		self::setSystemSetting($modulePrefix, self::KEY_RESERVED_CRON_MODIFICATION_NAME, $cronSchedule);
+	}
+
+	public static function getCronSchedules($modulePrefix) {
+		$config = self::getConfig($modulePrefix);
+		$finalVersion = array();
+		if (!isset($config['crons'])) {
+			return $finalVersion;	
+		}
+
+		foreach ($config['crons'] as $cronAttr) {
+			$finalVersion[$cronAttr['cron_name']] = $cronAttr;
+		}
+
+		$modifications = self::getModifiedCrons($modulePrefix);
+		if ($modifications) {
+			foreach ($modifications as $cronAttr) {
+				# overwrite config's if modifications exist
+				$finalVersion[$cronAttr['cron_name']] = $cronAttr;
+			}
+		}
+		return array_values($finalVersion);
 	}
 }

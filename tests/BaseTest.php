@@ -23,6 +23,7 @@ const TEST_LOG_MESSAGE = 'This is a unit test log message';
 const TEST_SETTING_KEY = 'unit-test-setting-key';
 const FILE_SETTING_KEY = 'unit-test-file-setting-key';
 const TEST_SETTING_PID = 1;
+const TEST_SETTING_PID_2 = 2;
 
 abstract class BaseTest extends TestCase
 {
@@ -152,18 +153,18 @@ abstract class BaseTest extends TestCase
 		return call_user_func_array([$this, 'callPrivateMethodForClass'], $args);
 	}
 
-	protected function callPrivateMethodForClass($classInstanceOrName, $methodName)
+	protected function callPrivateMethodForClass()
 	{
+		$args = func_get_args();
+		$classInstanceOrName = array_shift($args); // remove the $classInstanceOrName
+		$methodName = array_shift($args); // remove the $methodName
+
 		if(gettype($classInstanceOrName) == 'string'){
 			$instance = null;
 		}
 		else{
 			$instance = $classInstanceOrName;
 		}
-
-		$args = func_get_args();
-		array_shift($args); // remove the $classInstanceOrName
-		array_shift($args); // remove the $methodName
 
 		$class = new \ReflectionClass($classInstanceOrName);
 		$method = $class->getMethod($methodName);
@@ -191,6 +192,61 @@ abstract class BaseTest extends TestCase
 	}
 
 	protected abstract function getReflectionClass();
+
+	protected function runConcurrentTestProcesses($functionName, $parentAction, $childAction)
+	{
+		// The parenthesis are included in the argument and check below so we can still filter for this function manually (WITHOUT the parenthesis)  when testing for testing and avoid triggering the recursion.
+		$functionName .= '()';
+
+		global $argv;
+		if(end($argv) === $functionName){
+			// This is the child process.
+			$childAction();
+		}
+		else{
+			// This is the parent process.
+
+			$cmd = "vendor/phpunit/phpunit/phpunit --filter " . escapeshellarg($functionName);
+			$childProcess = proc_open(
+				$cmd, [
+					0 => ['pipe', 'r'],
+					1 => ['pipe', 'w'],
+					2 => ['pipe', 'w'],
+				],
+				$pipes
+			);
+
+			// Gets the child status, but caches the final result since calling proc_get_status() multiple times
+			// after a process ends will incorrectly return -1 for the exit code.
+			$getChildStatus = function() use ($childProcess, &$lastStatus){
+				if(!$lastStatus || $lastStatus['running']){
+					$lastStatus = proc_get_status($childProcess);
+				}
+
+				return $lastStatus;
+			};
+
+			$isChildRunning = function() use ($getChildStatus){
+				$status = $getChildStatus();
+				return $status['running'];
+			};
+
+			$parentAction($isChildRunning);
+
+			while($isChildRunning()){
+				// The parent finished before the child.
+				// Wait for the child to finish before continuing so that the exit code can be checked below.
+				sleep(.1);
+			}
+
+			$status = $getChildStatus();
+			$exitCode = $status['exitcode'];
+			if($exitCode !== 0){
+				$output = stream_get_contents($pipes[1]);
+				throw new Exception("The child phpunit process for the $functionName test failed with exit code $exitCode and the following output: $output");
+			}
+		}
+	}
 }
 
 class BaseTestExternalModule extends AbstractExternalModule {
@@ -204,11 +260,6 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		$this->VERSION = TEST_MODULE_VERSION;
 
 		parent::__construct();
-	}
-
-	function getModuleDirectoryName()
-	{
-		return ExternalModules::getModuleDirectoryPath($this->PREFIX, $this->VERSION);
 	}
 
 	function redcap_test_delay($delayTestFunction)
@@ -229,7 +280,12 @@ class BaseTestExternalModule extends AbstractExternalModule {
 		$this->testHookArguments = func_get_args();
 	}
 
-	function redcap_test_call_function($function){
+	function redcap_test_call_function($function = null){
+		// We must check if the arg is callable b/c it could be cron attributes for a cron job.
+		if(!is_callable($function)){
+			$function = $this->function;
+		}
+
 		$function();
 	}
 	

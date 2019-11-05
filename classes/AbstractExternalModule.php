@@ -94,34 +94,6 @@ class AbstractExternalModule
 		return !preg_match("/[^a-z0-9-_]/", $key);
 	}
 
-	function selectData($some, $params=array())
-	{
-		self::checkPermissions(__FUNCTION__);
-
-		return 'this could be some data from the database';
-	}
-
-	function updateData($some, $params=array())
-	{
-		self::checkPermissions(__FUNCTION__);
-
-		throw new Exception('Not yet implemented!');
-	}
-
-	function deleteData($some, $params=array())
-	{
-		self::checkPermissions(__FUNCTION__);
-
-		throw new Exception('Not yet implemented!');
-	}
-
-	function updateUserPermissions($some, $params=array())
-	{
-		self::checkPermissions(__FUNCTION__);
-
-		throw new Exception('Not yet implemented!');
-	}
-
 	# check whether the current External Module has permission to call the requested method $methodName
 	private function checkPermissions($methodName)
 	{
@@ -1009,7 +981,7 @@ class AbstractExternalModule
 	private function updateRecordCount($pid){
 		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
 		$count = $results->fetch_assoc()['count'];
-		$this->query("update redcap_record_counts set record_count = $count where project_id = $pid");
+		$this->query("update redcap_record_counts set record_count = $count, time_of_count = '".NOW."' where project_id = $pid");
 	}
 
 	private function getNextAutoNumberedRecordId($pid){
@@ -1114,10 +1086,21 @@ class AbstractExternalModule
         $formName = db_real_escape_string(key($instrumentNames));
 
         $sql ="
-			select h.hash from redcap_surveys s join redcap_surveys_participants h on s.survey_id = h.survey_id
-			where form_name = '$formName' and participant_email is null
+			select h.hash
+			from redcap_surveys s
+			join redcap_surveys_participants h
+				on s.survey_id = h.survey_id
+			join redcap_metadata m
+				on m.project_id = s.project_id
+				and m.form_name = s.form_name
+				and field_order = 1 -- getting the first field is the easiest way to get the first form
+			where
+				s.project_id = " . $this->getProjectId() . "
+				and s.form_name = '$formName'
+				and participant_email is null
 		";
-        $result = db_query($sql);
+		
+        $result = $this->query($sql);
         $row = db_fetch_assoc($result);
         $hash = @$row['hash'];
 
