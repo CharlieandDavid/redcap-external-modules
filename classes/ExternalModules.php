@@ -1148,7 +1148,7 @@ class ExternalModules
 
 		if (self::isVanderbilt()) {
 			$from = 'datacore@vumc.org';
-			$to = self::getDatacoreEmails([]);
+			$to = self::getDatacoreEmails();
 		}
 		else{
 			global $project_contact_email;
