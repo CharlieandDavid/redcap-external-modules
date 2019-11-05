@@ -24,8 +24,9 @@ $(function() {
 				reloadPage();
 		   }
 		   else {
-				var message = 'An error occurred while enabling the module: ' + data;
-				console.log('AJAX Request Error:', message);
+				//= An error occurred while enabling the module:
+				var message = ExternalModules.$lang.tt('em_manage_69')+' '+data;
+				console.log('AJAX request error while enabling a module:', data); // The intent is to have the data object logged to the console, and not the message?
 				alert(message);
 		   }
 		});
