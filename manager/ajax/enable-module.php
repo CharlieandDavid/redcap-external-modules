@@ -14,11 +14,13 @@ else {
     $config = ExternalModules::getConfig($_POST['prefix'], $_POST['version']);
     $return_data['error_message'] = "";
     if(empty($config['description'])){
-        $return_data['error_message'] .= "The module named  ".$config['name']." is missing a description. Fill in the config.json to ENABLE it.<br/>";
+        //= The module named '{0}' is missing a description. Fill in the config.json to ENABLE it.
+        $return_data['error_message'] .= ExternalModules::tt("em_errors_82", $config['name']) . "<br/>";
     }
 
     if(empty($config['authors'])){
-        $return_data['error_message'] .= "The module named  ".$config['name']." is missing its authors. Fill in the config.json to ENABLE it.<br/>";
+        //= The module named '{0}' is missing its authors. Fill in the config.json to ENABLE it.
+        $return_data['error_message'] .= ExternalModules::tt("em_errors_83", $config['name']) . "<br/>";
     }else{
         $missingEmail = true;
         foreach ($config['authors'] as $author){
@@ -29,12 +31,14 @@ else {
         }
 
         if($missingEmail){
-            $return_data['error_message'] .= "The module named  ".$config['name']." needs at least one email inside the authors portion of the configuration.  Please fill an email for at least one author in the config.json.<br/>";
+            //= The module named '{0}' needs at least one email inside the authors portion of the configuration. Please fill an email for at least one author in the config.json.
+            $return_data['error_message'] .= ExternalModules::tt("em_errors_84", $config['name']) . "<br/>";
         }
 
         foreach ($config['authors'] as $author) {
             if (empty($author['institution'])) {
-                $return_data['error_message'] .= "The module named  " . $config['name'] . " is missing an institution for at least one of it's authors the config.json file.<br/>";
+                //= The module named '{0}' is missing an institution for at least one of it's authors in the config.json file.
+                $return_data['error_message'] .= ExternalModules::tt("em_errors_85", $config['name']) . "<br/>";
                 break;
             }
         }
@@ -43,7 +47,8 @@ else {
     if(empty($return_data['error_message'])) {
 		$exception = ExternalModules::enableAndCatchExceptions($_POST['prefix'], $_POST['version']);
 		if($exception){
-			$return_data['error_message'] = 'Exception while enabling module: ' . $exception->getMessage();
+            //= Exception while enabling module: {0}
+			$return_data['error_message'] = ExternalModules::tt("em_errors_86", $exception->getMessage());
 			$return_data['stack_trace'] = $exception->getTraceAsString();
 		}
     }

@@ -11,7 +11,8 @@ $version = $_GET['moduleDirectoryVersion'];
 if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 	header('Content-type: application/json');
 	echo json_encode(array(
-		'status' => 'You do not have permission to save system settings!'
+		//= You do not have permission to save system settings!
+		'status' => ExternalModules::tt("em_errors_80") 
 	));
 }
 
