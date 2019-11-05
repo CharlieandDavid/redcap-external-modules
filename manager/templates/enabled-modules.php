@@ -229,8 +229,8 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 		echo 'None';
 	} else {
 		foreach ($versionsByPrefix as $prefix => $version) {
-			// Ensure module has been instantiated so that translations are available.
-			ExternalModules::getModuleInstance($prefix);
+			// Ensure that language strings for all modules are available.
+			ExternalModules::initializeLocalizationSupport($prefix, $version);
 			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
 
 			if(empty($config)){
