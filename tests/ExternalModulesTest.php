@@ -25,6 +25,12 @@ class ExternalModulesTest extends BaseTest
 
 	public static $lastSendAdminEmailArgs;
 
+	protected function setUp()
+	{
+		// Loading this dependency doesn't work at the top of this file.  Not sure why...
+		require_once __DIR__ . '/../vendor/squizlabs/php_codesniffer/autoload.php';
+	}
+
 	protected function tearDown()
 	{
 		self::$lastSendAdminEmailArgs = null;
@@ -1326,6 +1332,11 @@ class ExternalModulesTest extends BaseTest
 
 		$this->processSniff('FindTTUsage.php', function($warning) use (&$languageKeyCount){
 			$languageKey = $warning['message'];
+
+			if(strpos($languageKey, 'em_') !== 0){
+				throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
+			}
+			
 			$expected = $GLOBALS['lang'][$languageKey];
 			$this->assertNotEmpty($expected, "Language key '$languageKey' was used but is not defined.");
 			$this->assertSame($expected, ExternalModules::tt($languageKey));
