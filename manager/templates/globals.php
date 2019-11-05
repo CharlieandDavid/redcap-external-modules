@@ -12,6 +12,25 @@ if(empty($configsByPrefixJSON)) {
     $configsByPrefixJSON = "''";
 }
 
+ExternalModules::tt_initializeJSLanguageStore();
+ExternalModules::tt_transferToJSLanguageStore(array(
+	"em_errors_91",
+	"em_errors_92",
+	"em_errors_93",
+	"em_errors_94",
+	"em_errors_95",
+	"em_errors_96",
+	"em_errors_97",
+	"em_manage_13",
+	"em_manage_72",
+	"em_manage_73",
+	"em_manage_74",
+	"em_manage_75",
+	"em_manage_76",
+	"em_manage_77",
+	"em_manage_78",
+	"em_tinymce_language",
+));
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
@@ -38,7 +57,9 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
     $(function () {
 		// Inform IE 8-9 users that this page won't work for them
 		if (isIE && IEv <= 9) {
-			simpleDialog('Our apologies, but your web browser is not compatible with the External Modules Manager page. We recommend using another browser (e.g., Chrome, Firefox) or else upgrade your current browser to a more recent version. Thanks!', 'ERROR: Web browser not compatible');
+			// Our apologies, but your web browser is not compatible with the External Modules Manager page. We recommend using another browser (e.g., Chrome, Firefox) or else upgrade your current browser to a more recent version. Thanks!
+			// ERROR: Web browser not compatible
+			simpleDialog(<?=ExternalModules::tt_js("em_errors_73")?>, <?=ExternalModules::tt_js("em_errors_74")?>);
 		}
 		
         var disabledModal = $('#external-modules-disabled-modal');
@@ -76,17 +97,25 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 			$('#download-new-mod-form').submit();
 		});
         $('#external-modules-add-custom-text-button').click(function(){
-			$('#external-modules-custom-text-dialog').dialog({ title: 'Set custom text for Project Module Manager (optional)', bgiframe: true, modal: true, width: 550, 
+			$('#external-modules-custom-text-dialog').dialog({ 
+				//= Set custom text for Project Module Manager (optional)
+				title: <?=ExternalModules::tt_js("em_manage_25")?>, 
+				bgiframe: true, modal: true, width: 550, 
 				buttons: {
-					'Cancel': function() {
+					//= Cancel
+					<?=ExternalModules::tt_js("em_manage_12")?>: function() {
 						$(this).dialog('close'); 
 					},
-					'Save': function() {
+					//= Save
+					<?=ExternalModules::tt_js("em_manage_13")?>: function() { 
 						showProgress(1,0);
 						$.post(app_path_webroot+'ControlCenter/set_config_val.php',{ settingName: 'external_modules_project_custom_text', value: $('#external_modules_project_custom_text').val() },function(data){
 							showProgress(0,0);
 							if (data == '1') {
-								simpleDialog("The custom text was successfully saved!","SUCCESS");
+								// The custom text was successfully saved!
+								// SUCCESS
+								simpleDialog(<?=ExternalModules::tt_js("em_manage_26")?>,
+									<?=ExternalModules::tt_js("em_manage_27")?>);
 							} else {
 								alert(woops);
 							}
@@ -98,24 +127,45 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 		});
 		var download_module_id = getParameterByName('download_module_id');
 		if (isNumeric(download_module_id) && getParameterByName('download_module_name') != '') {
-			$('#external-modules-download').dialog({ title: 'Download external module?', bgiframe: true, modal: true, width: 550, 
+			$('#external-modules-download').dialog({ 
+				//= Download external module?
+				title: <?=ExternalModules::tt_js("em_manage_28")?>, 
+				bgiframe: true, modal: true, width: 550, 
 				buttons: {
-					'Cancel': function() {
+					//= Cancel
+					<?=ExternalModules::tt_js("em_manage_12")?>: function() { 
 						modifyURL('<?=PAGE_FULL?>');
 						$(this).dialog('close'); 
 					},
-					'Download': function() {
+					//= Download
+					<?=ExternalModules::tt_js("em_manage_29")?>: function() { 
 						showProgress(1);
 						$.get('<?=APP_URL_EXTMOD?>manager/ajax/download-module.php?module_id='+download_module_id,{},function(data){
 							showProgress(0,0);
 							if (data == '0') {
-								simpleDialog("An error occurred because the External Module could not be found.","ERROR");
+								simpleDialog(
+									//= ERROR
+									<?=ExternalModules::tt_js("em_manage_31")?>, 
+									//= An error occurred because the External Module could not be found.
+									<?=ExternalModules::tt_js("em_manage_30")?>);
 							} else if (data == '1') {
-								simpleDialog("An error occurred because the External Module zip file could not be written to the REDCap temp directory before extracting it.","ERROR");
+								simpleDialog(
+									//= ERROR
+									<?=ExternalModules::tt_js("em_manage_32")?>, 
+									//= An error occurred because the External Module zip file could not be written to the REDCap temp directory before extracting it.
+									<?=ExternalModules::tt_js("em_manage_30")?>);
 							} else if (data == '2' || data == '3') {
-								simpleDialog("An error occurred because the External Module zip file could not be extracted or could not create a new modules directory on the REDCap web server.","ERROR");
+								simpleDialog(
+									//= ERROR
+									<?=ExternalModules::tt_js("em_manage_33")?>, 
+									//= An error occurred because the External Module zip file could not be extracted or could not create a new modules directory on the REDCap web server.
+									<?=ExternalModules::tt_js("em_manage_30")?>);
 							} else if (data == '4') {
-								alert("PLEASE TRY AGAIN:\nAn unknown error occurred, so the page will now reload to allow you to TRY AGAIN.","ERROR");
+								alert(
+									//= ERROR
+									<?=ExternalModules::tt_js("em_manage_34")?>, 
+								//= PLEASE TRY AGAIN:\nAn unknown error occurred, so the page will now reload to allow you to TRY AGAIN.
+									<?=ExternalModules::tt_js("em_manage_30")?>);
 								showProgress(1);
 								window.location.reload();
 								return;
@@ -130,7 +180,10 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 									if (updatesCount < 1) $('.repo-updates').hide();
 								}
 								// Success msg
-								simpleDialog(data,"SUCCESS",null,null,function(){
+								simpleDialog(data,
+									//= SUCCESS
+									<?=ExternalModules::tt_js("em_manage_27")?>,
+									null,null,function(){
 									$('#external-modules-enable-modules-button').trigger('click');
 								},"Close");
 							}

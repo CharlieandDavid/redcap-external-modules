@@ -3,8 +3,8 @@
 <input type='hidden' name='version' value='<?= $version ?>'>
 
 <div class='external-modules-title'><?= $config['name'] . ' - ' . $version ?>
-	<?php if ($system_enabled) print "<span class='label label-warning badge badge-warning'>Enabled for All Projects</span>" ?>
-	<?php if ($isDiscoverable) print "<span class='label label-info badge badge-info'>Discoverable</span>" ?>
+	<?php if ($system_enabled) print "<span class='label label-warning badge badge-warning'><!--= Enabled for All Projects -->" . ExternalModules::tt("em_manage_22") . "</span>" ?>
+	<?php if ($isDiscoverable) print "<span class='label label-info badge badge-info'><!--= Discoverable -->" . ExternalModules::tt("em_manage_23") . "</span>" ?>
 </div>
 <div class='external-modules-description'>
 	<?php echo $config['description'] ? $config['description'] : '';?>
@@ -33,7 +33,11 @@
 
 		$documentationUrl = ExternalModules::getDocumentationUrl($prefix);
 		if(!empty($documentationUrl)){
-			?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank"><i class='fas fa-file' style="margin-right: 5px"></i>View Documentation</a><?php
+			?><a href='<?=$documentationUrl?>' style="display: block; margin-top: 7px" target="_blank">
+				<i class='fas fa-file' style="margin-right: 5px"></i>
+				<!--= View Documentation -->
+				<?=ExternalModules::tt("em_manage_24")?>
+			</a><?php
 		}
 	?>
 </div>
