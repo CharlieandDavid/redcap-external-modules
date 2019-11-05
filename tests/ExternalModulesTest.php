@@ -1250,4 +1250,135 @@ class ExternalModulesTest extends BaseTest
 			$assertInvalid($major+1);
 		}
 	}
+
+	function testTranslateConfig()
+	{
+		$settingOneTranslationKey = 'setting_one_name';
+		$settingTwoTranslationKey = 'setting_two_name';
+		$settingOneTranslatedName =  'Establecer Uno';
+		$settingTwoTranslatedName =  'Establecer Two';
+
+		$this->spoofTranslation(TEST_MODULE_PREFIX, $settingOneTranslationKey, $settingOneTranslatedName);
+		$this->spoofTranslation(TEST_MODULE_PREFIX, $settingTwoTranslationKey, $settingTwoTranslatedName);
+
+		$config = [
+			'project-settings' => [
+				[
+					'key' => 'setting-one',
+					'name' => 'Setting One',
+					'tt_name' => $settingOneTranslationKey
+				],
+				[
+					'key' => 'sub-settings-key',
+					'type' => 'sub_settings',
+					'sub_settings' => [
+						[
+							'key' => 'setting-two',
+							'name' => 'Setting Two',
+							'tt_name' => $settingTwoTranslationKey
+						]
+					]
+				]
+			]
+		];
+
+		$translatedConfig = $this->callPrivateMethod('translateConfig', $config, TEST_MODULE_PREFIX);
+
+		// set expected changes
+		$config['project-settings'][0]['name'] = $settingOneTranslatedName;
+		$config['project-settings'][1]['sub_settings'][0]['name'] = $settingTwoTranslatedName;
+
+		$this->assertSame($translatedConfig, $config);
+	}
+
+	private function spoofTranslation($prefix, $key, $value)
+	{
+		global $lang;
+
+		if(!empty($prefix)){
+			$key = ExternalModules::constructLanguageKey($prefix, $key);
+		}
+
+		return $lang[$key] = $value;
+	}
+
+	function testTt_basic()
+	{
+		$key1 = 'key1';
+		$value = rand();
+		$this->spoofTranslation(null, $key1, $value);
+
+		$this->assertSame($value, ExternalModules::tt($key1));
+
+		$key2 = 'key2';
+
+		$this->assertSame(ExternalModules::getLanguageKeyNotDefinedMessage($key2, null), ExternalModules::tt($key2));
+	}
+
+	function testTt_allUsage()
+	{
+		$languageKeyCount = 0;
+
+		$this->processSniff('FindTTUsage.php', function($warning) use (&$languageKeyCount){
+			$languageKey = $warning['message'];
+			$expected = $GLOBALS['lang'][$languageKey];
+			$this->assertNotEmpty($expected, "Language key '$languageKey' was used but is not defined.");
+			$this->assertSame($expected, ExternalModules::tt($languageKey));
+
+			$languageKeyCount++;
+		});
+
+		$this->assertGreaterThan(150, $languageKeyCount);
+	}
+
+	private function processSniff($sniffFilename, $warningAction)
+	{
+		foreach($this->findAllPhpFiles() as $path){
+			// The following method of running PHPCS within a unit test was found here:
+			// https://payton.codes/2017/12/15/creating-sniffs-for-a-phpcs-standard/#writing-tests
+			
+			// The "Sniffs" dir must be named "Sniffs" or PHPCS will not register any sniffs inside it.
+			$sniffFiles = [__DIR__ . "/Sniffs/$sniffFilename"];
+			
+			$config = new \PHP_CodeSniffer\Config([
+				'standards' => [] // override the default standards so we don't try to sniff anything else
+			]);
+
+			$ruleset = new \PHP_CodeSniffer\Ruleset($config);
+			$ruleset->registerSniffs($sniffFiles, [], []);
+			$ruleset->populateTokenListeners();
+			$phpcsFile = new \PHP_CodeSniffer\Files\LocalFile($path, $ruleset, $config);
+			$phpcsFile->process();
+
+			foreach($phpcsFile->getWarnings() as $lineWarnings){
+				foreach($lineWarnings as $characterWarnings){
+					foreach($characterWarnings as $warning){
+						$warningAction($warning);
+					}
+				}
+			}
+		}
+	}
+
+	private function findAllPhpFiles()
+	{
+		$rootPath = __DIR__ . '/..';
+		$iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($rootPath));
+
+		$files = array(); 
+		foreach ($iterator as $file){
+			if(
+				strpos($file->getPathName(), "$rootPath/vendor") === 0
+				||
+				$file->getExtension() !== 'php'
+			){
+				continue;
+			}
+
+			$files[] = $file->getPathname();
+		}
+	
+		return $files;
+	}
+
 }
