@@ -11,15 +11,63 @@ use ExternalModules\ExternalModules;
 
 class Framework
 {
+	/**
+	 * Constructor
+	 * @param AbstractExternalModule $module The module for which the framework is initialized.
+	 */
 	function __construct($module){
 		if(!($module instanceof AbstractExternalModule)){
-			throw new Exception("Initializing the framework requires a module instance.");
+			throw new Exception(ExternalModules::tt("em_errors_70")); //= Initializing the framework requires a module instance.
 		}
 
 		$this->module = $module;
 
+		// Initialize language support (parse language files etc.).
+		ExternalModules::initializeLocalizationSupport($module->PREFIX, $module->VERSION);
+
 		$this->records = new Records($module);
 	}
+
+	//region Language features
+
+	/**
+	 * Returns the translation for the given language file key.
+	 * 
+	 * @param string $key The language file key.
+	 * 
+	 * Note: Any further arguments are used for interpolation. When the first additional parameter is an array, it's members will be used and any further parameters ignored. 
+	 * 
+	 * @return string The translation (with interpolations).
+	 */
+	public function tt($key) {
+		// Get all arguments and send off for processing.
+		return ExternalModules::tt_process(func_get_args(), $this->module->PREFIX, false);
+	}
+
+	/**
+	 * Transfers one (interpolated) or many strings (without interpolation) to the module's JavaScript object.
+	 * 
+	 * @param mixed $key (optional) The language key or an array of language keys.
+	 * 
+	 * Note: When a single language key is given, any number of arguments can be supplied and these will be used for interpolation. When an array of keys is passed, then any further arguments will be ignored and the language strings will be transfered without interpolation. If no key or null is passed, all language strings will be transferred.
+	 */
+	public function tt_transferToJavascriptModuleObject($key = null) {
+		// Get all arguments and send off for processing.
+		ExternalModules::tt_prepareTransfer(func_get_args(), $this->module->PREFIX);
+	}
+
+	/**
+	 * Adds a key/value pair directly to the language store for use in the JavaScript module object. 
+	 * Value can be anything (string, boolean, array).
+	 * 
+	 * @param string $key The language key.
+	 * @param mixed $value The corresponding value.
+	 */
+	public function tt_addToJavascriptModuleObject($key, $value) {
+		ExternalModules::tt_addToJSLanguageStore($key, $value, $this->module->PREFIX, $key);
+	}
+
+	//endregion
 
 	function getProjectsWithModuleEnabled(){
 		$results = $this->query("
@@ -117,7 +165,7 @@ class Framework
 	function getUser($username = null){
 		if(empty($username)){
 			if(!defined('USERID')){
-				throw new Exception('A username was not specified and could not be automatically detected.');
+				throw new Exception(ExternalModules::tt("em_errors_71")); //= A username was not specified and could not be automatically detected.
 			}
 
 			$username = USERID;

@@ -62,7 +62,7 @@ class AbstractExternalModule
 				self::checkSettingKey($key);
 
 				if (isset($settingKeys[$key])) {
-					throw new Exception("The \"" . $this->PREFIX . "\" module defines the \"$key\" setting multiple times!");
+					throw new Exception(ExternalModules::tt("em_errors_61", $this->PREFIX, $key)); //= The '{0}' module defines the '{1}' setting multiple times!
 				} else {
 					$settingKeys[$key] = true;
 				}
@@ -82,7 +82,7 @@ class AbstractExternalModule
 	private function checkSettingKey($key)
 	{
 		if(!self::isSettingKeyValid($key)){
-			throw new Exception("The " . $this->PREFIX . " module has a setting named \"$key\" that contains invalid characters.  Only lowercase characters, numbers, and dashes are allowed.");
+			throw new Exception(ExternalModules::tt("em_errors_62", $this->PREFIX, $key)); //= The '{0}' module has a setting named '{1}' that contains invalid characters. Only lowercase characters, numbers, and dashes are allowed.
 		}
 	}
 
@@ -102,7 +102,7 @@ class AbstractExternalModule
 		$permissionName = ltrim(strtolower(preg_replace('/[A-Z]/', '_$0', $methodName)), '_');
 
 		if (!$this->hasPermission($permissionName)) {
-			throw new Exception("This module must request the \"$permissionName\" permission in order to call the $methodName() method.");
+			throw new Exception(ExternalModules::tt("em_errors_64", $permissionName, $methodName())); //= This module must request the '{0}' permission in order to call the '{1}' method.
 		}
 	}
 
@@ -633,7 +633,7 @@ class AbstractExternalModule
 		$value = self::detectParameter($parameterName, $value);
 
 		if(!isset($value)){
-			throw new Exception("You must supply the following either as a GET parameter or as the last argument to this method: $parameterName");
+			throw new Exception(ExternalModules::tt("em_errors_65", $parameterName)); //= You must supply the following either as a GET parameter or as the last argument to this method: {0}
 		}
 
 		return $value;
@@ -903,7 +903,7 @@ class AbstractExternalModule
 	public function setData($record, $fieldName, $values){
 		$instanceId = db_escape(self::requireInstanceId());
 		if($instanceId != 1){
-			throw new Exception("Multiple instances are not currently supported!");
+			throw new Exception(ExternalModules::tt("em_errors_66")); //= Multiple instances are not currently supported!
 		}
 
 		$pid = db_escape(self::requireProjectId());
@@ -961,7 +961,7 @@ class AbstractExternalModule
 			return $this->addAutoNumberedRecord($pid);
 		}
 		else if($count == 0){
-			throw new Exception("An error occurred while adding an auto numbered record for project $pid.");
+			throw new Exception(ExternalModules::tt("em_errors_67", $pid)); //= An error occurred while adding an auto numbered record for project {0}.
 		}
 
 		$this->updateRecordCount($pid);
@@ -1114,6 +1114,8 @@ class AbstractExternalModule
 
 	public function initializeJavascriptModuleObject()
 	{
+		global $lang;
+
 		$jsObject = ExternalModules::getJavascriptModuleObjectName($this);
 
 		$pid = $this->getProjectId();
@@ -1125,6 +1127,8 @@ class AbstractExternalModule
 			// Don't sent the actual record id, since it shouldn't be trusted on non-authenticated requests anyway.
 			$recordId = null;
 		}
+
+		ExternalModules::tt_initializeJSLanguageStore();
 
 		?>
 		<script>
@@ -1139,11 +1143,14 @@ class AbstractExternalModule
 					parent = parent[part]
 				})
 
-				<?=$jsObject?>.log = function(message, parameters){
+				// Shorthand for the external module object.
+				var module = <?=$jsObject?>
+
+				// Add methods.
+				module.log = function(message, parameters){
 					if(parameters === undefined){
 						parameters = {}
 					}
-
 					<?php
 					if(!empty($recordId)){
 						?>
@@ -1153,7 +1160,6 @@ class AbstractExternalModule
 						<?php
 					}
 					?>
-
 					$.ajax({
 						'type': 'POST',
 						'url': "<?=$logUrl?>",
@@ -1168,13 +1174,14 @@ class AbstractExternalModule
 						}),
 						'success': function(data){
 							if(data !== 'success'){
-								console.error("An error occurred while calling the log API:", data)
+								//= An error occurred while calling the log API:
+								console.error(<?=json_encode(ExternalModules::tt("em_errors_68"))?>, data)
 							}
 						}
 					})
 				}
 
-				<?=$jsObject?>.getUrlParameters = function(){
+				module.getUrlParameters = function(){
 					var search = location.search
 					if(location.search[0] !== '?'){
 						// There aren't any URL parameters
@@ -1201,20 +1208,20 @@ class AbstractExternalModule
 					return params
 				}
 
-				<?=$jsObject?>.getUrlParameter = function(name){
+				module.getUrlParameter = function(name){
 					var params = this.getUrlParameters()
 					return params[name]
 				}
 
-				<?=$jsObject?>.isRoute = function(routeName){
+				module.isRoute = function(routeName){
 					return this.getUrlParameter('route') === routeName
 				}
 
-				<?=$jsObject?>.isImportPage = function(){
+				module.isImportPage = function(){
 					return this.isRoute('DataImportController:index')
 				}
 
-				<?=$jsObject?>.isImportReviewPage = function(){
+				module.isImportReviewPage = function(){
 					if(!this.isImportPage()){
 						return false
 					}
@@ -1222,13 +1229,64 @@ class AbstractExternalModule
 					return $('table#comptable').length === 1
 				}
 
-				<?=$jsObject?>.isImportSuccessPage = function(){
+				module.isImportSuccessPage = function(){
 					if(!this.isImportPage()){
 						return false
 					}
-
 					var successMessage = $('#center > .green > b').text()
-					return successMessage === 'Import Successful!'
+					return successMessage === <?=json_encode($lang["data_import_tool_133"])?> // 'Import Successful!'
+				}
+
+				/**
+				 * Constructs the full language key for an EM-scoped key.
+				 * @private
+				 * @param {string} key The EM-scoped key.
+				 * @returns {string} The full key for use in $lang.
+				 */
+				module._constructLanguageKey = function(key) {
+					return <?=json_encode(ExternalModules::EM_LANG_PREFIX . $this->PREFIX)?> + '_' + key
+				}
+				/**
+				 * Extracts interpolation values from variable function arguments.
+				 * @private
+				 * @param {Array} inputs An array of interpolation values.
+				 * @returns {Array} An array with the interpolation values.
+				 */
+				module._getValues = function(inputs) {
+					var values = Array()
+					// Store type of arguments ... for debug purposes.
+					var argsType = 'params'
+					if (inputs.length > 1) {
+						// If the first value is an array or object, use it instead.
+						if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
+							argsType = Array.isArray(inputs[1]) ? 'array' : 'object'
+							values = inputs[1]
+						}
+						else {
+							values = inputs.slice(1)
+						}
+					}
+					return values
+				}
+				/**
+				 * Gets and interpolate a translation.
+				 * @param {string} key The key for the string.
+				 * Note: Any further arguments after key will be used for interpolation. If the first such argument is an array, it will be used as the interpolation source.
+				 * @returns {string} The interpolated string.
+				 */
+				module.tt = function (key) {
+					var values = this._getValues(Array(arguments))
+					key = this._constructLanguageKey(key)
+					return window.ExternalModules.$lang.tt(key, values)
+				}
+				/**
+				 * Adds a key/value pair to the language store.
+				 * @param {string} key The key.
+				 * @param {string} value The string value to add.
+				 */
+				module.tt_add = function(key, value) {
+					key = this._constructLanguageKey(key)
+					window.ExternalModules.$lang.add(key, value)
 				}
 			})()
 		</script>
@@ -1239,8 +1297,16 @@ class AbstractExternalModule
 		if($name === 'log'){
 			return call_user_func_array([$this, 'log_internal'], $arguments);
 		}
-
-		throw new Exception("The following method does not exist: $name()");
+		// Forward translation support functions to the framework.
+		$i18n_funcs = array (
+			"tt", 
+			"tt_transferToJavascriptModuleObject",
+			"tt_addToJavascriptModuleObject"
+		);
+		if (in_array($name, $i18n_funcs, true) && isset($this->framework) && method_exists($this->framework, $name)) {
+			return call_user_func_array([$this->framework, $name], $arguments);
+		}
+		throw new Exception(ExternalModules::tt("em_errors_69", $name)); //= The following method does not exist: {0}
 	}
 
 	private function log_internal($message, $parameters = [])
