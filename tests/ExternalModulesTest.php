@@ -1293,8 +1293,14 @@ class ExternalModulesTest extends BaseTest
 			]
 		];
 
-		$translatedConfig = $this->callPrivateMethod('translateConfig', $config, TEST_MODULE_PREFIX);
+		// callPrivateMethod() didn't work here in PHP 5.6 due to a quirk of passing parameters by references.
+		// There might be a way to fix it so we don't need the wordaround below.
+		$class = new \ReflectionClass($this->getReflectionClass());
+		$method = $class->getMethod('translateConfig');
+		$method->setAccessible(true);
 
+		$translatedConfig = $method->invokeArgs($instance, [&$config, TEST_MODULE_PREFIX]);
+		
 		// set expected changes
 		$config['project-settings'][0]['name'] = $settingOneTranslatedName;
 		$config['project-settings'][1]['sub_settings'][0]['name'] = $settingTwoTranslatedName;
