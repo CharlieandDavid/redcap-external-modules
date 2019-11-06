@@ -34,7 +34,8 @@ ExternalModules = $.extend(ExternalModules, {
 			var value = input.val();
 			if(value && !ExternalModules.validateEmail(value)){
 				var label = input.closest('tr').find('label').text()
-				errorMessage = "The email address entered for the following field is not valid:<br><br>" + label
+				//= The email address entered for the following field is not valid:
+				errorMessage = ExternalModules.$lang.tt('em_errors_91') + '<br><br>' + label
 			}
 		})
 
@@ -87,7 +88,8 @@ ExternalModules = $.extend(ExternalModules, {
 			}
 
 			// Only support the jquery UI datepicker's default date format for now.
-			errorMessage = "Dates must be specified in MM/DD/YYYY format.  The following value is not a valid date:<br><br>" + value
+			//= Dates must be specified in MM/DD/YYYY format. The following value is not a valid date:
+			errorMessage = ExternalModules.$lang.tt('em_errors_92') + '<br><br>' + value
 		})
 
 		return errorMessage
@@ -391,7 +393,8 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	if(type != 'sub_settings') {
 		var reqLabel = '';
 		if(setting.required) {
-			reqLabel = '<div class="requiredlabel">* must provide value</div>';
+			//= * must provide value
+			reqLabel = '<div class="requiredlabel">' + ExternalModules.$lang.tt('em_manage_72') + '</div>';
 		}
 		html = "<td" + colspan + "><span class='external-modules-instance-label'>" + instanceLabel + "</span><label>" + setting.name + (type == 'descriptive' ? '' : ':') + "</label>" + reqLabel + "</td>";
 	}
@@ -589,7 +592,7 @@ ExternalModules.Settings.prototype.getFileFieldElement = function(name, value, i
 		var input = $('<input type="hidden" name="' + name + '">');
 		var html = this.addEscapedAttribute(input, 'value', value);
 		html += '<span class="external-modules-edoc-file"></span>';
-		html += '<button class="external-modules-delete-file" '+attributeString+'>Delete File</button>';
+		html += '<button class="external-modules-delete-file" '+attributeString+'>'+ExternalModules.$lang.tt('em_manage_73')+'</button>'; //= Delete File
 		$.post('ajax/get-edoc-name.php?' + pid, { edoc : value }, function(data) {
 			//Name starts with
 			$("[name^='"+name+"'][value='"+value+"']").closest("tr").find(".external-modules-edoc-file").html("<b>" + data.doc_name + "</b><br>");
@@ -866,9 +869,14 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
 	// The decision to use TinyMCE was not taken lightly.  We tried integrating Quill, Trix, and Summernote as well, but they either
 	// didn't work as well out of the box when placed inside the configuration model, or were not as flexible/customizable.
+	var tinyLang = ExternalModules.$lang.tt('em_tinymce_language');
+	if (tinyLang == null) tinyLang = 'en_US';
+	// Since the corresponding en_US.js is missing in the 'tinymce/langs' directory, unset if en_US.
+	if (tinyLang == "en_US") tinyLang = '';
 	tinymce.init({
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
+		language: tinyLang, 
 		height: 200,
 		menubar: false,
 		branding: false,
@@ -1030,10 +1038,10 @@ $(function(){
 						});
 					}
 					else{
-						alert('An error occurred while loading the project list!')
+						//= An error occurred while loading the project list!
+						alert(ExternalModules.$lang.tt('em_errors_93'))
 						ExternalModules.Settings.projectList = []
 					}
-
 					callback()
 				});
 			}
@@ -1107,7 +1115,8 @@ $(function(){
 				row.find(".external-modules-edoc-file").html(settings.getProjectFileFieldElement(input.attr('name'), "", inputAttributes));
 				input.remove();
 			} else {		// failure
-				alert("The file was not able to be deleted. "+JSON.stringify(data));
+				//= The file was not able to be deleted.
+				alert(ExternalModules.$lang.tt('em_errors_94')+' '+JSON.stringify(data));
 			}
 		});
 	};
@@ -1117,7 +1126,8 @@ $(function(){
 
 	var resetSaveButton = function() {
 		if ($(this).val() != "") {
-			$(".save").html("Save and Upload");
+			//= Save and Upload
+			$(".save").html(ExternalModules.$lang.tt('em_manage_74')); 
 		}
 		var allEmpty = true;
 		$("input[type=file]").each(function() {
@@ -1126,7 +1136,8 @@ $(function(){
 			}
 		});
 		if (allEmpty) {
-			$(".save").html("Save");
+			//= Save
+			$(".save").html(ExternalModules.$lang.tt('em_manage_13')); 
 		}
 	}
 
@@ -1154,13 +1165,15 @@ $(function(){
 				success: function(returnData) {
 					// alert(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
-						alert(returnData.status+" One or more of the files could not be saved."+JSON.stringify(returnData));
+						//= One or more of the files could not be saved.
+						alert(ExternalModules.$lang.tt('em_errors_95')+' '+JSON.stringify(returnData));
 					}
 					// proceed anyways to save data
 					callbackWithNoArgs();
 				},
 				error: function(e) {
-					alert("One or more of the files could not be saved."+JSON.stringify(e));
+					//= One or more of the files could not be saved.
+					alert(ExternalModules.$lang.tt('em_errors_95')+' '+JSON.stringify(e));
 					callbackWithNoArgs();
 				}
 			});
@@ -1179,7 +1192,8 @@ $(function(){
 			}
 		).done( function(returnData){
 			if(returnData.status != 'success'){
-				alert("An error occurred while saving settings: \n\n" + returnData);
+				//= An error occurred while saving settings:
+				alert(ExternalModules.$lang.tt('em_errors_96')+'\n\n'+returnData);
 				configureModal.show();
 				return;
 			}
@@ -1196,7 +1210,9 @@ $(function(){
 
 		var errorMessage = ExternalModules.validateSettings(configureModal)
 		if(errorMessage){
-			simpleDialog(errorMessage, 'Error')
+			simpleDialog(errorMessage, 
+				//= Error
+				ExternalModules.$lang.tt('em_manage_75')) 
 			return
 		}
 
@@ -1208,7 +1224,10 @@ $(function(){
 				requiredFieldErrors++;
 			}
 		});
-		if (requiredFieldErrors > 0 && !confirm("SOME SETTINGS REQUIRE A VALUE!\n\nIt appears that some settings are required but are missing a value. If you wish to go back and enter more values, click CANCEL. If you wish to save the current settings, click OKAY.")) {
+		//= SOME SETTINGS REQUIRE A VALUE!
+		//=
+		//= It appears that some settings are required but are missing a value. If you wish to go back and enter more values, click CANCEL. If you wish to save the current settings, click OK.
+		if (requiredFieldErrors > 0 && !confirm(ExternalModules.$lang.tt('em_manage_76'))) {
 			return;
 		}
 		
@@ -1245,7 +1264,8 @@ $(function(){
 					success: function(returnData) {
 					},
 					error: function(e) {
-						alert("Error cleaning " + name);
+						//= Error cleaning {0}
+						alert(ExternalModules.$lang.tt('em_errors_97', name)); 
 					}
 				});
 			} else {
@@ -1287,11 +1307,12 @@ $(function(){
 		var prefix = row.data('module')
 		$.get('ajax/usage.php', {prefix: prefix}, function(data){
 			if(data == ''){
-				data = 'None'
+				data = ExternalModules.$lang.tt('em_manage_77') //= None
 			}
 
 			var modal = $('#external-modules-usage-modal')
-			modal.find('.modal-title').html('Project Usage:<br><b>' + row.find('.external-modules-title').text() + '</b>')
+			//= Project Usage:
+			modal.find('.modal-title').html(ExternalModules.$lang.tt('em_manage_78')+'<br><b>' + row.find('.external-modules-title').text() + '</b>')
 			modal.find('.modal-body').html(data)
 			modal.modal('show')
 		})

@@ -27,12 +27,14 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 				$isExampleModule = ExternalModules::isExampleModule($moduleDirectoryPrefix, array_keys($versions));
 	
 				if(isset($enabledModules[$moduleDirectoryPrefix])){
-					$enableButtonText = 'Change Version';
+					//= Change Version
+					$enableButtonText = ExternalModules::tt("em_manage_58"); 
 					$enableButtonIcon = 'fas fa-sync-alt';
 					$deleteButtonDisabled = 'disabled'; // Modules cannot be deleted if they are currently enabled
 				}
 				else{
-					$enableButtonText = 'Enable';
+					//= Enable
+					$enableButtonText = ExternalModules::tt("em_manage_59"); 
 					$enableButtonIcon = 'fas fa-plus-circle';
 					$deleteButtonDisabled = $isExampleModule ? 'disabled' : ''; // Modules cannot be deleted if they are example modules
 				}
@@ -43,7 +45,8 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 				else{
 					$name = $config['name'];
 					if(empty($name)){
-						$name = "None (\"name\" is not specified in config.json for $moduleDirectoryPrefix)";
+						//= None ('name' is not specified in config.json for {0})
+						$name = ExternalModules::tt("em_manage_60", $moduleDirectoryPrefix);
 					}
 				}
 
@@ -53,9 +56,11 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 						<?= $name ?>
 						<div class="cc_info">
 						<?php if (isset($enabledModules[$moduleDirectoryPrefix])) { ?>
-						(Current version: <?= $enabledModules[$moduleDirectoryPrefix] ?>)
+						<!--= (Current version: {0}) -->
+						<?=ExternalModules::tt("em_manage_61", $enabledModules[$moduleDirectoryPrefix])?>
 						<?php } else { ?>
-						(Not enabled)
+						<!--= (Not enabled) -->
+						<?=ExternalModules::tt("em_manage_62")?>
 						<?php } ?>
 						</div>
 					</td>
@@ -69,8 +74,15 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 						</select>
 					</td>
 					<td class="external-modules-action-buttons">
-						<button class='btn btn-success btn-xs enable-button'><span class="<?=$enableButtonIcon?>" aria-hidden="true"></span> <?=$enableButtonText?></button> &nbsp;
-						<button class='btn btn-defaultrc btn-xs disable-button' <?=$deleteButtonDisabled?>><span class="far fa-trash-alt" aria-hidden="true"></span> Delete module</button>
+						<button class='btn btn-success btn-xs enable-button'>
+							<span class="<?=$enableButtonIcon?>" aria-hidden="true"></span>
+							<?=$enableButtonText?>
+						</button> &nbsp;
+						<button class='btn btn-defaultrc btn-xs disable-button' <?=$deleteButtonDisabled?>>
+							<span class="far fa-trash-alt" aria-hidden="true"></span>
+							<!--= Delete module -->
+							<?=ExternalModules::tt("em_manage_63")?>
+						</button>
 					</td>
 				</tr>
 				<?php
@@ -78,20 +90,21 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 		}
 	} else {
 		// Sort modules by title
+		$configs = array();
 		$moduleTitles = array();
 		foreach ($enabledModules as $prefix => $version) {
-			$config = ExternalModules::getConfig($prefix, $version, $_GET['pid']);			
-			$moduleTitles[$prefix] = trim($config['name']);
+			$configs[$prefix] = ExternalModules::getConfig($prefix, $version, $_GET['pid'], false); // Do not translate as modules may not have been instantiated yet.
+			$moduleTitles[$prefix] = trim(strtoupper($configs[$prefix]['name'])); // Uppercase for sorting, otherwise A b C will be A C b.
 		}
 		array_multisort($moduleTitles, SORT_REGULAR, $enabledModules);
 		// Loop through each module to render
 		foreach ($enabledModules as $prefix => $version) {
-			$config = ExternalModules::getConfig($prefix, $version, $_GET['pid']);
+			$config = $configs[$prefix];
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
 
-			$name = $config['name'];
+			$name = trim($config['name']);
 			if(empty($name)){
 				continue;
 			}
@@ -126,4 +139,22 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 	}
 	?>
 </script>
-<?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); ?>
+<?php 
+ExternalModules::tt_initializeJSLanguageStore();
+ExternalModules::tt_transferToJSLanguageStore(
+	array(
+		"em_manage_12",
+		"em_manage_27", 	
+		"em_manage_30",
+		"em_manage_63",
+		"em_manage_64",
+		"em_manage_65",
+		"em_manage_66",
+		"em_manage_67",	
+		"em_manage_68",
+		"em_manage_69",
+		"em_manage_70",
+		"em_manage_71",
+	));
+ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); 
+?>

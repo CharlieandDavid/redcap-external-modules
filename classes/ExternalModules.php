@@ -34,6 +34,35 @@ class ExternalModules
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
+	//region Language feature-related constants
+
+	/**
+	 * The name of the system-level language setting.
+	 */
+	const KEY_LANGUAGE_SYSTEM = 'reserved-language-system';
+	/**
+	 * The name of the project-level language setting.
+	 */
+	const KEY_LANGUAGE_PROJECT = 'reserved-language-project';
+	/**
+	 * Then name of the default language.
+	 */
+	const DEFAULT_LANGUAGE = 'English';
+	/**
+	 * The name of the language folder. This is a subfolder of a module's folder.
+	 */
+	const LANGUAGE_FOLDER_NAME = "lang";
+	/**
+	 * The prefix for all external module-related keys in the global $lang.
+	 */
+	const EM_LANG_PREFIX = "emlang_";
+	/**
+	 * The prefix for fields in config.json that contain language file keys.
+	 */
+	const CONFIG_TRANSLATABLE_PREFIX = "tt_";
+
+	//endregion
+
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
 	const KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME = 'reserved-last-long-running-cron-notification-time';
 	const KEY_RESERVED_CRON_MODIFICATION_NAME = "reserved-modification-name";
@@ -51,9 +80,6 @@ class ExternalModules
 	const SETTING_SIZE_LIMIT = 16777215;
 
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
-
-	const LONG_RUNNING_CRON_EMAIL_SUBJECT = 'External Module Long-Running Cron';
-	const CRON_EXCEPTION_EMAIL_SUBJECT = 'External Module Exception in Cron Job';
 
 	// The minimum required PHP version for External Modules to run
 	const MIN_PHP_VERSION = '5.4.0';
@@ -112,31 +138,38 @@ class ExternalModules
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
 	# KEY_ENABLED is present when enabled for each project
 	# Modules can be enabled for all projects (system-wide) if KEY_ENABLED == 1 for system value
-	private static $RESERVED_SETTINGS = array(
-		array(
-			'key' => self::KEY_VERSION,
-			'hidden' => true,
-		),
-		array(
-			'key' => self::KEY_ENABLED,
-			'name' => '<b>Enable module on all projects by default:</b><br>Unchecked (default) = Module must be enabled in each project individually',
-			'type' => 'checkbox',
-		),
-		array(
-			'key' => self::KEY_DISCOVERABLE,
-			'name' => '<b>Make module discoverable by users:</b><br>Display info on External Modules page in all projects',
-			'type' => 'checkbox'
-		),
-		array(
-			'key' => self::KEY_CONFIG_USER_PERMISSION,
-			'name' => '<b>Module configuration permissions in projects:</b><br>By default, users with Project Setup/Design privileges can modify this module\'s project-level configuration settings. Alternatively, project users can be given explicit module-level permission (via User Rights page) in order to do so',
-			'type' => 'dropdown',
-			"choices" => array(
-				array("value" => "", "name" => "Require Project Setup/Design privilege"),
-				array("value" => "true", "name" => "Require module-specific user privilege")
+	private static function getReservedSettings() {
+		return array(
+			array(
+				'key' => self::KEY_VERSION,
+				'hidden' => true,
+			),
+			array(
+				'key' => self::KEY_ENABLED,
+				//= Enable module on all projects by default: Unchecked (default) = Module must be enabled in each project individually
+				'name' => self::tt("em_config_1"), 
+				'type' => 'checkbox',
+			),
+			array(
+				'key' => self::KEY_DISCOVERABLE,
+				//= Make module discoverable by users: Display info on External Modules page in all projects
+				'name' => self::tt("em_config_2"),
+				'type' => 'checkbox'
+			),
+			array(
+				'key' => self::KEY_CONFIG_USER_PERMISSION,
+				//= Module configuration permissions in projects: By default, users with Project Setup/Design privileges can modify this module's project-level configuration settings. Alternatively, project users can be given explicit module-level permission (via User Rights page) in order to do so
+				'name' => self::tt("em_config_3"),
+				'type' => 'dropdown',
+				"choices" => array(
+						//= Require Project Setup/Design privilege"
+						array("value" => "", "name" => self::tt("em_config_3_1")),
+						//= Require module-specific user privilege
+						array("value" => "true", "name" => self::tt("em_config_3_2"))
+				)
 			)
-		)
-	);
+		);
+	}
 
 	# defines criteria to judge someone is on a development box or not
 	private static function isLocalhost()
@@ -295,9 +328,22 @@ class ExternalModules
 		return array_keys($modules);
 	}
 
-	# initializes the External Module aparatus
+	# initializes the External Module apparatus
 	static function initialize()
 	{
+		// Check if there is an English.ini provided with the EM framework (this would indicated, that the 
+		// development version of the framework is in use) and if so, load its content and merge it into
+		// $lang.
+		$dev_lang_filename = __DIR__.DS."English.ini";
+		if (file_exists($dev_lang_filename)) {
+			$em_strings = parse_ini_file($dev_lang_filename);
+			if ($em_strings !== false) {
+				foreach ($em_strings as $key => $text) {
+					$GLOBALS["lang"][$key] = $text;
+				}
+			}
+		}
+
 		if(self::isLocalhost()){
 			// Assume this is a developer's machine and enable errors.
 			ini_set('display_errors', 1);
@@ -312,7 +358,9 @@ class ExternalModules
 		if(strpos($_SERVER['REQUEST_URI'], $modulesDirectoryName) === 0){
 			// We used to throw an exception here, but we got sick of those emails (especially when bots triggered them).
 			echo '<pre>';
-			echo 'Requests directly to module version directories are disallowed.  Please use the getUrl() method to build urls to your module pages instead.<br><br>';
+			//= Requests directly to module version directories are disallowed. Please use the getUrl() method to build urls to your module pages instead.
+			echo self::tt("em_errors_1");
+			echo '<br><br>';
 			var_dump(debug_backtrace());
 			echo '</pre>';
 			die();
@@ -390,15 +438,16 @@ class ExternalModules
 			}
 
 			if (self::isSuperUser() && !self::isLocalhost()) {
-				$message .= "\nThe current user is a super user, so this module will be automatically disabled.\n";
+				//= The current user is a super user, so this module will be automatically disabled
+				$message .= "\n".self::tt("em_errors_2")."\n"; 
 
 				// We can't just call disable() from here because the database connection has been destroyed.
 				// Disable this module via AJAX instead.
 				?>
 				<br>
 				<h4 id="external-modules-message">
-					A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module.<br>
-					Disabling that module...
+					<?= self::tt("em_errors_3", $activeModulePrefix) ?>
+					<!--= A fatal error occurred while loading the "<?=$activeModulePrefix?>" external module. Disabling that module... -->
 				</h4>
 				<script type="text/javascript">
 					var request = new XMLHttpRequest();
@@ -406,10 +455,12 @@ class ExternalModules
 						if (request.readyState == XMLHttpRequest.DONE) {
 							var messageElement = document.getElementById('external-modules-message')
 							if (request.responseText == 'success') {
-								messageElement.innerHTML = 'The "<?=$activeModulePrefix?>" external module was automatically disabled in order to allow REDCap to function properly.  The REDCap administrator has been notified.  Please save a copy of the above error and fix it before re-enabling the module.';
+								messageElement.innerHTML = <?=json_encode(self::tt("em_errors_4", $activeModulePrefix))?>;
+								//= The <?=$activeModulePrefix?> external module was automatically disabled in order to allow REDCap to function properly. The REDCap administrator has been notified. Please save a copy of the above error and fix it before re-enabling the module.
 							}
 							else {
-								messageElement.innerHTML += '<br>An error occurred while disabling the "<?=$activeModulePrefix?>" module: ' + request.responseText;
+								//= 'An error occurred while disabling the "<?=$activeModulePrefix?>" module:
+								messageElement.innerHTML += '<br>' + <?=json_encode(self::tt("em_errors_5", $activeModulePrefix))?> + ' ' + request.responseText; 
 							}
 						}
 					};
@@ -426,6 +477,639 @@ class ExternalModules
 				ExternalModules::sendAdminEmail("REDCap External Module Error - $activeModulePrefix", $message, $activeModulePrefix);
 			}
 		});
+	}
+
+	//region Language features
+
+	/**
+	 * Initialized the JavaScript Language store (ExternalModules.$lang).
+	 */
+	public static function tt_initializeJSLanguageStore() {
+		?>
+		<script>
+			(function(){
+				// Ensure ExternalModules.$lang has been initialized. $lang provides localization support for all external modules.
+				if(window.ExternalModules === undefined) {
+					window.ExternalModules = {}
+				}
+				if (window.ExternalModules.$lang === undefined) {
+					window.ExternalModules.$lang = {}
+					var lang = window.ExternalModules.$lang
+					/**
+					 * Holds the strings indexed by a key.
+					 */
+					lang.strings = {}
+					/**
+					 * Returns the number of language items available.
+					 * @returns {number} The number of items in the language store.
+					 */
+					lang.count = function() {
+						var n = 0
+						for (var key in this.strings) {
+							if (this.strings.hasOwnProperty(key))
+								n++
+						}
+						return n
+					}
+					/**
+					 * Logs key and corresponding string to the console.
+					 * @param {string} key The key of the language string.
+					 */
+					lang.log = function(key) {
+						var s = this.get(key)
+						if (s != null)
+							console.log(key, s)
+					}
+					/**
+					 * Logs the whole language cache to the console.
+					 */
+					lang.logAll = function() {
+						console.log(this.strings)
+					}
+					/**
+					 * Get a language string (translateable text) by its key.
+					 * @param {string} key The key of the language string to get.
+					 * @returns {string} The string stored under key, or null if the string is not found.
+					 */
+					lang.get = function(key) {
+						if (!this.strings.hasOwnProperty(key)) {
+							console.error("Key '" + key + "' does not exist in $lang.")
+							return null
+						}
+						return this.strings[key]
+					}
+					/**
+					 * Add a language string.
+					 * @param {string} key The key for the string.
+					 * @param {string} string The string to add.
+					 */
+					lang.add = function(key, string) {
+						this.strings[key] = string
+					}
+					/**
+					 * Remove a language string.
+					 * @param {string} key The key for the string.
+					 */
+					lang.remove = function(key) {
+						if (this.strings.hasOwnProperty(key))
+							delete this.strings[key]
+					}
+					/**
+					 * Extracts interpolation values from variable function arguments.
+					 * @param {Array} inputs An array of interpolation values.
+					 * @returns {Array} An array with the interpolation values.
+					 */
+					lang._getValues = function(inputs) {
+						var values = Array()
+						// Store type of arguments ... for debug purposes.
+						var argsType = 'params'
+						if (inputs.length > 1) {
+							// If the first value is an array or object, use it instead.
+							if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
+								argsType = Array.isArray(inputs[1]) ? 'array' : 'object'
+								values = inputs[1]
+							}
+							else {
+								values = inputs.slice(1)
+							}
+						}
+						return values
+					}
+					/**
+					 * Get and interpolate a translation.
+					 * @param {string} key The key for the string.
+					 * Note: Any further arguments after key will be used for interpolation. If the first such argument is an array, it will be used as the interpolation source.
+					 * @returns {string} The interpolated string.
+					 */
+					lang.tt = function(key) {
+						// Get any further arguments.
+						var values = this._getValues(Array(arguments))
+						var string = this.get(key)
+						return this.interpolate(string, values)
+					}
+					/**
+					 * Interpolates a string using the given values.
+					 * @param {string} string The string template.
+					 * @param {any[] | object} values The values used for interpolation.
+					 * @returns {string} The interpolated string.
+					 */
+					lang.interpolate = function(string, values) {
+						if (typeof string == 'undefined' || string == null) {
+							console.warn('$lang.interpolate() called with undefined or null.')
+							return ''
+						}
+						// Nothing to do if there are no values or the string is empty.
+						if (values.length == 0 || string.length == 0) {
+							return string
+						}
+						// Regular expression to find places where replacements need to be done.
+						// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
+						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
+						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
+						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
+						const regex = /(?<all>((?<escape>\\*){|{)(?<index>[\d_A-Za-z]+)(:(?<hint>.*))?})/gm
+						var m
+						var result = ''
+						var prevEnd = 0
+						while ((m = regex.exec(string)) !== null) {
+							// This is necessary to avoid infinite loops with zero-width matches.
+							if (m.index === regex.lastIndex) {
+								regex.lastIndex++
+							}
+							var start = m.index
+							var all = m['groups']['all']
+							var len = all.length
+							var key = m['groups']['index']
+							// Add text between previous end and the match and reset end.
+							result += string.substr(prevEnd, start - prevEnd)
+							prevEnd = start + len
+							// Escaped?
+							var nSlashes = m['groups']['escape'].length
+							if (nSlashes % 2 == 0) {
+								// Even number means they escaped themselves, so we add half of them and replace.
+								result += '\\'.repeat(nSlashes / 2)
+								if (typeof values[key] !== 'undefined') {
+									result += values[key]
+								}
+								else {
+									// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
+									result += all.substr(all.indexOf('{'))
+								}
+							}
+							else {
+								// Uneven number - means to not replace.
+								result += '\\'.repeat((nSlashes - 1) / 2)
+								result += all.substr(all.indexOf('{'))
+							}
+						}
+						// Add rest of original string.
+						result += string.substr(prevEnd)
+						return result
+					}
+				}
+			})()
+		</script>
+		<?php
+	}
+
+	/**
+	 * Retrieve and interpolate a language string.
+	 * 
+	 * @param Array $args The arguments passed to tt() or tt_js(). The first element is the language key; further elements are used for interpolation.
+	 * @param string $prefix A module-specific prefix used to generate a scoped key (or null if not scoped to a module; default = null).
+	 * @param bool $jsEncode Indicates whether the result should be passed through json_encode() (default = false).
+	 * 
+	 * @return string The (interpolated) language string corresponding to the given key.
+	 */
+	public static function tt_process($args, $prefix = null, $jsEncode = false) {
+
+		// Perform some checks.
+		// Do not translate exception messages here to avoid potential infinite recursions.
+		if (!is_array($args) || count($args) < 1 || !is_string($args[0]) || strlen($args[0]) == 0) {
+			throw new Exception("Language key must be a not-empty string."); 
+		}
+		if (!is_null($prefix) && !is_string($prefix) && strlen($prefix) == 0) {
+			throw new Exception("Prefix must either be null or a not-empty string.");
+		}
+
+		// Get the key (prefix if necessary).
+		$original_key = $args[0];
+		$key = is_null($prefix) ? $original_key : self::constructLanguageKey($prefix, $original_key);
+		
+		// Check if there are additional arguments beyond the first (the language file key).
+		// If the first additional argument is an array, use it for interpolation.
+		// Otherwise, use the arguments (minus the first, which is the key).
+		$values = array();
+		if (count($args) > 1) {
+			$values = is_array($args[1]) ? $args[1] : array_slice($args, 1);
+		}
+
+		global $lang;
+
+		// Get the string - if the key doesn't exist, provide a corresponding message to facilitate debugging.
+		$string = $lang[$key];
+		if ($string == null) {
+			$string = self::getLanguageKeyNotDefinedMessage($original_key, $prefix);
+			// Clear interpolation values.
+			$values = array();
+		}
+
+		// Get and return interpolated string (optionally JSON-encoded).
+		$interpolated = self::interpolateLanguageString($string, $values);
+		return $jsEncode ? json_encode($interpolated) : $interpolated;
+	}
+
+	/**
+	 * Returns the translation for the given global language key.
+	 * 
+	 * @param string $key The language key.
+	 * @param mixed ...$values Optional values to be used for interpolation. If the argument after $key is an array, it's members will be used and any further arguments will be ignored.
+	 * 
+	 * @return string The translation (with interpolations).
+	 */
+	public static function tt($key) {
+		// Get all arguments and send off for processing.
+		return self::tt_process(func_get_args());
+	}
+
+	public static function getLanguageKeyNotDefinedMessage($key, $prefix) {
+		$message = "Language key '{$key}' is not defined";
+		$message .= is_null($prefix) ? "." : " for module '{$prefix}'.";
+		return $message;
+	}
+
+	/**
+	 * Returns a JSON-encoded translation for the given global language key.
+	 * 
+	 * @param string $key The language key.
+	 * @param mixed ...$values Optional values to be used for interpolation. If the argument after $key is an array, it's members will be used and any further arguments will be ignored.
+	 * 
+	 * @return string The translation (with interpolations) encoded for assignment to JS variables.
+	 */
+	public static function tt_js($key) {
+		// Get all arguments and send off for processing.
+		return self::tt_process(func_get_args(), null, true);
+	}
+
+	/**
+	 * Transfers one (interpolated) or many strings (without interpolation) to the JavaScript language store.
+	 * 
+	 * @param mixed $key (optional) The language key or an array of language keys.
+	 * 
+	 * Note: When a single language key is given, any number of arguments can be supplied and these will be used for interpolation. When an array of keys is passed, then any further arguments will be ignored and the language strings will be transfered without interpolation. If no key or null is passed, all language strings will be transferred.
+	 */
+	public static function tt_transferToJSLanguageStore($key = null) {
+		// Get all arguments and send off for processing.
+		self::tt_prepareTransfer(func_get_args(), null);
+
+	}
+
+	/**
+	 * Handles the preparation of key/value pairs for transfer to JavaScript.
+	 * 
+	 * @param Array $args The arguments passed to tt JavaScript shuttle functions. The first element is the language key; further elements are used for interpolation.
+	 * @param string $prefix A module-specific prefix used to generate a scoped key (or null if not scoped to a module; default = null).
+	 */
+	public static function tt_prepareTransfer($args, $prefix = null) {
+
+		// Perform some checks.
+		if (!is_null($prefix) && !is_string($prefix) && strlen($prefix) == 0) {
+			throw new Exception("Prefix must either be null or a not-empty string.");
+		}
+
+		// Deconstruct $args. The first element must be key(s). 
+		// Any further are interpolation values and only needed in case of a single key passed as string.
+		$keys = $args[0];
+		$values = array();
+		// If $key is null, add all keys.
+		if ($keys === null) {
+			// Get all keys, unscoped - they will be prefixed later if needed.
+			$keys = self::getLanguageKeys($prefix, false);
+		}
+		else if (!is_array($keys)) {
+			// Single key, convert to array and get interpolation values.
+			$keys = array($keys);
+			$values = array_slice($args, 1);
+			// If the first value is an array, use it as values.
+			if (count($values) && is_array($values[0])) $values = $values[0];
+		}
+
+		// Prepare the transfer array and add all key/value pairs to the transfer array.
+		$to_transfer = array();
+		foreach ($keys as $key) {
+			$scoped_key = self::constructLanguageKey($prefix, $key);
+			$to_transfer[$scoped_key] = self::tt($scoped_key, $values);
+		}
+		// Generate output as <script>-tags.
+		self::tt_transferToJS($to_transfer);
+	}
+
+	/**
+	 * Adds a key/value pair directly to the language store for use in the JavaScript module object. 
+	 * Value can be anything (string, boolean, array).
+	 * 
+	 * @param string $key The language key.
+	 * @param mixed $value The corresponding value.
+	 * @param string $prefix A module-specific prefix used to generate a scoped key (or null if not scoped to a module; default = null).
+	 */
+	public static function tt_addToJSLanguageStore($key, $value, $prefix = null) {
+		// Check that key is a string and not empty.
+		if (!is_string($key) || !strlen($key) > 0) {
+			throw new Exception("Key must be a not-empty string."); // Do not translate messages targeted at devs.
+		}
+		$scoped_key = self::constructLanguageKey($prefix, $key);
+		$to_transfer = array($scoped_key => $value);
+		// Generate output as <script>-tags.
+		self::tt_transferToJS($to_transfer);
+	}
+
+	/**
+	 * Transfers key/value pairs to the JavaScript language store.
+	 * 
+	 * @param Array $to_transfer An associative array containing key/value pairs.
+	 */
+	private static function tt_transferToJS($to_transfer) {
+		$n = count($to_transfer);
+		// Line feeds and tabs to may HTML prettier ;)
+		$lf = $n > 1 ? "\n" : "";
+		$tab = $n > 1 ? "\t" : "";
+		if ($n) {
+			echo "<script>" . $lf;
+			foreach ($to_transfer as $key => $value) {
+				$key = json_encode($key);
+				$value = json_encode($value);
+				echo $tab . "ExternalModules.\$lang.add({$key}, {$value})" . $lf;
+			}
+			echo "</script>" . $lf;
+		}
+	}
+
+	/**
+	 * Finds all available language files for a given module.
+	 * 
+	 * @param string $prefix The module prefix.
+	 * @param string $version The version of the module.
+	 * 
+	 * @return Array An associative array with the language names as keys and the full path to the INI file as values.
+	 */
+	private static function getLanguageFiles($prefix, $version) {
+		$langs = array();
+		$path = self::getModuleDirectoryPath($prefix, $version) . DS . self::LANGUAGE_FOLDER_NAME . DS;
+		if (is_dir($path)) {
+			$files = glob($path . "*.{i,I}{n,N}{i,I}", GLOB_BRACE);
+			foreach ($files as $filename) {
+				if (is_file($filename)) {
+					$lang = pathinfo($filename, PATHINFO_FILENAME); 
+					$langs[$lang] = $filename;
+				}
+			}
+		}
+		return $langs;
+	}
+
+	/**
+	 * Gets the language set for a module.
+	 * 
+	 * @param string $prefix The module prefix.
+	 * @param int $projectId The ID of the project (or null whenn not in a project context).
+	 * 
+	 * @return string The language to use for the module.
+	 */
+	private static function getLanguageSetting($prefix, $projectId = null) {
+		$lang = "";
+		$settings = self::getSettingsAsArray($prefix, $projectId);
+		if (!empty($settings)) {
+			$lang = array_key_exists(self::KEY_LANGUAGE_SYSTEM, $settings) ? $settings[self::KEY_LANGUAGE_SYSTEM]["system_value"] : "";
+			if ($projectId && strlen($settings[self::KEY_LANGUAGE_PROJECT]["value"])) {
+				$lang = $settings[self::KEY_LANGUAGE_PROJECT]["value"];
+			}
+		}
+		return strlen($lang) ? $lang : self::DEFAULT_LANGUAGE;
+	}
+
+	/**
+	 * Initializes the language features for an External Module.
+	 * 
+	 * @param string $prefix The module's unique prefix.
+	 * @param string $version The version of the module.
+	 * 
+	 */
+	public static function initializeLocalizationSupport($prefix, $version) {
+
+		global $lang;
+
+		// Get project id if available.
+		$projectId = isset($GLOBALS["project_id"]) ? $GLOBALS["project_id"] : null;
+
+		$availableLangs = self::getLanguageFiles($prefix, $version);
+		if (count($availableLangs) > 0) {
+			$setLang = self::getLanguageSetting($prefix, $projectId);
+			// Verify the set language exists as a file, or set to default language. No warnings here if they don't.
+			$translationFile = array_key_exists($setLang, $availableLangs) ? $availableLangs[$setLang] : null;
+			$defaultFile = array_key_exists(self::DEFAULT_LANGUAGE, $availableLangs) ? $availableLangs[self::DEFAULT_LANGUAGE] : null;
+			// Read the files.
+			$default = file_exists($defaultFile) ? parse_ini_file($defaultFile) : array();
+			$translation = $defaultFile != $translationFile && file_exists($translationFile) ? parse_ini_file($translationFile) : array();
+			$moduleLang = array_merge($default, $translation);
+			// Add to global language array $lang
+			foreach ($moduleLang as $key => $val) {
+				$lang_key = self::constructLanguageKey($prefix, $key);
+				$lang[$lang_key] = $val;
+			}
+		}
+	}
+
+	/**
+	 * Generates a key for the $lang global from a module prefix and a module-scope language file key.
+	 */
+	public static function constructLanguageKey($prefix, $key) {
+		return is_null($prefix) ? $key : self::EM_LANG_PREFIX . "{$prefix}_{$key}";
+	}
+
+	/**
+	 * Gets a list of all available language keys for the given module.
+	 * 
+	 * @param string $prefix The unique module prefix. If null is passed, all existing language keys (unscoped) will be returned.
+	 * @param bool $scoped Determines, whether the keys returned are scoped (true = default) or global, i.e. containing the module prefixes (false).
+	 * 
+	 * @return Array An array of language keys.
+	 */
+	public static function getLanguageKeys($prefix = null, $scoped = true) {
+		global $lang;
+		$keys = array();
+		if ($prefix === null) {
+			$keys = array_keys($lang);
+		}
+		else {
+			$key_prefix = self::EM_LANG_PREFIX . $prefix . "_";
+			$key_prefix_len = strlen($key_prefix);
+			foreach (array_keys($lang) as $key) {
+				if (substr($key, 0, $key_prefix_len) === $key_prefix) {
+					array_push($keys, $scoped ? substr($key, $key_prefix_len) : $key);
+				}
+			}
+		}
+		return $keys;
+	}
+
+	/**
+	 * Adds a language setting to config when translation is supported by a module.
+	 * 
+	 * @param Array $config The config array to which to add language setting support.
+	 * @param string $prefix The module prefix.
+	 * @param string $version The version of the module.
+	 * @param int $projectId The project id.
+	 * 
+	 * @return Array A config array with language selection support enabled.
+	 */
+	private static function addLanguageSetting($config, $prefix, $version, $projectId = null) {
+		$langs = self::getLanguageFiles($prefix, $version);
+		// Does the module support translation?
+		if (count($langs) > 0) {
+			// Build the choices.
+			$choices = array();
+			$langNames = array_keys($langs);
+			sort($langNames);
+			// Add the default language (if available) as the first choice.
+			// In the project context, we cannot leave the default value blank.
+			$defaultValue = $projectId == null ? "" : self::DEFAULT_LANGUAGE;
+			if (in_array(self::DEFAULT_LANGUAGE, $langNames)) {
+				array_push($choices, array(
+					"value" => $defaultValue, "name" => self::DEFAULT_LANGUAGE
+				));
+			}
+			foreach ($langNames as $lang) {
+				if ($lang == self::DEFAULT_LANGUAGE) continue; // Skip default, it's already there.
+				array_push($choices, array(
+					"value" => $lang, "name" => $lang
+				));
+			}
+			$templates = array (
+				"system-settings" => array(
+					"key" => self::KEY_LANGUAGE_SYSTEM,
+					//= Language file: Language file to use for this module. This setting can be overridden in the project configuration of this module
+					"name" => self::tt("em_config_4"), 
+					"type" => "dropdown",
+					"choices" => $choices
+				),
+				"project-settings" => array(
+					"key" => self::KEY_LANGUAGE_PROJECT, 
+					//= Language file: Language file to use for this module in this project (leave blank for system setting to apply)
+					"name" => self::tt("em_config_5"), 
+					"type" => "dropdown",
+					"choices" => $choices
+				)
+			);
+			// Check reserved keys.
+			$systemSettings = $config['system-settings'];
+			$projectSettings = $config['project-settings'];
+
+			$existingSettingKeys = array();
+			foreach($systemSettings as $details){
+				$existingSettingKeys[$details['key']] = true;
+			}
+			foreach($projectSettings as $details){
+				$existingSettingKeys[$details['key']] = true;
+			}
+			foreach (array_keys($templates) as $type) {
+				$key = $templates[$type]['key'];
+				if(isset($existingSettingKeys[$key])){
+					//= The '{0}' setting key is reserved for internal use.  Please use a different setting key in your module.
+					throw new Exception(self::tt("em_errors_6", $key)); 
+				}
+				// Merge arrays so that the language setting always end up at the top of the list.
+				$config[$type] = array_merge(array($templates[$type]), $config[$type]);
+			}
+		}
+		return $config;
+	}
+
+	/**
+	 * Replaces placeholders in a language string with the supplied values.
+	 * 
+	 * @param string $string The template string.
+	 * @param array $values The values to be used for interpolation. 
+	 * 
+	 * @return string The result of the string interpolation.
+	 */
+	public static function interpolateLanguageString($string, $values) {
+
+		// Do we need to do interpolation?
+		if (count($values)) {
+			// Regular expression to find places where replacements need to be done.
+			// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
+			// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
+			// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
+			// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
+			$re = '/(?\'all\'((?\'escape\'\\\\*){|{)(?\'index\'[\d_A-Za-z]+)(:(?\'hint\'.*))?})/mU';
+			preg_match_all($re, $string, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE, 0);
+			// Build resulting string.
+			$prevEnd = 0;
+			if (count($matches)) {
+				$result = "";
+				foreach ($matches as $match) {
+					$start = $match["all"][1];
+					$all = $match["all"][0];
+					$len = strlen($all);
+					$key = $match["index"][0];
+					// Add text between previous end and the match and reset end.
+					$result .= substr($string, $prevEnd, $start - $prevEnd);
+					$prevEnd = $start + $len;
+					// Escaped?
+					$nSlashes = strlen($match["escape"][0]);
+					if ($nSlashes % 2 == 0) {
+						// Even number means they escaped themselves, so we add half of them and replace.
+						$result .= str_repeat("\\", $nSlashes / 2);
+						if (array_key_exists($key, $values)) {
+							$result .= $values[$key];
+						}
+						else {
+							// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
+							$result .= ltrim($all, "\\");
+						}
+					}
+					else {
+						// Uneven number - means to not replace.
+						$result .= str_repeat("\\", ($nSlashes - 1) / 2);
+						$result .= ltrim($all, "\\");
+					}
+				}
+				// Add rest of original.
+				$result .= substr($string, $prevEnd);
+				$string = $result;
+			}
+		}
+		return $string;
+	}
+
+	/**
+	 * Applies translations to a config file.
+	 * 
+	 * @param Array $config The configuration to translate.
+	 * @return Array The configuration with translations.
+	 */
+	private static function translateConfig(&$config, $prefix) {
+		// Recursively loop through all.
+		foreach ($config as $key => $val) {
+			if (is_array($val)) {
+				$config[$key] = self::translateConfig($val, $prefix);
+			}
+			else {
+				$tt_key = self::CONFIG_TRANSLATABLE_PREFIX.$key;
+				if (isset($config[$tt_key])) {
+					// Set the language key (in case of actual 'true', use the present value as key).
+					$lang_key = ($config[$tt_key] === true) ? $val : $config[$tt_key];
+					// Scope it for the module.
+					$lang_key = self::constructLanguageKey($prefix, $lang_key);
+					// Get the translated value.
+					$config[$key] = self::tt($lang_key);
+				}
+			}
+		}
+		return $config;
+	}
+
+	//endregion
+
+	/**
+	 * Removes top level configuration settings that have 'hidden = true'.
+	 */
+	private static function applyHidden(&$config) {
+		$systemSettings = isset($config["system-settings"]) ? $config["system-settings"] : array ();
+		$projectSettings = isset($config["project-settings"]) ? $config["project-settings"] : array ();
+
+		// Removes settings where the given key is present AND set to the given value.
+		$filter = function($in, $filterdKey, $value) {
+			$out = array();
+			foreach ($in as $setting) {
+				if (!isset($setting[$filterdKey]) || $setting[$filterdKey] != $value) {
+					array_push($out, $setting);
+				}
+			}
+			return $out;
+		};
+		$config["system-settings"] = $filter($systemSettings, "hidden", true);
+		$config["project-settings"] = $filter($projectSettings, "hidden", true);
 	}
 
 	private static function isSuperUser()
@@ -469,7 +1153,7 @@ class ExternalModules
 
 		if (self::isVanderbilt()) {
 			$from = 'datacore@vumc.org';
-			$to = self::getDatacoreEmails([]);
+			$to = self::getDatacoreEmails();
 		}
 		else{
 			global $project_contact_email;
@@ -581,7 +1265,8 @@ class ExternalModules
 		$instance = self::getModuleInstance($moduleDirectoryPrefix, $version);
 
 		if(!is_subclass_of($instance, 'ExternalModules\AbstractExternalModule')){
-			throw new Exception("This module's main class does not extend AbstractExternalModule!");
+			//= This module's main class does not extend AbstractExternalModule!
+			throw new Exception(self::tt("em_errors_7")); 
 		}
 		
 		// Ensure compatibility with PHP version and REDCap version before instantiating the module class
@@ -591,7 +1276,8 @@ class ExternalModules
 			$config = ExternalModules::getConfig($moduleDirectoryPrefix, $version);
 			$enabledPrefix = self::getEnabledPrefixForNamespace($config['namespace']);
 			if(!empty($enabledPrefix)){
-				throw new Exception("This module cannot be enabled because a different version of the module is already enabled under the following prefix: $enabledPrefix");
+				//= This module cannot be enabled because a different version of the module is already enabled under the following prefix: {0}
+				throw new Exception(self::tt("em_errors_8", $enabledPrefix)); 
 			}
 
 			$old_version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
@@ -681,7 +1367,8 @@ class ExternalModules
 				// If fails on one cron, then delete any added so far for this module
 				self::removeCronJobs($moduleInstance->PREFIX);
 				// Return error
-				throw new Exception("One or more cron jobs for this module failed to be created.");
+				//= One or more cron jobs for this module failed to be created.
+				throw new Exception(self::tt("em_errors_9")); 
 			}
 		}
 	}
@@ -710,32 +1397,43 @@ class ExternalModules
 		}
 		// Make sure we have what we need
 		if (!isset($cron['cron_name']) || empty($cron['cron_name']) || !isset($cron['cron_description']) || !isset($cron['method'])) {
-			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing.");
+			//= Some cron job attributes in the module's config file are not correct or are missing.
+			throw new Exception(self::tt("em_errors_10")); 
 		}
 		if ((!isset($cron['cron_frequency']) || !isset($cron['cron_max_run_time'])) && (!isset($cron['cron_hour']) && !isset($cron['cron_minute']))) {
-			throw new Exception("Some cron job attributes in the module's config file are not correct or are missing (cron_frequency/cron_max_run_time or hour/minute).");
+			//= Some cron job attributes in the module's config file are not correct or are missing (cron_frequency/cron_max_run_time or hour/minute)."
+			throw new Exception(self::tt("em_errors_102")); 
 		}
 
 		// Name must be no more than 100 characters
 		if (strlen($cron['cron_name']) > 100) {
-			throw new Exception("Cron job 'name' must be no more than 100 characters.");
+			//= Cron job 'name' must be no more than 100 characters.
+			throw new Exception(self::tt("em_errors_11")); 
 		}
 		// Name must be alphanumeric with dashes or underscores (no spaces, dots, or special characters)
 		if (!preg_match("/^([a-z0-9_-]+)$/", $cron['cron_name'])) {
-			throw new Exception("Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).");
+			//= Cron job 'name' can only have lower-case letters, numbers, and underscores (i.e., no spaces, dashes, dots, or special characters).
+			throw new Exception(self::tt("em_errors_12")); 
 		}
 
 		// Make sure integer attributes are integers
 		if ($isValidTabledCron && $isValidTimedCron) { 
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'cron_hour' and 'cron_minute'. Please choose one timing setting or the other, but not both.");
+			//= Cron job attributes 'cron_frequency' and 'cron_max_run_time' cannot be set with 'cron_hour' and 'cron_minute'. Please choose one timing setting or the other, but not both.
+			throw new Exception(self::tt("em_errors_13")); 
 		}
 		if (!$isValidTabledCron && !$isValidTimedCron) {
-			throw new Exception("Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'cron_hour' and 'cron_minute' must be numeric and valid.");
+			//= Cron job attributes 'cron_frequency' and 'cron_max_run_time' must be numeric and greater than zero --OR-- attributes 'cron_hour' and 'cron_minute' must be numeric and valid.
+			throw new Exception(self::tt("em_errors_99")); 
 		}
 
 		// If method does not exist, then disable module
 		if (!empty($moduleInstance) && !method_exists($moduleInstance, $cron['method'])) {
-			throw new Exception("The external module \"{$moduleInstance->PREFIX}_{$moduleInstance->VERSION}\" has a cron job named \"{$cron['cron_name']}\" that is trying to call a method \"{$cron['method']}\", which does not exist in the module class.");
+			//= The external module '{0}_{1}' has a cron job named '{2}' that is trying to call a method '{3}', which does not exist in the module class.
+			throw new Exception(self::tt("em_errors_14", 
+				$moduleInstance->PREFIX, 
+				$moduleInstance->VERSION, 
+				$cron['cron_name'], 
+				$cron['method'])); 
 		}
 	}
 
@@ -804,9 +1502,13 @@ class ExternalModules
 			} catch (Exception $e){
 				// Disable the module and send email to admin
 				self::disable($moduleDirectoryPrefix, true);
-				$message = "The '$moduleDirectoryPrefix' module was automatically disabled because of the following error:\n\n$e";
+				//= The '{0}' module was automatically disabled because of the following error:
+				$message = self::tt("em_errors_15", $moduleDirectoryPrefix) . "\n\n$e"; 
 				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Automatically Disabled - $moduleDirectoryPrefix", $message, $moduleDirectoryPrefix);
+				ExternalModules::sendAdminEmail(
+					//= REDCap External Module Automatically Disabled - {0}
+					self::tt("em_errors_16", $moduleDirectoryPrefix), 
+					$message, $moduleDirectoryPrefix);
 			}
 		}
 		// Return array of fixed modules
@@ -905,7 +1607,7 @@ class ExternalModules
 
 	private static function isReservedSettingKey($key)
 	{
-		foreach(self::$RESERVED_SETTINGS as $setting){
+		foreach(self::getReservedSettings() as $setting){
 			if($setting['key'] == $key){
 				return true;
 			}
@@ -961,7 +1663,11 @@ class ExternalModules
 		$row = $result->fetch_row();
 		$releaseLockSql = "SELECT RELEASE_LOCK('$lockName')";
 		if($row[0] !== '1'){
-			throw new Exception("Lock acquisition timed out while setting a setting for module $moduleDirectoryPrefix and project $projectId.  This should not happen under normal circumstances.  However, the following query may be used to manually release the lock if necessary: $releaseLockSql");
+			//= Lock acquisition timed out while setting a setting for module {0} and project {1}. This should not happen under normal circumstances. However, the following query may be used to manually release the lock if necessary: {2}
+			throw new Exception(self::tt("em_errors_17", 
+				$moduleDirectoryPrefix, 
+				$projectId, 
+				$releaseLockSql)); 
 		}
 
 		$releaseLock = function() use ($lockName, $releaseLockSql) {
@@ -970,15 +1676,18 @@ class ExternalModules
 
 		try{
 			if (self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
-				$errorMessageSuffix = "You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.";
+				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.
+				$errorMessageSuffix = self::tt("em_errors_18"); 
 
 				if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
 					if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
-						throw new Exception("You don't have permission to save system settings!  $errorMessageSuffix");
+						//= You don't have permission to save system settings! {0} 
+						throw new Exception(self::tt("em_errors_19", $errorMessageSuffix)); 
 					}
 			}
 			else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-					throw new Exception("You don't have permission to save project settings!  $errorMessageSuffix");
+					//= You don't have permission to save project settings! {0}
+					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
 				}
 			}
 
@@ -1035,11 +1744,19 @@ class ExternalModules
 				$value = db_real_escape_string($value);
 
 				if (strlen($key) > self::SETTING_KEY_SIZE_LIMIT) {
-					throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the key is longer than the " . self::SETTING_KEY_SIZE_LIMIT . " character limit.");
+					//= Cannot save the setting for prefix '{0}' and key '{1}' because the key is longer than the {2} character limit.
+					throw new Exception(self::tt("em_errors_21", 
+						$moduleDirectoryPrefix, 
+						$key, 
+						self::SETTING_KEY_SIZE_LIMIT)); 
 				}
 
 				if (strlen($value) > self::SETTING_SIZE_LIMIT) {
-					throw new Exception("Cannot save the setting for prefix '$moduleDirectoryPrefix' and key '$key' because the value is larger than the " . self::SETTING_SIZE_LIMIT . " character limit.");
+					//= Cannot save the setting for prefix '{0}' and key '{1}' because the value is larger than the {2} character limit.
+					throw new Exception(self::tt("em_errors_22", 
+						$moduleDirectoryPrefix, 
+						$key, 
+						self::SETTING_SIZE_LIMIT)); 
 				}
 
 				if ($oldValue === null) {
@@ -1082,7 +1799,10 @@ class ExternalModules
 			$affectedRows = db_affected_rows();
 
 			if ($affectedRows != 1) {
-				throw new Exception("Unexpected number of affected rows ($affectedRows) on External Module setting query: $sql");
+				//= Unexpected number of affected rows ({0}) on External Module setting query: {1}
+				throw new Exception(self::tt("em_errors_23", 
+					$affectedRows, 
+					$sql)); 
 			}
 
 			$releaseLock();
@@ -1131,7 +1851,8 @@ class ExternalModules
 	private static function getSettingsAsArray($moduleDirectoryPrefixes, $projectIds)
 	{
 		if(empty($moduleDirectoryPrefixes)){
-			throw new Exception('One or more module prefixes must be specified!');
+			//= One or more module prefixes must be specified!
+			throw new Exception(self::tt("em_errors_24")); 
 		}
 
 		$result = self::getSettings($moduleDirectoryPrefixes, $projectIds);
@@ -1238,7 +1959,8 @@ class ExternalModules
 			$value = json_decode($value,false);
 		}
 		else if (!settype($value, $type)) {
-			throw new Exception('Unable to set the type of "' . $value . '" to "' . $type . '"!  This should never happen, as it means unexpected/inconsistent values exist in the database.');
+			//= Unable to set the type of '{0}' to '{1}'! This should never happen, as it means unexpected/inconsistent values exist in the database.
+			throw new Exception(self::tt("em_errors_25", $value, $type)); 
 		}
 
 		$row['value'] = $value;
@@ -1249,7 +1971,8 @@ class ExternalModules
 	private static function getSetting($moduleDirectoryPrefix, $projectId, $key)
 	{
 		if(empty($key)){
-			throw new Exception('The setting key cannot be empty!');
+			//= The setting key cannot be empty!
+			throw new Exception(self::tt("em_errors_26")); 
 		}
 
 		$result = self::getSettings($moduleDirectoryPrefix, $projectId, $key);
@@ -1264,14 +1987,20 @@ class ExternalModules
 			return null;
 		}
 		else{
-			throw new Exception("More than one ($numRows) External Module setting exists for prefix '$moduleDirectoryPrefix', project ID '$projectId', and key '$key'!  This should never happen!");
+			//= More than one ({0}) External Module setting exists for prefix '{1}', project ID '{2}', and key '{3}'! This should never happen!
+			throw new Exception(self::tt("em_errors_27", 
+				$numRows, 
+				$moduleDirectoryPrefix, 
+				$projectId, 
+				$key)); 
 		}
 	}
 
 	static function getProjectSetting($moduleDirectoryPrefix, $projectId, $key)
 	{
 		if (!$projectId) {
-			throw new Exception("The Project Id cannot be null!");
+			//= The Project Id cannot be null!
+			throw new Exception(self::tt("em_errors_28")); 
 		}
 
 		$value = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
@@ -1347,12 +2076,14 @@ class ExternalModules
 		$result = self::queryWithRetries($sql, 2);
 
 		if($result == FALSE){
-			$message = "An error occurred while running an External Module query";
+			//= An error occurred while running an External Module query
+			$message = self::tt("em_errors_29"); 
 
 			error_log($message . ": \nDB Error: " . db_error() . "\nSQL: $sql");
 
 			// Do not show sql or error details to minimize risk of exploitation.
-			throw new Exception($message . " (see the server error log for more details).");
+			//= (see the server error log for more details).
+			throw new Exception($message . " " . self::tt("em_errors_30")); 
 		}
 
 		return $result;
@@ -1498,9 +2229,16 @@ class ExternalModules
 					$result = call_user_func_array(array($instance,$thisHook), $arguments);
 				}
 				catch(Exception $e){
-					$message = "The '" . $prefix . "' module threw the following exception when calling the hook method '".$thisHook."':\n\n" . $e;
+					//= The '{0}' module threw the following exception when calling the hook method '{1}':
+					$message = self::tt("em_errors_32", 
+						$prefix, 
+						$thisHook); 
+					$message .= "\n\n$e";
 					error_log($message);
-					ExternalModules::sendAdminEmail("REDCap External Module Hook Exception - $prefix", $message, $prefix);
+					ExternalModules::sendAdminEmail(
+						//= REDCap External Module Hook Exception - {0}
+						self::tt("em_errors_33", $prefix), 
+						$message, $prefix); 
 				}
 
 				echo ob_get_clean();
@@ -1635,9 +2373,13 @@ class ExternalModules
 			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
 			// If the database was actually down, we'd find out pretty darn quickly anyway.
 			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
-				$message = "REDCap External Modules threw the following exception:\n\n" . $e;
+				//= REDCap External Modules threw the following exception:
+				$message = self::tt("em_errors_34") . "\n\n$e"; 
 				error_log($message);
-				ExternalModules::sendAdminEmail("REDCap External Module Exception", $message, $prefix);
+				ExternalModules::sendAdminEmail(
+					//= REDCap External Module Exception
+					self::tt("em_errors_35"), 
+					$message, $prefix);
 			}
 		}
 
@@ -1669,15 +2411,18 @@ class ExternalModules
 
         // Throw a warning if there is more than one result
         if (count($results) > 1) {
-            $message =  "<p>" . count($results) . " return values were generated from hook $hookName " .
-                "by the following external modules:</p>";
+			//= <p>{0} return values were generated from hook {1} by the following external modules:</p>
+			$message = self::tt("em_errors_36", count($results), $hookName);
             foreach ($results as $result) {
                 $message .= "<p><b><u>{$result['prefix']}</u></b> => <code>" . htmlentities(json_encode($result['result'])) . "</code></div></p>";
             }
-            $message .= "<p>Only the last result from <b><u>" . $last_result['prefix'] . "</u></b> will be used " .
-                "by REDCap.  Consider disabling or refactoring the other external modules so this does not occur.</p>";
+			//= <p>Only the last result from <b><u>{0}</u></b> will be used by REDCap. Consider disabling or refactoring the other external modules so this does not occur.</p>
+			$message .= self::tt("em_errors_37", $last_result["prefix"]); 
 
-            ExternalModules::sendAdminEmail("REDCap External Module Results Warning", $message);
+            ExternalModules::sendAdminEmail(
+				//= REDCap External Module Results Warning
+				self::tt("em_errors_38"), 
+				$message);
         }
 
         return $last_result['result'];
@@ -1731,22 +2476,26 @@ class ExternalModules
 		$Exceptions = array();
 		$compat = $config['compatibility'];
 		if (isset($compat['php-version-max']) && !empty($compat['php-version-max']) && !version_compare(PHP_VERSION, $compat['php-version-max'], '<=')) {
-			$Exceptions[] = "This module's maximum compatible PHP version is {$compat['php-version-max']}, but you are currently running PHP " . PHP_VERSION . ".";
+			//= This module's maximum compatible PHP version is {0}, but you are currently running PHP {1}.
+			$Exceptions[] = self::tt("em_errors_39", $compat['php-version-max'], PHP_VERSION); 
 		}
 		elseif (isset($compat['php-version-min']) && !empty($compat['php-version-min']) && !version_compare(PHP_VERSION, $compat['php-version-min'], '>=')) {
-			$Exceptions[] = "This module's minimum required PHP version is {$compat['php-version-min']}, but you are currently running PHP " . PHP_VERSION . ".";
+			//= This module's minimum required PHP version is {0}, but you are currently running PHP {1}.
+			$Exceptions[] = self::tt("em_errors_40", $compat['php-version-min'], PHP_VERSION); 
 		}
 		if (isset($compat['redcap-version-max']) && !empty($compat['redcap-version-max']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-max'], '<=')) {
-			$Exceptions[] = "This module's maximum compatible REDCap version is {$compat['redcap-version-max']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
+			//= This module's maximum compatible REDCap version is {0}, but you are currently running REDCap {1}.
+			$Exceptions[] = self::tt("em_errors_41", $compat['redcap-version-max'], REDCAP_VERSION); 
 		}
 		elseif (isset($compat['redcap-version-min']) && !empty($compat['redcap-version-min']) && !version_compare(REDCAP_VERSION, $compat['redcap-version-min'], '>=')) {
-			$Exceptions[] = "This module's minimum required REDCap version is {$compat['redcap-version-min']}, but you are currently running REDCap " . REDCAP_VERSION . ".";
+			//= This module's minimum required REDCap version is {0}, but you are currently running REDCap {1}.
+			$Exceptions[] = self::tt("em_errors_42", $compat['redcap-version-min'], REDCAP_VERSION); 
 		}
 
 		if (!empty($Exceptions)) {
-			throw new Exception("COMPATIBILITY ERROR: This version of the module \"".$config['name']."\"
-								is not compatible with your current version of PHP and/or REDCap, so cannot be installed on your 
-								REDCap server at this time. Details:<ul><li>" . implode("</li><li>", $Exceptions) . "</li></ul>");
+			//= COMPATIBILITY ERROR: This version of the module '{0}' is not compatible with your current version of PHP and/or REDCap, so cannot be installed on your REDCap server at this time. Details:
+			throw new Exception(self::tt("em_errors_43", $config['name']) . 
+			"<ul><li>" . implode("</li><li>", $Exceptions) . "</li></ul>");
 		}
 	}
 	# this is where a module has its code loaded
@@ -1759,7 +2508,8 @@ class ExternalModules
 			$version = self::getEnabledVersion($prefix);
 
 			if($version == null){
-				throw new Exception("Cannot create module instance, since the module with the following prefix is not enabled: $prefix");
+				//= Cannot create module instance, since the module with the following prefix is not enabled: {0}
+				throw new Exception(self::tt("em_errors_44", $prefix)); 
 			}
 		}
 
@@ -1772,7 +2522,8 @@ class ExternalModules
 
 			$namespace = @$config['namespace'];
 			if(empty($namespace)) {
-				throw new Exception("The '$prefix' module MUST specify a 'namespace' in it's config.json file.");
+				//= The '{0}' module MUST specify a 'namespace' in it's config.json file.
+				throw new Exception(self::tt("em_errors_45", $prefix)); 
 			}
 
 			$parts = explode('\\', $namespace);
@@ -1783,13 +2534,20 @@ class ExternalModules
 			$classFilePath = "$modulePath/$className.php";
 
 			if(!file_exists($classFilePath)){
-				throw new Exception("Could not find the module class file '$classFilePath' for the module with prefix '$prefix'.");
+				//= Could not find the module class file '{0}' for the module with prefix '{1}'.
+				throw new Exception(self::tt("em_errors_46", 
+					$classFilePath, 
+					$prefix)); 
 			}
 
 			self::safeRequireOnce($classFilePath);
 
 			if (!class_exists($classNameWithNamespace)) {
-				throw new Exception("The file '$className.php' file must define the '$classNameWithNamespace' class for the '$prefix' module.");
+				//= The file '{0}.php' must define the '{1}' class for the '{2}' module.
+				throw new Exception(self::tt("em_errors_47", 
+					$className, 
+					$classNameWithNamespace, 
+					$prefix)); 
 			}
 
 			$instance = new $classNameWithNamespace();
@@ -1946,7 +2704,8 @@ class ExternalModules
 			} else if($key == self::KEY_ENABLED) {
 				$result_enabled[] = $row;
 			} else {
-				throw new Exception("Unexpected key: $key");
+				//= Unexpected key: {0}
+				throw new Exception(self::tt("em_errors_48", $key)); 
 			}
 		}
 
@@ -2012,7 +2771,8 @@ class ExternalModules
 			echo "<script type='text/javascript' src='" . $url . "'></script>";
 		}
 		else {
-			throw new Exception('Unsupported resource added: ' . $path);
+			//= Unsupported resource added: {0}
+			throw new Exception(self::tt("em_errors_49", $path)); 
 		}
 
 		self::$INCLUDED_RESOURCES[] = $url;
@@ -2137,8 +2897,10 @@ class ExternalModules
 				}
 
 				// Use array_merge_recursive() to show newest versions first.
+				// Do not translate the configuration as the modules will not be instantiated and thus
+				// their language strings are not available.
 				$disabledModuleVersions[$prefix] = array_merge_recursive(
-					array($version => self::getConfig($prefix, $version)),
+					array($version => self::getConfig($prefix, $version, null, false)),
 					$versions
 				);
 			}
@@ -2179,10 +2941,11 @@ class ExternalModules
 	}
 
 	# returns the config.json for a given module
-	static function getConfig($prefix, $version = null, $pid = null)
+	static function getConfig($prefix, $version = null, $pid = null, $translate = true)
 	{
 		if(empty($prefix)){
-			throw new Exception("You must specify a prefix!");
+			//= You must specify a prefix!
+			throw new Exception(self::tt("em_errors_50")); 
 		}
 
 		if($version == null){
@@ -2203,7 +2966,8 @@ class ExternalModules
 				// Disable the module to prevent repeated errors, especially those that prevent the External Modules menu items from appearing.
 				self::disable($prefix, true);
 
-				throw new Exception("An error occurred while parsing a configuration file!  The following file is likely not valid JSON: $configFilePath");
+				//= An error occurred while parsing a configuration file!  The following file is likely not valid JSON: {0}
+				throw new Exception(self::tt("em_errors_51", $configFilePath)); 
 			}
 
 			foreach(['permissions', 'system-settings', 'project-settings', 'no-auth-pages'] as $key){
@@ -2221,6 +2985,13 @@ class ExternalModules
 				$config['project-settings'][$configKey] = self::getAdditionalFieldChoices($configRow,$pid);
 			}
 		}
+
+		// Add in language settings if available.
+		$config = self::addLanguageSetting($config, $prefix, $version, $pid);
+		// Apply translations to config.
+		if ($translate) $config = self::translateConfig($config, $prefix);
+		// Remove hidden config items.
+		self::applyHidden($config);
 
 		if($pid === null) {
 			$config = self::addReservedSettings($config);
@@ -2367,7 +3138,8 @@ class ExternalModules
 			$matchingProjects = [
 				[
 					"id" => "",
-					"text" => "--- None ---"
+					//= --- None ---
+					"text" => self::tt("em_config_6") 
 				]
 			];
 
@@ -2395,7 +3167,7 @@ class ExternalModules
 		return @$versionsByPrefix[$prefix];
 	}
 
-	# adds the RESERVED_SETTINGS (above) to the config
+	# adds the reserved settings (above) to the config
 	private static function addReservedSettings($config)
 	{
 		$systemSettings = $config['system-settings'];
@@ -2411,10 +3183,11 @@ class ExternalModules
 		}
 
 		$visibleReservedSettings = array();
-		foreach(self::$RESERVED_SETTINGS as $details){
+		foreach(self::getReservedSettings() as $details){
 			$key = $details['key'];
 			if(isset($existingSettingKeys[$key])){
-				throw new Exception("The '$key' setting key is reserved for internal use.  Please use a different setting key in your module.");
+				//= The '{0}' setting key is reserved for internal use.  Please use a different setting key in your module.
+				throw new Exception(self::tt("em_errors_6", $key)); 
 			}
 			
 			// If project has no project-level configuration, then do not add the reserved setting 
@@ -2692,7 +3465,8 @@ class ExternalModules
 		$edocId = intval($edocId);
 
 		if(!$edocId){
-			throw new Exception("The EDoc ID specified is not valid: $edocId");
+			//= The EDoc ID specified is not valid: {0}
+			throw new Exception(self::tt("em_errors_52", $edocId)); 
 		}
 
 		# flag for deletion in the edocs database
@@ -2728,19 +3502,32 @@ class ExternalModules
 		$moduleData = implode(";", $moduleData);
 		// Output JS resource and div
 		?><script type="text/javascript">var ext_mod_base_url = '<?=self::$BASE_URL?>';</script><?php
+		self::tt_initializeJSLanguageStore();
+		self::tt_transferToJSLanguageStore(array(
+			"em_manage_27",
+			"em_manage_68",
+			"em_manage_79",
+			"em_manage_80",
+			"em_manage_81",
+			"em_manage_82",
+		));
 		self::addResource(ExternalModules::getManagerJSDirectory().'update-modules.js');
 		print  "<div class='yellow repo-updates'>
 					<div style='color:#A00000;'>
-						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>
-						<span id='repo-updates-count'>$countModuleUpdates</span>
-						".($countModuleUpdates == 1 ? "External Module</span> has" : "External Modules</span> have")." 
-						updates available for download from the REDCap Repo.
-						<button onclick=\"$(this).hide();$('.repo-updates-list').show();\" class='btn btn-danger btn-xs ml-2'>View updates</a>
+						<i class='fas fa-bell'></i> <span style='margin-left:3px;font-weight:bold;'>" .
+						self::tt(
+							//= {0} External Module/s has/have updates available for download from the REDCap Repo.
+							$countModuleUpdates == 1 ? "em_manage_1" : "em_manage_2", "<span id='repo-updates-count'>$countModuleUpdates</span>") .
+						" <button onclick=\"$(this).hide();$('.repo-updates-list').show();\" class='btn btn-danger btn-xs ml-2'>" .
+						self::tt("em_manage_3") . //= View updates
+						"</a>
 					</div>
-					<div class='repo-updates-list'>
-						Updates are available for the modules listed below. You may click the button(s) to upgrade them all at once or individually. 
-						<div class='mt-3 mb-4'>
-							<button id='update-all-modules' class='btn btn-primary btn-sm' data-module-info=\"$moduleData\"><span class='fas fa-download'></span> Update All</button>
+					<div class='repo-updates-list'>" . 
+						self::tt("em_manage_4") . //= Updates are available for the modules listed below. You may click the button(s) to upgrade them all at once or individually. 
+						"<div class='mt-3 mb-4'>
+							<button id='update-all-modules' class='btn btn-primary btn-sm' data-module-info=\"$moduleData\"><span class='fas fa-download'></span> " .
+							self::tt("em_manage_5") . //= Update All
+							"</button>
 						</div>
 						$links
 					</div>
@@ -2788,7 +3575,10 @@ class ExternalModules
 		$moduleFolderName = http_get(APP_URL_EXTMOD_LIB . "download.php?module_id=$module_id&name=1");
 
 		if(empty($moduleFolderName) || $moduleFolderName == "ERROR"){
-			throw new Exception("The request to retrieve the name for module $module_id from the repo failed: $moduleFolderName");
+			//= The request to retrieve the name for module {0} from the repo failed: {1}.
+			throw new Exception(self::tt("em_errors_53", 
+				$module_id, 
+				$moduleFolderName)); 
 		}
 
 		// The following concurrent download detect was added to prevent a download/delete loop that we believe
@@ -2883,7 +3673,9 @@ class ExternalModules
 			self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
 			
 			// Give success message
-			return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>The module was successfully downloaded to the REDCap server, and can now be enabled.</div></div>";
+			return "<div class='clearfix'><div class='float-left'><img src='".APP_PATH_IMAGES."check_big.png'></div><div class='float-left' style='width:360px;margin:8px 0 0 20px;color:green;font-weight:600;'>" . 
+			self::tt("em_manage_6") . //= The module was successfully downloaded to the REDCap server, and can now be enabled.
+			"</div></div>";
 		}
 		finally{
 			self::rrmdir($tempDir);
@@ -2901,7 +3693,8 @@ class ExternalModules
 
 		if(empty($moduleFolderName)){
 			// Prevent the entire modules directory from being deleted.
-			throw new Exception("You must specify a module to delete!");
+			//= You must specify a module to delete!
+			throw new Exception(self::tt("em_errors_54")); 
 		}
 
 		// Ensure user is super user
@@ -2927,7 +3720,8 @@ class ExternalModules
 		db_query($sql);
 
 		// Give success message
-		return "The module and its corresponding directory were successfully deleted from the REDCap server.";
+		//= The module and its corresponding directory were successfully deleted from the REDCap server.
+		return self::tt("em_manage_7"); 
 	}
 
 	# Was this module originally downloaded from the central repository of ext mods? Exclude it if the module has already been marked as deleted via the UI.
@@ -3083,8 +3877,8 @@ class ExternalModules
 			$modulesAttributes[$thisModule] = array('name'=>$title, 
 													'has-project-config'=>((isset($config['project-settings']) && !empty($config['project-settings'])) ? 1 : 0), 
 													'require-config-perm'=>(in_array($thisModule, $enabledModulesReqConfigPerm) ? 1 : 0));
-			// Add title to another array so we can sort by title
-			$titles[] = $title;
+			// Add uppercase title to another array so we can sort by title
+			$titles[] = strtoupper($title);
 		}
 		// Sort modules by title
 		array_multisort($titles, SORT_REGULAR, $modulesAttributes);
@@ -3134,7 +3928,7 @@ class ExternalModules
 		return null;
 	}
 
-	private static function getDatacoreEmails($to){
+	private static function getDatacoreEmails($to = []){
 		if (self::isVanderbilt()) {
 			$to[] = 'mark.mcever@vumc.org';
 			$to[] = 'kyle.mcguffin@vumc.org';
@@ -3619,10 +4413,14 @@ class ExternalModules
 			}
 		}
 		catch(Exception $e){
-			$returnMessage = "Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
-			$emailMessage = "$returnMessage with the following Exception: $e";
-
-			self::sendAdminEmail(self::CRON_EXCEPTION_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+			//= Cron job '{0}' failed for External Module '{1}'.
+			$returnMessage = self::tt("em_errors_55", 
+				$cronName, 
+				$moduleDirectoryPrefix); 
+			$emailMessage = $returnMessage . "\n\nException: " . $e;
+			//= External Module Exception in Cron Job
+			$emailSubject = self::tt("em_errors_56"); 
+			self::sendAdminEmail($emailSubject, $emailMessage, $moduleDirectoryPrefix);
 		}
 
 		self::setActiveModulePrefix(null);
@@ -3649,8 +4447,15 @@ class ExternalModules
 			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
 			if($notificationNeeded) {
 				$moduleId = ExternalModules::getIdForPrefix($moduleDirectoryPrefix);
-				$emailMessage = "The '$cronName' cron job is being skipped for the '$moduleDirectoryPrefix' module because a previous cron for this module did not complete.  Please make sure this module's configuration is correct for every project, and that it should not cause crons to run more than $x past their next start time.  The previous process id was {$lockInfo['process-id']}.  If that process is no longer running, it was likely manually killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '" . self::KEY_RESERVED_IS_CRON_RUNNING . "'<br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='".APP_URL_EXTMOD."manager/crons.php'>Manager for Timed Crons</a>";
-				self::sendAdminEmail(self::LONG_RUNNING_CRON_EMAIL_SUBJECT, $emailMessage, $moduleDirectoryPrefix);
+				//= The '{0}' cron job is being skipped for the '{1}' module because a previous cron for this module did not complete. Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time. The previous process id was {2}. If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '{3}' AND `key` = '{4}'<br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href="{5}">{6}</a>.
+				$emailMessage = self::tt("em_errors_101", 
+					$cronName, $moduleDirectoryPrefix, $lockInfo['process-id'], 
+					$moduleId, self::KEY_RESERVED_IS_CRON_RUNNING,
+					APP_URL_EXTMOD."manager/crons.php",
+					self::tt("em_manage_87")); //= Manager for Timed Crons
+				//= External Module Long-Running Cron
+				$emailSubject = self::tt("em_errors_100"); 
+				self::sendAdminEmail($emailSubject, $emailMessage, $moduleDirectoryPrefix);
 				self::setSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, time());
 			}
 		}
@@ -3693,7 +4498,13 @@ class ExternalModules
 		$occurrences = $row['count'];
 
 		if($occurrences > $maximumOccurrences){
-			throw new Exception("The following action has been throttled because it is only allowed to happen $maximumOccurrences times within $seconds seconds, but it happened $occurrences times: $description");
+			//= The following action has been throttled because it is only allowed to happen {0} times within {1} seconds, but it happened {2} times: {3}
+			throw new Exception(
+				self::tt("em_errors_57", 
+				$maximumOccurrences, 
+				$seconds, 
+				$occurrences, 
+				$description)); 
 		}
 	}
 
@@ -3742,7 +4553,10 @@ class ExternalModules
 		}
 
 		if(!file_exists($path)) {
-			throw new Exception("The {$module->getModuleName()} module requires framework version $version, which is not available on your REDCap instance.");
+			//= The {0} module requires framework version '{1}', which is not available on your REDCap instance.
+			throw new Exception(self::tt("em_errors_59", 
+				$module->getModuleName(), 
+				$version));
 		}
 
 		require_once $path;
@@ -3759,7 +4573,8 @@ class ExternalModules
 			$version = 1;
 		}
 		else if(gettype($version) != 'integer'){
-			throw new Exception("The framework version must be specified as an integer (not a string) for the $prefix module.");
+			//= The framework version must be specified as an integer (not a string) for the {0} module.
+			throw new Exception(self::tt("em_errors_58", $module->PREFIX)); 
 		}
 
 		return $version;
@@ -3768,7 +4583,8 @@ class ExternalModules
 	public static function requireInteger($mixed){
 		$integer = filter_var($mixed, FILTER_VALIDATE_INT);
 		if($integer === false){
-			throw new Exception("An integer was required but the following value was specified instead: $mixed");
+			//= An integer was required but the following value was specified instead: {0}
+			throw new Exception(self::tt("em_errors_60", $mixed)); 
 		}
 
 		return $integer;

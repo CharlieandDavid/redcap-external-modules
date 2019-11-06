@@ -22,7 +22,8 @@ $ensureEDocIsRichText = function() use ($prefix, $pid, $edocId){
 	}
 
 	// Only allow rich text edocs to be accessed publicly.
-	throw new \Exception("EDoc $edocId was not found on project $pid!");
+	//= EDoc {0} was not found on project {1}!
+	throw new \Exception(ExternalModules::tt("em_errors_79", $edocId, $pid)); 
 };
 
 $tempDirPath = sys_get_temp_dir() . '/external-module-rich-text-file-cache/';
