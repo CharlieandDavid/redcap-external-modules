@@ -2114,6 +2114,7 @@ class ExternalModules
 			// Log query details instead of showing them to the user to minimize risk of exploitation (it could appear on a public URL).
 			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
 				'Message' => $message,
+				'SQL' => $sql,
 				'DB Error' => db_error(),
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
