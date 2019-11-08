@@ -1443,7 +1443,7 @@ class ExternalModulesTest extends BaseTest
 			ob_start();
 			$invalidParam = new \stdClass();
 			ExternalModules::query("select ?", [$invalidParam]);
-		}, "type 'object' is not supported");
+		}, ExternalModules::tt('em_errors_109'));
 
 		ob_end_clean();
 	}

@@ -2094,14 +2094,17 @@ class ExternalModules
 					&&
 					$retriesLeft > 0
 				){
-					$message = "The following query deadlocked and is being retried.  It may be worth considering modifying this query to reduce the chance of deadlock:\n\n$sql";
+					//= The following query deadlocked and is being retried.  It may be worth considering modifying this query to reduce the chance of deadlock:
+					$message = self::tt('em_errors_106') . "\n\n$sql";
 					$prefix = self::getActiveModulePrefix();
-					self::sendAdminEmail("REDCap External Module Deadlocked Query - $prefix", $message, $prefix);
+					//= REDCap External Module Deadlocked Query
+					self::sendAdminEmail(self::tt('em_errors_107') . " - $prefix", $message, $prefix);
 		
 					$result = self::query($sql, $parameterValues, $retriesLeft-1);
 				}
 				else{
-					throw new Exception("Query execution failed");
+					//= Query execution failed
+					throw new Exception(self::tt('em_errors_108'));
 				}
 			}
 		}
@@ -2135,7 +2138,8 @@ class ExternalModules
 			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
 			
 			if(empty($mysqliType)){
-				throw new Exception("The query parameter type '$phpType' is not supported");
+				//= The following query parameter type is not supported:
+				throw new Exception(self::tt('em_errors_109') . " $phpType");
 			}
 
 			$parameterTypes[] = $mysqliType;
@@ -2147,11 +2151,13 @@ class ExternalModules
 		$statement = $rc_connection->prepare($sql);
 
 		if(!call_user_func_array([$statement, 'bind_param'], $parameterValues)){
-			throw new Exception("Binding query parameters failed");
+			//= Binding query parameters failed
+			throw new Exception(self::tt('em_errors_110'));
 		}
 
 		if(!$statement->execute()){
-			throw new Exception("Prepared statement execution failed");
+			//= Prepared statement execution failed
+			throw new Exception(self::tt('em_errors_111'));
 		}
 		
 		return $statement->get_result();
