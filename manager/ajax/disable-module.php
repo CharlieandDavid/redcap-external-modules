@@ -8,7 +8,8 @@ if (!SUPER_USER) exit;
 $module = $_POST['module'];
 
 if (empty($module)) {
-	echo 'You must specify a module to disable';
+	//= You must specify a module to disable
+	echo ExternalModules::tt("em_errors_81"); 
 	return;
 }
 

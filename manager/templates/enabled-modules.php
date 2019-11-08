@@ -8,29 +8,37 @@ use Exception;
 ExternalModules::addResource('css/style.css');
 
 $pid = $_GET['pid'];
-$disableModuleConfirmProject = (isset($_GET['pid']) & !empty($_GET['pid'])) ? " for the current project" : "";
 ?>
 
 <div id="external-modules-download" class="simpleDialog" role="dialog">
-	Do you wish to download the External Module named 
-	"<b><?php print \RCView::escape(rawurldecode(urldecode($_GET['download_module_title']))) ?></b>"?
-	This will create a new directory folder for the module on the REDCap web server.
+	<!--= Do you wish to download the External Module named <b>{0}</b>? This will create a new directory folder for the module on the REDCap web server. -->
+	<?=ExternalModules::tt("em_manage_35", \RCView::escape(rawurldecode(urldecode($_GET['download_module_title']))))?>
 </div>
 
 <div id="external-modules-disable-confirm-modal" class="modal fade" role="dialog" data-backdrop="static">
 	<div class="modal-dialog">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h4 class="modal-title">Disable module? <span class="module-name"></span></h4>
+				<h4 class="modal-title">
+					<!--= Disable module? -->
+					<?=ExternalModules::tt("em_manage_36")?> 
+					<span class="module-name"></span>
+				</h4>
 				<button type="button" class="close" data-dismiss="modal">&times;</button>
 			</div>
 			<div class="modal-body">
-				Are you sure you wish to disable this module 
-				(<b><span id="external-modules-disable-confirm-module-name"></span>_<span id="external-modules-disable-confirm-module-version"></span></b>)<?=$disableModuleConfirmProject?>?
+				<!--= Are you sure you wish to disable this module ({0}) [for the current project]? -->
+				<?=ExternalModules::tt($pid ? "em_manage_38" : "em_manage_37", '<b><span id="external-modules-disable-confirm-module-name"></span>_<span id="external-modules-disable-confirm-module-version"></span></b>')?>
 			</div>
 			<div class="modal-footer">
-				<button data-dismiss="modal">Cancel</button>
-				<button id="external-modules-disable-button-confirmed" class="save">Disable module</button>
+				<button data-dismiss="modal">
+					<!--= Cancel -->
+					<?=ExternalModules::tt("em_manage_12")?>
+				</button>
+				<button id="external-modules-disable-button-confirmed" class="save">
+					<!--= Disable module -->
+					<?=ExternalModules::tt("em_manage_39")?>
+				</button>
 			</div>
 		</div>
 	</div>
@@ -42,7 +50,10 @@ $disableModuleConfirmProject = (isset($_GET['pid']) & !empty($_GET['pid'])) ? " 
 			<div class="modal-header">
 				<h4 class="modal-title clearfix">
 					<div class="float-left">Available Modules</div>
-					<div class="float-right" style="margin-left:50px;"><input type="text" id="disabled-modules-search" class="quicksearchsm" placeholder="Search available modules" autofocus></div>
+					<div class="float-right" style="margin-left:50px;">
+						<!--= Search available modules -->
+						<input type="text" id="disabled-modules-search" class="quicksearchsm" placeholder="<?=ExternalModules::tt("em_manage_40")?>" autofocus>
+					</div>
 				</h4>
 				<button type="button" class="close" data-dismiss="modal">&times;</button>
 			</div>
@@ -67,30 +78,25 @@ $disableModuleConfirmProject = (isset($_GET['pid']) & !empty($_GET['pid'])) ? " 
 	</div>
 </div>
 
-<p>External Modules are individual packages of software that can be downloaded and installed by a REDCap administrator.
-Modules can extend REDCap's current functionality, and can also provide customizations and enhancements for REDCap's
-existing behavior and appearance at the system level or project level.</p>
-
+<p>
+	<!--= External Modules are individual packages of software that can be downloaded and installed by a REDCap administrator. Modules can extend REDCap's current functionality, and can also provide customizations and enhancements for REDCap's existing behavior and appearance at the system level or project level. -->
+	<?=ExternalModules::tt("em_manage_41")?>
+</p>
 <?php if (isset($_GET['pid']) && SUPER_USER) { ?>
-
-<p>As a REDCap administrator, you may enable any module that has been installed in REDCap for this project.
-Some configuration settings might be required to be set, in which administrators or
-users in this project with Project Setup/Design privileges can modify the configuration of any module at any time after the module
-has first been enabled by an administrator. Note: Normal project users will not be able to enable or disable modules.</p>
-
+<p>
+	<!--= As a REDCap administrator, you may enable any module that has been installed in REDCap for this project. Some configuration settings might be required to be set, in which administrators or users in this project with Project Setup/Design privileges can modify the configuration of any module at any time after the module has first been enabled by an administrator. Note: Normal project users will not be able to enable or disable modules. -->
+	<?=ExternalModules::tt("em_manage_42")?>
+</p>
 <?php } elseif (isset($_GET['pid']) && !SUPER_USER) { ?>
-
-<p>As a user with Project Setup/Design privileges in this project, you can modify the configuration (if applicable)
-of any enabled module. Note: Only REDCap administrators are able to enable or disable modules.</p>
-
+<p>
+	<!--= As a user with Project Setup/Design privileges in this project, you can modify the configuration (if applicable) of any enabled module. Note: Only REDCap administrators are able to enable or disable modules. -->
+	<?=ExternalModules::tt("em_manage_43")?>
+</p>
 <?php } else { ?>
-
-<p>You may click the "View modules" button below to navigate to the REDCap Repo (Repository of External Modules), which is a centralized catalog 
-of curated modules that have been submitted by various REDCap partner institutions. If you find a module in the repository that you wish
-to download, you will be able to install it, enable it, and then set any configuration settings (if applicable).
-If you choose not to enable the module in all REDCap projects by default, then you will need to navigate to the External Modules page
-on the left-hand menu of a given project to enable it there for that project. Some project-level configuration settings, depending on the module,
-may also need to set on the project page.</p>
+<p>
+	<!--= You may click the 'View modules' button below to navigate to the REDCap Repo (Repository of External Modules), which is a centralized catalog of curated modules that have been submitted by various REDCap partner institutions. If you find a module in the repository that you wish to download, you will be able to install it, enable it, and then set any configuration settings (if applicable). If you choose not to enable the module in all REDCap projects by default, then you will need to navigate to the External Modules page on the left-hand menu of a given project to enable it there for that project. Some project-level configuration settings, depending on the module, may also need to set on the project page. -->
+	<?=ExternalModules::tt("em_manage_44")?>
+</p>
 
 <?php 
 // Display alert message in Control Center if any modules have updates in the REDCap Repo
@@ -102,11 +108,8 @@ ExternalModules::renderREDCapRepoUpdatesAlert();
 <?php if (isset($_GET['pid'])) { ?>
 
 <p style="color:#800000;font-size:11px;line-height:13px;">
-	<b>DISCLAIMER:</b> Please be aware that External Modules are not part of the REDCap software but instead are add-on packages
-	that, in most cases, have been created by software developers at other REDCap institutions.
-	Be aware that the entire risk as to the quality and performance of the module as it is used in your REDCap project 
-	is borne by you and your local REDCap administator. 
-	If you experience any issues with a module, your REDCap administrator should contact the author of that particular module.
+	<!--= DISCLAIMER: Please be aware that External Modules are not part of the REDCap software but instead are add-on packages that, in most cases, have been created by software developers at other REDCap institutions. Be aware that the entire risk as to the quality and performance of the module as it is used in your REDCap project is borne by you and your local REDCap administator. If you experience any issues with a module, your REDCap administrator should contact the author of that particular module. -->
+	<?=ExternalModules::tt("em_manage_45")?>
 </p>
 
 <?php
@@ -120,22 +123,18 @@ ExternalModules::renderREDCapRepoUpdatesAlert();
 if (!isVanderbilt() && !isset($_GET['pid']) && defined("EXTMOD_EXTERNAL_INSTALL") && EXTMOD_EXTERNAL_INSTALL) { 
 	?>
 	<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px;">
-		<b>NOTICE:</b> It has been detected that you have a development version of External Modules installed at
-		<code><?=APP_PATH_EXTMOD?></code>. As such, please note that REDCap will use that version of External Modules rather than
-		the one bundled in this REDCap version.
+		<!--= NOTICE: It has been detected that you have a development version of External Modules installed at <code><?=APP_PATH_EXTMOD?></code>. As such, please note that REDCap will use that version of External Modules rather than the one bundled in this REDCap version. -->
+		<?=ExternalModules::tt("em_manage_46", APP_PATH_EXTMOD)?>
 	</p>
 	<?php 
 }
-
 
 // Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
 if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 	?>
 	<div class="red">
-		<b>PHP <?=ExternalModules::MIN_PHP_VERSION?> or higher is required for External Modules:</b>
-		Sorry, but unfortunately your REDCap web server must be running PHP <?=ExternalModules::MIN_PHP_VERSION?>
-		or a later version to utilize the External Modules functionality. Your current version is PHP <?=PHP_VERSION?>.
-		You should consider upgrading PHP.
+		<!--= PHP <?=ExternalModules::MIN_PHP_VERSION?> or higher is required for External Modules: Sorry, but unfortunately your REDCap web server must be running PHP <?=ExternalModules::MIN_PHP_VERSION?> or a later version to utilize the External Modules functionality. Your current version is PHP <?=PHP_VERSION?>. You should consider upgrading PHP. -->
+		<?=ExternalModules::tt("em_manage_47", ExternalModules::MIN_PHP_VERSION, PHP_VERSION)?>
 	</div>
 	<?php
 	require_once APP_PATH_DOCROOT . 'ControlCenter/footer.php';
@@ -143,7 +142,9 @@ if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
 }
 
 $displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
-$moduleDialogBtnText = SUPER_USER ? "Enable a module" : "View available modules";
+$moduleDialogBtnText = SUPER_USER ? 
+	ExternalModules::tt("em_manage_48") : //= Enable a module
+	ExternalModules::tt("em_manage_49"); //= View available modules
 $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 
 ?>
@@ -157,11 +158,13 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 <?php if (SUPER_USER && !isset($_GET['pid'])) { ?>
 	<button id="external-modules-download-modules-button" class="btn btn-primary btn-primaryrc btn-sm">
 		<span class="fas fa-download" aria-hidden="true"></span>
-		View modules available in the REDCap Repo
+		<!--= View modules available in the REDCap Repo -->
+		<?=ExternalModules::tt("em_manage_50")?>
 	</button> &nbsp;
-	<button id='external-modules-configure-crons'  class="btn btn-primary btn-primaryrc btn-sm">
+	<button id='external-modules-configure-crons'  class="btn btn-primary btn-defaultrc btn-sm">
 		<span class="fas fa-calendar-alt" aria-hidden="true"></span>
-		Configure Cron Start Times
+		<!--= Configure Cron Start Times -->
+		<?=ExternalModules::tt("em_manage_86")?>
 	</button>
 	<form id="download-new-mod-form" action="<?=APP_URL_EXTMOD_LIB?>login.php" method="post" enctype="multipart/form-data">
 		<input type="hidden" name="user" value="<?=USERID?>">
@@ -182,13 +185,21 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 
 <h4 class="clearfix" style="max-width: 800px;">
 	<div class="float-left"><b>
-	<?php if (isset($_GET['pid'])) { ?>
-	Currently Enabled Modules
-	<?php } else { ?>
-	Modules Currently Available on this System
-	<?php } ?>
+	<?php 
+		if (isset($_GET['pid'])) {
+			//= Currently Enabled Modules
+			echo ExternalModules::tt("em_manage_51");
+		} 
+		else {
+			//= Modules Currently Available on this System
+			echo ExternalModules::tt("em_manage_52");
+		}
+	?>
 	</b></div>
-	<div class="float-right"><input type="text" id="enabled-modules-search" class="quicksearch" placeholder="Search enabled modules"></div>
+	<div class="float-right">
+		<!--= Search enabled modules -->
+		<input type="text" id="enabled-modules-search" class="quicksearch" placeholder="<?=ExternalModules::tt("em_manage_53")?>">
+	</div>
 </h4>
 
 <script type="text/javascript">
@@ -218,6 +229,8 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 		echo 'None';
 	} else {
 		foreach ($versionsByPrefix as $prefix => $version) {
+			// Ensure that language strings for all modules are available.
+			ExternalModules::initializeLocalizationSupport($prefix, $version);
 			$config = ExternalModules::getConfig($prefix, $version, @$_GET['pid']);
 
 			if(empty($config)){
@@ -262,15 +275,15 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 						$module_instance = ExternalModules::getModuleInstance($prefix);
 						if((!empty($config['project-settings']) || (!empty($config['system-settings']) && !isset($_GET['pid'])))
 						&& (!isset($_GET['pid']) || (isset($_GET['pid']) && self::hasProjectSettingSavePermission($prefix))) && $module_instance->redcap_module_configure_button_display($_GET['pid'])){
-							?><button class='external-modules-configure-button'>Configure</button><?php
+							?><button class='external-modules-configure-button'><!--= Configure --><?=ExternalModules::tt("em_manage_54")?></button><?php
 						}
 
 						if(SUPER_USER) {
-							?><button class='external-modules-disable-button'>Disable</button><?php
+							?><button class='external-modules-disable-button'><!--= Disable --><?=ExternalModules::tt("em_manage_55")?></button><?php
 						}
 
 						if(!isset($_GET['pid'])) {
-							?><button class='external-modules-usage-button'>View Usage</button><?php
+							?><button class='external-modules-usage-button'><!--= View Usage --><?=ExternalModules::tt("em_manage_56")?></button><?php
 						}
 						?>
 					</td>
@@ -299,8 +312,9 @@ if ($configsByPrefixJSON === false || $configsByPrefixJSON === null) {
 	$configsByPrefixJSON = json_encode($configsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 }
 if($configsByPrefixJSON === false || $configsByPrefixJSON === null){
-	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the configurations to JSON: ' . json_last_error_msg()) . ');</script>';
-	throw new Exception('An error occurred while converting the configurations to JSON: ' . json_last_error_msg());
+	//= An error occurred while converting the configurations to JSON: {0}
+	echo '<script type="text/javascript">alert(' . ExternalModules::tt("em_errors_75", json_last_error_msg()) . ');</script>';
+	throw new Exception(ExternalModules::tt("em_errors_75", json_last_error_msg())); 
 }
 
 if (version_compare(PHP_VERSION, '5.5.0', '<')) {
@@ -310,8 +324,9 @@ if ($versionsByPrefixJSON === false || $versionsByPrefixJSON === null) {
 	$versionsByPrefixJSON = json_encode($versionsByPrefix, JSON_PARTIAL_OUTPUT_ON_ERROR);
 }
 if ($versionsByPrefixJSON === false || $versionsByPrefixJSON === null) {
-	echo '<script type="text/javascript">alert(' . json_encode('An error occurred while converting the versions to JSON: ' . json_last_error_msg()) . ');</script>';
-	throw new Exception("An error occurred while converting the versions to JSON: " . json_last_error_msg());
+	//= An error occurred while converting the versions to JSON: {0}
+	echo '<script type="text/javascript">alert(' . ExternalModules::tt("em_errors_76", json_last_error_msg()) . ');</script>';
+	throw new Exception(ExternalModules::tt("em_errors_76", json_last_error_msg())); 
 }
 
 require_once 'globals.php';

@@ -2,22 +2,23 @@
 
 **[Click here](https://github.com/vanderbilt/redcap-external-modules/blob/testing/docs/framework/intro.md) for method documentation.**
 
-"External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module. The documentation provided on this page will be useful for anyone creating an external module.
+"External Modules" is a class-based framework for plugins and hooks in REDCap. Modules can utilize any of the "REDCap" class methods (e.g., \REDCap::getData), and they also come with many other helpful built-in methods to store and manage settings for a given module, as well as provide support for internationalization (translation of displayed strings) of modules. The documentation provided on this page will be useful for anyone creating an external module.
 
 If you have created a module and wish to share it with the REDCap community, you may submit it to the [REDCap External Modules Submission Survey](https://redcap.vanderbilt.edu/surveys/?s=X83KEHJ7EA). If your module gets approved after submission, it will become available for download by any REDCap administrator from the [REDCap Repo](https://redcap.vanderbilt.edu/consortium/modules/).
 
 ### Naming a module
 
 Modules must follow a specific naming scheme for the module directory that will sit on the REDCap web server. Each version of a module will have its own directory (like REDCap) and will be located in the `/redcap/modules/` directory on the server. A module directory name consists of three parts: 
-1. a **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
-1. "_v" = an underscore + letter "v"
-1. a **module version number in X.Y or X.Y.Z format** that consists of a major version X and minor version Y (e.g., 1.0 or 3.25), and in some cases a sub-minor version Z if in X.Y.X format (e.g., 1.0.0 or 3.25.2), in which X, Y, and Z must be an integer beginning with 0 and going up to 100 at most.
+1. A **unique name** (so that it will not duplicate any one else's module in the consortium) in [snake case](https://en.wikipedia.org/wiki/Snake_case) format
+1. "_v" (an underscore followed by the letter "v")
+1. A **module version number**.  [Semantic Versioning](https://semver.org/) is recommended (ex: `1.2.3`), although simpler `#.#` versioning is also supported (ex: `1.2`).
 
 The diagram below shows the general directory structure of some hypothetical  modules to illustrate how modules will sit on the REDCap web server alongside other REDCap files and directories.
+
 ```
 redcap
 |-- modules
-|   |-- mymodulename_v1.0.0
+|   |-- my_module_name_v1.0.0
 |   |-- other_module_v2.9
 |   |-- other_module_v2.10
 |   |-- other_module_v2.11
@@ -29,13 +30,13 @@ redcap
 
 ### Module requirements
 
-**Every module must have two files at the minimum:** 1) the module's PHP class file, in which the file name will be different for every module (e.g., `MyModuleClass.php`), and 2) the `config.json` file. The config file must be in JSON format, and must always be explictly named "*config.json*". The config file will contain all the module's basic configuration, such as its title, author information, module permissions, and many other module settings. The module class file houses the basic business logic of the module, and it can be named whatever you like so long as the file name matches the class name (e.g., Votecap.php contains the class Votecap). 
+**Every module must have two files at the minimum:** 1) the module's PHP class file, in which the file name will be different for every module (e.g., `MyModuleClass.php`), and 2) a configuration file (`config.json`). The config file must be in JSON format, and must always be explictly named "*config.json*". The config file will contain all the module's basic configuration, such as its title, author information, module permissions, and many other module settings. The module class file houses the basic business logic of the module, and it can be named whatever you like so long as the file name matches the class name (e.g., Votecap.php contains the class Votecap).
 
 #### 1) Module class
 
 Each module must define a module class that extends `ExternalModules\AbstractExternalModule` (see the example below).  Your module class is the central PHP file that will run all the business logic for the module. You may have many other PHP files (classes or include files), as well as JavaScript, CSS, etc. All other such files are optional, but the module class itself is necessary and drives the module.
 
-``` php
+```php
 <?php
 // Set the namespace defined in your config file
 namespace MyModuleNamespace\MyModuleClass;
@@ -48,13 +49,13 @@ class MyModuleClass extends \ExternalModules\AbstractExternalModule {
 
 A module's class name can be named whatever you wish. The module class file must also have the same name as the class name (e.g., **MyModuleClass.php** containing the class **MyModuleClass**). Also, the namespace is up to you to name. Please note that the full namespace declared in a module must exactly match the "namespace" setting in the **config.json** file (with the exception of there being a double backslash in the config file because of escaping in JSON). For example, while the module class may have `namespace MyModuleNamespace\MyModuleClass;`, the config file will have `"namespace": "MyModuleNamespace\\MyModuleClass"`.
 
-#### 2) Config.json
+#### 2) Configuration file
 
-The config.json file provides all the basic configuration information for the module in JSON format. At the minimum, the config file must have the following defined: **name, namespace, description, and authors**. `name` is the module title, and `description` is the longer description of the module (typically between one sentence and a whole paragraph in length), both of which are displayed in the module list on the module manager page. Regarding `authors`, if there are several contributors to the module, you can provide multiple authors whose names get displayed below the module description on the Control Center's module manager page.
+The file `config.json` provides all the basic configuration information for the module in JSON format. At the minimum, the config file must have the following defined: **name, namespace, description, and authors**. `name` is the module title, and `description` is the longer description of the module (typically between one sentence and a whole paragraph in length), both of which are displayed in the module list on the module manager page. Regarding `authors`, if there are several contributors to the module, you can provide multiple authors whose names get displayed below the module description on the Control Center's module manager page.
 
 The PHP `namespace` of your module class must also be specified in the config file, and it must have a sub-namespace. Thus the overall namespace consists of two parts. The first part is the main namespace, and the second part is the sub-namespace. **It is required that the sub-namespace matches the module's class name (e.g., MyModuleClass).** The first part of the namespace can be any name you want, but you might want to use the name of your institution as a way of grouping the modules that you and your team create (e.g., `namespace Vanderbilt\VoteCap;`). That's only a suggestion though. Using namespacing with sub-namespacing in this particular way helps prevent against collisions in PHP class naming when multiple modules are being used in REDCap at the same time. 
 
-Example of the minimum requirements of the config.json file:
+Example of the minimum requirements of the configuration file:
 
 ``` json
 {
@@ -71,7 +72,8 @@ Example of the minimum requirements of the config.json file:
 }
 ```
 
-Below is a *mostly* comprehensive list of all items that can be added to the  **config.json** file. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly. **An extensive example of config.json is provided at the very bottom of this page** if you wish to see how all these items will be structured.
+Below is a *mostly* comprehensive list of all items that can be added to **config.json**. Remember that all items in the file must be in JSON format, which includes making sure that quotes and other characters get escaped properly. **An extensive example of config.json is provided at the very bottom of this page** if you wish to see how all these items will be structured.
+
 * Module **name**
 * Module  **description**
 * **documentation** can be used to provide a filename or URL for the "View Documentation" link in the module list.  If this setting is omitted, the first filename that starts with "README" will be used if it exists.  If a markdown file is used, it will be automatically rendered as HTML.
@@ -119,10 +121,12 @@ Below is a *mostly* comprehensive list of all items that can be added to the  **
 	* **repeatable** is a boolean that specifies whether the element can repeat many times. **If it is repeatable (true), the element will return an array of values.**
 	* **autocomplete** is a boolean that enables autocomplete on dropdown fields.
 	* **branchingLogic** is an structure which represents a condition or a set of conditions that defines whether the field should be displayed. See examples at the end of this section.
+    * **hidden** is a boolean that when present and set to a [truthy value](https://www.php.net/manual/en/types.comparisons.php) in a _top level_ setting (system or project) will not display this setting in the settings dialog. For example, true, "true", 1 and "1" are all truthy, while false, 0, "0", and "" are falsy. Note that "false" as a non-empty string is truthy!
 	* When type = **sub_settings**, the sub_settings element can specify a group of items that can be repeated as a group if the sub_settings itself is repeatable. The settings within sub_settings follow the same specification here.  It is also possible to nest sub_settings within sub_settings.
 	* As a reminder, true and false are specified as their actual values (true/false not as the strings "true"/"false"). Other than that, all values and variables are strings.
 	* **DEPRECATED (for now): Default values do NOT currently work consistently, and will likely need to be re-implemented.** Both project-settings and system-settings may have a **default** value provided (using the attribute "default"). This will set the value of a setting when the module is enabled either in the project or system, respectively.
-* If your JSON is not properly specified, an Exception will be thrown.
+* To support **internationalization** of External Modules (translatability of strings displayed by modules), many of the JSON keys in the configuration file have a _companion key_ that is prepended by "**tt_**", such as *tt_name* or *tt_description* (basically _any_ key that expects a **string** value). When provided with a value that corresponds to a key in a language file supplied with the module, the value for the setting will be replaced with the value from the language file. For details, please refer to the [internationalization guide](i18n-guide.md).
+* **Attention!** If your JSON is not properly specified, an Exception will be thrown.
 
 #### Examples of branching logic
 
@@ -272,7 +276,8 @@ Note: If you are building links to plugin pages in your module, you should use t
          {
             "name": "VoteCap",
             "icon": "fas fa-receipt",
-            "url": "index.php"
+            "url": "index.php",
+            "show-header-and-footer": true
          }
       ]
    }
@@ -281,10 +286,9 @@ Note: If you are building links to plugin pages in your module, you should use t
 
 The following optional settings may also be specified for each project link:
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br> Setting | <br> Description
+Setting&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Description
 ------- | -----------
 show-header-and-footer | Specify **true** to automatically show the REDCap header and footer on this page.  Defaults to **false** when omitted.
-
 
 **Adding links to the Control Center menu:**
 If you want to similarly add links to your plugins on the Control Center's left-hand menu (as opposed to a project's left-hand menu), then you will need to add a `control-center` section to your `links` settings, as seen below.
@@ -309,6 +313,7 @@ If you want to similarly add links to your plugins on the Control Center's left-
    }
 }
 ```
+
 **Disabling authentication in plugins:** If a plugin page should not enforce REDCap's authentication but instead should be publicly viewable to the web, then in the config.json file you need to 1) **append `?NOAUTH` to the URL in the `links` setting**, and then 2) **add the plugin file name to the `no-auth-pages` setting**, as seen below. Once those are set, all URLs built using `getUrl()` will automatically append *NOAUTH* to the plugin URL, and when someone accesses the plugin page, it will know not to enforce authentication because of the *no-auth-pages* setting. Otherwise, External Modules will enforce REDCap authentication by default.
 
 ``` json
@@ -331,7 +336,8 @@ If you want to similarly add links to your plugins on the Control Center's left-
 The actual code of your plugin page will likely reference methods in your module class. It is common to first initiate the plugin by instantiating your module class and/or calling a method in the module class, in which this will cause the External Modules framework to process the parameters passed, discern if authentication is required, and other initial things that will be required before processing the plugin and outputting any response HTML (if any) to the browser.
 
 **Example plugin page code:**
-``` php
+
+```php
 <?php
 // A $module variable will automatically be available and set to an instance of your module.
 // It can be used like so:
@@ -341,10 +347,11 @@ $value = $module->getProjectSetting('my-project-setting');
 
 ### Available developer methods in External Modules
 
-Listed below are the publicly supported methods that module creators may utilize in their modules. **DO NOT** reference any other methods or files (like the *ExternalModules* class) as they could change at any time.  If there is a method not listed here that you believe should be supported, feel free to request it via a GitHub issue or pull request. 
+The External Modules framework provides objects representing a module, both in **PHP** and **JavaScript**.
 
-#### PHP Module Object
-Method documentation has moved [here](https://github.com/vanderbilt/redcap-external-modules/blob/testing/docs/framework/intro.md).
+The publicly supported methods that module creators may utilize depend on the framework version they opt into via the configuration file and are documented [here](https://github.com/vanderbilt/redcap-external-modules/blob/testing/docs/framework/intro.md).
+
+**Attention!** Do _not_ reference any other methods or files (like the *ExternalModules* class) as they could change at any time. If a method you believe should be supported by these module objects is missing, please feel free to request it via an [issue](https://github.com/vanderbilt/redcap-external-modules/issues) or [pull request](https://github.com/vanderbilt/redcap-external-modules/pulls) on the framework's GitHub page.
 
 ### Utilizing Cron Jobs for Modules
 
@@ -404,7 +411,7 @@ Note: If any of the cron attributes (including cron_frequency/cron_max_run_time 
 
 It may be the case that a module is not compatible with specific versions of REDCap or specific versions of PHP. In this case, the `compatibility` option can be set in the config.json file using any or all of the four options seen below. (If any are listed in the config file but left blank as "", they will just be ignored.) Each of these are optional and should only be used when it is known that the module is not compatible with specific versions of PHP or REDCap. You may provide PHP min or max version as well as the REDCap min or max version with which your module is compatible. If a module is downloaded and enabled, these settings will be checked during the module enabling process, and if they do not comply with the current REDCap version and PHP version of the server where it is being installed, then REDCap will not be allow the module to be enabled.
 
-``` json
+```JSON
 {	
    "compatibility": {
       "php-version-min": "5.4.0",
@@ -419,7 +426,7 @@ It may be the case that a module is not compatible with specific versions of RED
 
 If your module will be using JavaScript, it is *highly recommended* that your JavaScript variables and functions not be placed in the global scope. Doing so could cause a conflict with other modules that are running at the same time that might have the same variable/function names. As an alternative, consider creating a function as an **IIFE (Immediately Invoked Function Expression)** or instead creating the variables/functions as properties of a **single global scope object** for the module, as seen below.
 
-```
+```JavaScript
 <script type="text/javascript">
   // IIFE - Immediately Invoked Function Expression
   (function($, window, document) {
@@ -432,7 +439,7 @@ If your module will be using JavaScript, it is *highly recommended* that your Ja
 </script>
 ```
 
-```
+```JavaScript
 <script type="text/javascript">
   // Single global scope object containing all variables/functions
   var MCRI_SurveyLinkLookup = {};
@@ -448,7 +455,7 @@ If your module will be using JavaScript, it is *highly recommended* that your Ja
 
 If the module class contains the __construct() method, you **must** be sure to call `parent::__construct();` as the first thing in the method, as seen below.
 
-``` php
+```php
 class MyModuleClass extends AbstractExternalModule {
    public function __construct()
    {
@@ -459,6 +466,7 @@ class MyModuleClass extends AbstractExternalModule {
 ```
 
 ### Including Dependencies/Libraries in your Module
+
 If your module uses a third party library (i.e. PHPMailer) that is available in the [packagist.org](https://packagist.org) repo, please use [composer](https://getcomposer.org/) to include it.  While this adds an extra step when submitting to the module repo, it greatly reduces the chances of conflicts between modules that can cause those modules and/or REDCap to crash.  Composer's class loader automatically handles cases like calling **require** for the same class from multiple modules.  While this does mean that modules could potentially end up using the version of a dependency from another module instead of their own, this is rarely an issue in practice (as evidenced by the WordPress community's reliance on composer for plugin & theme dependencies).  Implementing a more complex dependency management system similar to Drupal's has been discussed, but such an effort is not likely since the current method is generally not an issue in practice.
 
 If you would like to create a library to share between multiple modules, [composer can also use github as a repo](https://getcomposer.org/doc/05-repositories.md#loading-a-package-from-a-vcs-repository).

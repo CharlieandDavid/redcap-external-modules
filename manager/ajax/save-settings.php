@@ -7,7 +7,8 @@ $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
 
 $rawSettings = json_decode($_POST['settings'], true);
 if($rawSettings === null){
-	throw new \Exception('Unable to parse module settings!');
+	//= Unable to parse module settings!
+	throw new \Exception(ExternalModules::tt("em_errors_90")); 
 }
 
 $module = ExternalModules::getModuleInstance($moduleDirectoryPrefix);

@@ -1141,4 +1141,41 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$this->runConcurrentTestProcesses(__FUNCTION__, $parentAction, $childAction);
 	}
+
+	function testGetPublicSurveyUrl(){
+		$m = $this->getInstance();
+
+		$result = $m->query("
+			select *
+			from (
+				select s.project_id, h.hash, count(*)
+				from redcap_surveys s
+				join redcap_surveys_participants h
+					on s.survey_id = h.survey_id
+				join redcap_metadata m
+					on m.project_id = s.project_id
+					and m.form_name = s.form_name
+					and field_order = 1 -- getting the first field is the easiest way to get the first form
+				where participant_email is null
+				group by s.form_name -- test a form name that exists on multiple projects
+				order by count(*) desc
+				limit 100
+			) a
+			order by rand() -- select a random row to make sure we often end up with a different project ID than getPublicSurveyUrl() would by default if it didn't specific a project ID in it's query
+			limit 1
+		");
+
+		$row = $result->fetch_assoc();
+		$projectId = $row['project_id'];
+		$hash = $row['hash'];
+
+		global $Proj;
+		$Proj = new \Project($projectId);
+		$_GET['pid'] = $projectId;
+		
+		$expected = APP_PATH_SURVEY_FULL . "?s=$hash";
+		$actual = $m->getPublicSurveyUrl();
+
+		$this->assertSame($expected, $actual);
+	}
 }

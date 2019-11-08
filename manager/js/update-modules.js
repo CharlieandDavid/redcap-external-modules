@@ -11,14 +11,17 @@ function updateEnableModule(moduleUpdatesInfo, moduleUpdatesKey, updateAll)
 		showProgress(0,0);
 		var modulesFailedUpdate = updateAll ? $('#repo-updates-count').html()*1 : 0;
 		if (modulesFailedUpdate == 0) {
-			var title = "SUCCESS";
-			var msg = (moduleUpdatesKey == 1) ? "The module was" : "All "+moduleUpdatesKey+" modules were";
-			msg += " successfully updated and enabled.";
+			var title = ExternalModules.$lang.tt('em_manage_27'); //= SUCCESS
+			var msg = (moduleUpdatesKey == 1) ? 
+				//= The module was successfully updated and enabled.
+				ExternalModules.$lang.tt('em_manage_79') :
+				//= All {0} modules were successfully updated and enabled.
+				ExternalModules.$lang.tt('em_manage_80', moduleUpdatesKey);
 		} else {
-			var title = "SUCCESS + ERRORS";
-			var msg = moduleUpdatesKey+" modules were successfully updated and enabled, but "+modulesFailedUpdate+" were not able to be updated for unknown reasons.";
+			var title = ExternalModules.$lang.tt('em_manage_81'); //= SUCCESS + ERRORS
+			var msg = ExternalModules.$lang.tt('em_manage_82', moduleUpdatesKey, modulesFailedUpdate); //= {0} modules were successfully updated and enabled, but {1} were not able to be updated for unknown reasons.
 		}
-		simpleDialog('<div style="color:green;"><i class="fas fa-check"></i> '+msg+'</div>',title,null,null,'window.location.reload();','Close');
+		simpleDialog('<div style="color:green;"><i class="fas fa-check"></i> '+msg+'</div>',title,null,null,'window.location.reload();',$lang.tt('em_manage_68')); //= Close
 		return;
 	}
 	var attr = moduleUpdatesInfo[moduleUpdatesKey].split(',');

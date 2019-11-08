@@ -10,7 +10,7 @@
 	"authors": [
 		{
 			"name": "Kyle McGuffin",
-			"email": "kyle.mcguffin@vanderbilt.edu",
+			"email": "kyle.mcguffin@vumc.org",
 			"institution": "Vanderbilt University Medical Center"
 		}
 	],
@@ -19,19 +19,27 @@
 		""
 	],
 
+	"enable-every-page-hooks-on-system-pages": false,
+
 	"links": {
 		"project": [
 			{
 				"name": "Configuration Page",
 				"icon": "report",
-				"url": "configure.php"
+				"url": "configure.php",
+				"show-header-and-footer": true
 			}
 		]
 	},
 
 	"no-auth-pages": [
         "public-page"
-    ],
+	],
+	
+	"compatibility": {
+		"redcap-version-min": "8.0.0",
+		"php-version-min": "5.5.0"
+    },
 
 	"system-settings": [
 		{

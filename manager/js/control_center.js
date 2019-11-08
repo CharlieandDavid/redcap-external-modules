@@ -34,9 +34,9 @@ $(function () {
 				}
 			}
 			else {
-				alert('An error occurred while disabling the ' + module + ' module: ' + data);
+				//= An error occurred while disabling the {0} module:
+				alert(ExternalModules.$lang.tt('em_errors_5', module) + ' ' + data);
 			}
 		});
 	});
 });
-

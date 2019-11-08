@@ -25,6 +25,12 @@ class ExternalModulesTest extends BaseTest
 
 	public static $lastSendAdminEmailArgs;
 
+	protected function setUp()
+	{
+		// Loading this dependency doesn't work at the top of this file.  Not sure why...
+		require_once __DIR__ . '/../vendor/squizlabs/php_codesniffer/autoload.php';
+	}
+
 	protected function tearDown()
 	{
 		self::$lastSendAdminEmailArgs = null;
@@ -180,13 +186,13 @@ class ExternalModulesTest extends BaseTest
 		$method = 'isTimeToRun';
 
 		$offsets = array(
-				0 => "assertTrue",
-				3600 => "assertFalse",
-				-3600 => "assertFalse",
-				60 => "assertFalse",
-				-60 => "assertFalse",
-				24 * 3600 => "assertTrue",
-				-24 * 3600 => "assertTrue",
+				"nul" => "assertTrue",
+				"addPT1H" => "assertFalse",
+				"subPT1H" => "assertFalse",
+				"addPT1M" => "assertFalse",
+				"subPT1M" => "assertFalse",
+				"addP1D" => "assertTrue",
+				"subP1D" => "assertTrue",
 				);
 		$defaultCron = array(
 					'cron_name' => 'test_name',
@@ -194,7 +200,7 @@ class ExternalModulesTest extends BaseTest
 					'method' => 'test_method',
 					);
 
-		foreach ($offsets as $offset => $validationMethod) {
+		foreach ($offsets as $displacement => $validationMethod) {
 			$currentTime = time();
 			if($currentTime%60 >= 59){
 				// We don't want the clock to turn over to the next minute in the middle of this test.
@@ -206,34 +212,44 @@ class ExternalModulesTest extends BaseTest
 			// Simulate the process starting now.
 			$_SERVER["REQUEST_TIME_FLOAT"] = microtime(true);
 
-			$time = $currentTime + $offset;
+			$func = substr($displacement, 0, 3);
+			$offset = substr($displacement, 3);
+
+			$datetime = new \DateTime();
+			if ($func != "nul") {
+				$datetime->$func(new \DateInterval($offset));
+			}
 			$cron = array(
-                			'cron_hour' => date("G", $time),
-                			'cron_minute' => date("i", $time),
+					'cron_hour' => $datetime->format("G"),
+					'cron_minute' => $datetime->format("i"),
 					);
 			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
 		}
 
-		$time2 = time() + 24 * 3600;
+		# move forward one day => should fail on weekday
+		$datetime2 = new \DateTime();
+		$datetime2->add(new \DateInterval("P1D"));
 		$cron2 = array(
-				'cron_hour' => date("G", $time2),
-				'cron_minute' => date("i", $time2),
-				'cron_weekday' => date("w", $time2),
+				'cron_hour' => $datetime2->format("G"),
+				'cron_minute' => $datetime2->format("i"),
+				'cron_weekday' => $datetime2->format("w"),
 				);
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron2)));
 
-		$time3 = time() + 7 * 24 * 3600;
+		# move forward one week => should call cron on weekday but not monthday
+		$datetime3 = new \DateTime();
+		$datetime3->add(new \DateInterval("P7D"));
 		$cron3 = array(
-				'cron_hour' => date("G", $time3),
-				'cron_minute' => date("i", $time3),
-				'cron_weekday' => date("w", $time3),
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_weekday' => $datetime3->format("w"),
 				);
 		$this->assertTrue(self::callPrivateMethod($method, array_merge($defaultCron, $cron3)));
 
 		$cron3_2 = array(
-				'cron_hour' => date("G", $time3),
-				'cron_minute' => date("i", $time3),
-				'cron_monthday' => date("j", $time3),
+				'cron_hour' => $datetime3->format("G"),
+				'cron_minute' => $datetime3->format("i"),
+				'cron_monthday' => $datetime3->format("j"),
 				);
 		$this->assertFalse(self::callPrivateMethod($method, array_merge($defaultCron, $cron3_2)));
 	}
@@ -270,7 +286,8 @@ class ExternalModulesTest extends BaseTest
 			$lockInfo = self::callPrivateMethod('getCronLockInfo', TEST_MODULE_PREFIX);
 			$lockInfo['time'] = time() - $aLittleLessThanADay;
 			ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING, $lockInfo);
-			$assertConcurrentCallSkipped(ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+			//= External Module Long-Running Cron
+			$assertConcurrentCallSkipped(ExternalModules::tt("em_errors_100")); 
 		};
 
 		$childAction = function() use ($callCronMethod){
@@ -306,7 +323,9 @@ class ExternalModulesTest extends BaseTest
 		$callCronMethod(function(){
 			throw new Exception();
 		});
-		$this->assertSame(ExternalModules::CRON_EXCEPTION_EMAIL_SUBJECT, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+		//= External Module Exception in Cron Job
+		$emailSubject = ExternalModules::tt("em_errors_56"); 
+		$this->assertSame($emailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
 
 		$secondCronRan = false;
 		$callCronMethod(function() use (&$secondCronRan){
@@ -317,10 +336,12 @@ class ExternalModulesTest extends BaseTest
 
 	function testCheckForALongRunningCronJob()
 	{
-		$assertLongRunningCronEmailSent = function($expected, $lockTime){
+		//= External Module Long-Running Cron
+		$longRunningCronEmailSubject = ExternalModules::tt("em_errors_100"); 
+		$assertLongRunningCronEmailSent = function($expected, $lockTime) use ($longRunningCronEmailSubject){
 			ExternalModulesTest::$lastSendAdminEmailArgs = null;
 			self::callPrivateMethod('checkForALongRunningCronJob', TEST_MODULE_PREFIX, null, ['time' => $lockTime]);
-			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === ExternalModules::LONG_RUNNING_CRON_EMAIL_SUBJECT);
+			$this->assertSame($expected, ExternalModulesTest::$lastSendAdminEmailArgs[0] === $longRunningCronEmailSubject);
 		};
 
 		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
@@ -840,14 +861,14 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcaptest.vanderbilt.edu');
-		$assertToEquals(['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu']);
+		$assertToEquals(['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org']);
 
 		$this->setPrivateVariable('SERVER_NAME', 'redcap.vanderbilt.edu');
-		$expectedTo = ['mark.mcever@vanderbilt.edu', 'kyle.mcguffin@vanderbilt.edu', 'datacore@vanderbilt.edu'];
+		$expectedTo = ['mark.mcever@vumc.org', 'kyle.mcguffin@vumc.org', 'datacore@vumc.org'];
 		$assertToEquals($expectedTo);
 
 		// Assert that vanderbilt module author address is NOT included, since it's always going to be datacore anyway.
-		$assertToEquals($expectedTo, 'someone@vanderbilt.edu');
+		$assertToEquals($expectedTo, 'someone@vumc.org');
 
 		$otherDomain = 'other.edu';
 		$this->setPrivateVariable('SERVER_NAME', "redcap.$otherDomain");
@@ -1199,6 +1220,189 @@ class ExternalModulesTest extends BaseTest
 		$assert("false", 'column_name', []);
 	}
 
+	function testIsCompatibleWithREDCapPHP_minVersions(){
+		$versionTypes = [
+			'PHP' => PHP_VERSION,
+			'REDCap' => REDCAP_VERSION
+		];
+		
+		foreach($versionTypes as $versionType=>$systemVersion){
+			$settingKey = strtolower($versionType) . "-version-min";
+
+			$test = function($configMinVersion) use ($settingKey, $systemVersion){
+				$this->setConfig([
+					'compatibility' => [
+						$settingKey => $configMinVersion
+					]
+				]);
+	
+				$this->callPrivateMethod('isCompatibleWithREDCapPHP', TEST_MODULE_PREFIX, TEST_MODULE_VERSION);
+			};
+
+			$assertValid = function($configMinVersion) use ($settingKey, $test){
+				// Simply make sure the following call completes without an Exception.
+				$test($configMinVersion);
+			};
+	
+			$assertInvalid = function($configMinVersion) use ($settingKey, $test, $versionType){
+				$expectedMessage = "minimum required $versionType version";
+
+				$this->assertThrowsException(function() use ($configMinVersion, $test){
+					$test($configMinVersion);
+				}, $expectedMessage);
+			};
+	
+			list($major, $minor, $patch) = explode('.', $systemVersion);
+
+			$assertValid("$major.$minor.$patch");
+			$assertInvalid("$major.$minor." . ($patch+1));
+			$assertValid($major);
+			$assertValid($major-1);
+			$assertInvalid($major+1);
+		}
+	}
+
+	function testTranslateConfig()
+	{
+		$settingOneTranslationKey = 'setting_one_name';
+		$settingTwoTranslationKey = 'setting_two_name';
+		$settingOneTranslatedName =  'Establecer Uno';
+		$settingTwoTranslatedName =  'Establecer Two';
+
+		$this->spoofTranslation(TEST_MODULE_PREFIX, $settingOneTranslationKey, $settingOneTranslatedName);
+		$this->spoofTranslation(TEST_MODULE_PREFIX, $settingTwoTranslationKey, $settingTwoTranslatedName);
+
+		$config = [
+			'project-settings' => [
+				[
+					'key' => 'setting-one',
+					'name' => 'Setting One',
+					'tt_name' => $settingOneTranslationKey
+				],
+				[
+					'key' => 'sub-settings-key',
+					'type' => 'sub_settings',
+					'sub_settings' => [
+						[
+							'key' => 'setting-two',
+							'name' => 'Setting Two',
+							'tt_name' => $settingTwoTranslationKey
+						]
+					]
+				]
+			]
+		];
+
+		// callPrivateMethod() didn't work here in PHP 5.6 due to a quirk of passing parameters by references.
+		// There might be a way to fix it so we don't need the wordaround below.
+		$class = new \ReflectionClass($this->getReflectionClass());
+		$method = $class->getMethod('translateConfig');
+		$method->setAccessible(true);
+
+		$translatedConfig = $method->invokeArgs($instance, [&$config, TEST_MODULE_PREFIX]);
+		
+		// set expected changes
+		$config['project-settings'][0]['name'] = $settingOneTranslatedName;
+		$config['project-settings'][1]['sub_settings'][0]['name'] = $settingTwoTranslatedName;
+
+		$this->assertSame($translatedConfig, $config);
+	}
+
+	private function spoofTranslation($prefix, $key, $value)
+	{
+		global $lang;
+
+		if(!empty($prefix)){
+			$key = ExternalModules::constructLanguageKey($prefix, $key);
+		}
+
+		return $lang[$key] = $value;
+	}
+
+	function testTt_basic()
+	{
+		$key1 = 'key1';
+		$value = rand();
+		$this->spoofTranslation(null, $key1, $value);
+
+		$this->assertSame($value, ExternalModules::tt($key1));
+
+		$key2 = 'key2';
+
+		$this->assertSame(ExternalModules::getLanguageKeyNotDefinedMessage($key2, null), ExternalModules::tt($key2));
+	}
+
+	function testTt_allUsage()
+	{
+		$languageKeyCount = 0;
+
+		$this->processSniff('FindTTUsage.php', function($warning) use (&$languageKeyCount){
+			$languageKey = $warning['message'];
+
+			if(strpos($languageKey, 'em_') !== 0){
+				throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
+			}
+			
+			$expected = $GLOBALS['lang'][$languageKey];
+			$this->assertNotEmpty($expected, "Language key '$languageKey' was used but is not defined.");
+			$this->assertSame($expected, ExternalModules::tt($languageKey));
+
+			$languageKeyCount++;
+		});
+
+		$this->assertGreaterThan(150, $languageKeyCount);
+	}
+
+	private function processSniff($sniffFilename, $warningAction)
+	{
+		foreach($this->findAllPhpFiles() as $path){
+			// The following method of running PHPCS within a unit test was found here:
+			// https://payton.codes/2017/12/15/creating-sniffs-for-a-phpcs-standard/#writing-tests
+			
+			// The "Sniffs" dir must be named "Sniffs" or PHPCS will not register any sniffs inside it.
+			$sniffFiles = [__DIR__ . "/Sniffs/$sniffFilename"];
+			
+			$config = new \PHP_CodeSniffer\Config([
+				'standards' => [] // override the default standards so we don't try to sniff anything else
+			]);
+
+			$ruleset = new \PHP_CodeSniffer\Ruleset($config);
+			$ruleset->registerSniffs($sniffFiles, [], []);
+			$ruleset->populateTokenListeners();
+			$phpcsFile = new \PHP_CodeSniffer\Files\LocalFile($path, $ruleset, $config);
+			$phpcsFile->process();
+
+			foreach($phpcsFile->getWarnings() as $lineWarnings){
+				foreach($lineWarnings as $characterWarnings){
+					foreach($characterWarnings as $warning){
+						$warningAction($warning);
+					}
+				}
+			}
+		}
+	}
+
+	private function findAllPhpFiles()
+	{
+		$rootPath = __DIR__ . '/..';
+		$iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($rootPath));
+
+		$files = array(); 
+		foreach ($iterator as $file){
+			if(
+				strpos($file->getPathName(), "$rootPath/vendor") === 0
+				||
+				$file->getExtension() !== 'php'
+			){
+				continue;
+			}
+
+			$files[] = $file->getPathname();
+		}
+	
+		return $files;
+	}
+
 	function testQuery_noParameters(){
 		$value = (string)rand();
 		$result = ExternalModules::query("select $value");
@@ -1210,7 +1414,7 @@ class ExternalModulesTest extends BaseTest
 		$this->assertThrowsException(function(){
 			ob_start();
 			ExternalModules::query("select * from some_table_that_doesnt_exist");
-		}, ExternalModules::QUERY_EXCEPTION_MESSAGE);
+		}, ExternalModules::tt("em_errors_29"));
 
 		ob_end_clean();
 	}
