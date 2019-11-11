@@ -29,10 +29,13 @@ abstract class BaseTest extends TestCase
 {
 	protected $backupGlobals = FALSE;
 
-	private $testModuleInstance;
+	private static $testModuleInstance;
 
 	public static function setUpBeforeClass(){
 		ExternalModules::initialize();
+		
+		self::$testModuleInstance = new BaseTestExternalModule();
+		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 	}
 
 	protected function setUp(){
@@ -93,14 +96,7 @@ abstract class BaseTest extends TestCase
 
 	protected function getInstance()
 	{
-		if($this->testModuleInstance == null){
-			$instance = new BaseTestExternalModule();
-			$this->setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => $instance]]);
-
-			$this->testModuleInstance = $instance;
-		}
-
-		return $this->testModuleInstance;
+		return self::$testModuleInstance;
 	}
 
 	protected function setConfig($config)
