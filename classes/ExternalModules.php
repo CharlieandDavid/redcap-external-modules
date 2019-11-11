@@ -2146,12 +2146,16 @@ class ExternalModules
 			$parameterTypes[] = $mysqliType;
 		}
 
-		array_unshift($parameterValues, implode('', $parameterTypes));
+		$parameterValueReferences = [implode('', $parameterTypes)];
+		foreach($parameterValues as $i=>$value){
+			// bind_param and call_user_func_array require references
+			$parameterValueReferences[] = &$parameterValues[$i];
+		}
 		
 		global $rc_connection;
 		$statement = $rc_connection->prepare($sql);
 
-		if(!call_user_func_array([$statement, 'bind_param'], $parameterValues)){
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterValueReferences)){
 			//= Binding query parameters failed
 			throw new Exception(self::tt('em_errors_110'));
 		}
