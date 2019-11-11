@@ -4796,7 +4796,11 @@ class ExternalModules
 
 	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
 	{
-		$results = ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' and project_id = $pid");
+		$results = ExternalModules::query(
+			"select * from redcap_external_module_settings where `key` = ? and project_id = ?",
+			[ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $pid]
+		);
+		
 		while($row = db_fetch_assoc($results)){
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
 			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
