@@ -27,6 +27,8 @@ class ExternalModulesTest extends BaseTest
 
 	protected function setUp()
 	{
+		parent::setUp();
+
 		// Loading this dependency doesn't work at the top of this file.  Not sure why...
 		require_once __DIR__ . '/../vendor/squizlabs/php_codesniffer/autoload.php';
 	}
