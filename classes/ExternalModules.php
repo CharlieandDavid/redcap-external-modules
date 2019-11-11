@@ -4770,7 +4770,7 @@ class ExternalModules
 			return $value;
 		};
 
-		$result = self::query("select * from redcap_external_module_settings where project_id = $pid");
+		$result = self::query("select * from redcap_external_module_settings where project_id = ?", [$pid]);
 		$richTextSettingsByPrefix = [];
 		while($row = db_fetch_assoc($result)){
 			$prefix = self::getPrefixForID($row['external_module_id']);
