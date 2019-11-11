@@ -1692,8 +1692,8 @@ class ExternalModules
 						//= You don't have permission to save system settings! {0} 
 						throw new Exception(self::tt("em_errors_19", $errorMessageSuffix)); 
 					}
-			}
-			else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+				}
+				else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
 					//= You don't have permission to save project settings! {0}
 					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
 				}
