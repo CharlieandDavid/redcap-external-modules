@@ -4852,8 +4852,8 @@ class ExternalModules
 			return '';
 		}
 
-		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
-		$result = self::query($sql);
+		$sql = "select * from redcap_edocs_metadata where doc_id = ? and date_deleted_server is null";
+		$result = self::query($sql, [$edocId]);
 		$row = db_fetch_assoc($result);
 		if(!$row){
 			return '';
