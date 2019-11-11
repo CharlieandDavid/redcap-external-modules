@@ -26,7 +26,8 @@
 			{
 				"name": "Configuration Page",
 				"icon": "report",
-				"url": "configure.php"
+				"url": "configure.php",
+				"show-header-and-footer": true
 			}
 		]
 	},

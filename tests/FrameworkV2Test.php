@@ -1,23 +1,8 @@
 <?php
 namespace ExternalModules;
 
-require_once __DIR__ . '/../classes/framework/v2/Framework.php';
-
-class FrameworkV2Test extends BaseTest
+class FrameworkV2Test extends FrameworkBaseTest
 {
-	public function setUp(){
-		parent::setUp();
-
-		if(!$this->framework){
-			$this->framework = new FrameworkVersion2\Framework(new BaseTestExternalModule());
-		}
-	}
-
-	protected function getReflectionClass()
-	{
-		return $this->framework;
-	}
-
 	function testGetSubSettings_complexNesting()
 	{
 		$m = $this->getInstance();
