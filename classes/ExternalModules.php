@@ -4733,7 +4733,11 @@ class ExternalModules
 			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
 		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
-		");
+		", [
+			// Ideally we'd pass the parameters here instead of manually appending them to the query string.
+			// However, that doesn't work for combo insert/select statements in mysql.
+			// The integer casts in the calling function should safely protect against SQL injection in this case.
+		]);
 	}
 
 	// We recreate edocs when copying settings between projects so that edocs removed from
