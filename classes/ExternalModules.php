@@ -4931,7 +4931,7 @@ class ExternalModules
 		}
 
 		if(empty(ExternalModules::getUnsafeEDocReferences())){
-			self::query("insert into redcap_config values ('$fieldName', 1)");
+			self::query("insert into redcap_config values (?, ?)", [$fieldName, 1]);
 			return true;
 		}
 
