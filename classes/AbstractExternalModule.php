@@ -842,53 +842,53 @@ class AbstractExternalModule
 		return $dictionary[$fieldName]['field_label'];
 	}
 
-	public function query($sql){
-		return ExternalModules::query($sql);
+	public function query($sql, $parameters = null){
+		return ExternalModules::query($sql, $parameters);
 	}
 
 	public function createDAG($dagName){
-		$pid = db_escape(self::requireProjectId());
-		$dagName = db_escape($dagName);
-
-		$this->query("insert into redcap_data_access_groups (project_id, group_name) values ($pid, '$dagName')");
-
+		$this->query(
+			"insert into redcap_data_access_groups (project_id, group_name) values (?, ?)",
+			[self::requireProjectId(), $dagName]
+		);
 		return db_insert_id();
 	}
 
     public function deleteDAG($dagId){
-        $pid = db_escape(self::requireProjectId());
-        $dagId = db_escape($dagId);
-
         $this->deleteAllDAGRecords($dagId);
-        $this->deleteAllDAGUsers($dagId);
-        $this->query("DELETE FROM redcap_data_access_groups where project_id = $pid and group_id = $dagId");
+		$this->deleteAllDAGUsers($dagId);
+		
+        $this->query(
+			"DELETE FROM redcap_data_access_groups where project_id = ? and group_id = ?",
+			[self::requireProjectId(), $dagId]
+		);
     }
 
     private function deleteAllDAGRecords($dagId){
-        $pid = db_escape(self::requireProjectId());
-        $dagId = db_escape($dagId);
+		$pid = self::requireProjectId();
 
-        $records = $this->query("SELECT record FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+        $records = $this->query(
+			"SELECT record FROM redcap_data where project_id = ? and field_name = '__GROUPID__' and value = ?",
+			[$pid, $dagId]
+		);
+
         while ($row = db_fetch_assoc($records)){
             $record = db_escape($row['record']);
-            $this->query("DELETE FROM redcap_data where project_id = $pid and record = '".$record."'");
-        }
-        $this->query("DELETE FROM redcap_data where project_id = $pid and field_name = '__GROUPID__' and value = $dagId");
+            $this->query("DELETE FROM redcap_data where project_id = ? and record = ?", [$pid, $record]);
+		}
+		
+        $this->query("DELETE FROM redcap_data where project_id = ? and field_name = '__GROUPID__' and value = ?", [$pid, $dagId]);
     }
 
     private function deleteAllDAGUsers($dagId){
-        $pid = db_escape(self::requireProjectId());
-        $dagId = db_escape($dagId);
-
-        $this->query("DELETE FROM redcap_user_rights where project_id = $pid and group_id = $dagId");
+        $this->query("DELETE FROM redcap_user_rights where project_id = ? and group_id = ?", [self::requireProjectId(), $dagId]);
     }
 
 	public function renameDAG($dagId, $dagName){
-		$pid = db_escape(self::requireProjectId());
-		$dagId = db_escape($dagId);
-		$dagName = db_escape($dagName);
-
-		$this->query("update redcap_data_access_groups set group_name = '$dagName' where project_id = $pid and group_id = $dagId");
+		$this->query(
+			"update redcap_data_access_groups set group_name = ? where project_id = ? and group_id = ?",
+			[$dagName, self::requireProjectId(), $dagId]
+		);
 	}
 
 	public function setDAG($record, $dagId){
