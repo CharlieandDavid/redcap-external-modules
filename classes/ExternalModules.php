@@ -1667,10 +1667,11 @@ class ExternalModules
 		// That unfortunately doesn't work for the settings table since the total length of the appropriate key columns is longer than the maximum unique key length.
 		// Instead, we use GET_LOCK() and check the existing value before inserting/updating to prevent duplicates.
 		// This seems to work better than transactions since it has no risk of deadlock, and allows for limiting mutual exclusion to a per module and project basis (using the lock name).
-		$result = self::query("SELECT GET_LOCK('$lockName', 5)");
+		$result = self::query("SELECT GET_LOCK(?, ?)", [$lockName, 5]);
 		$row = $result->fetch_row();
 		$releaseLockSql = "SELECT RELEASE_LOCK('$lockName')";
-		if($row[0] !== '1'){
+
+		if($row[0] !== 1){
 			//= Lock acquisition timed out while setting a setting for module {0} and project {1}. This should not happen under normal circumstances. However, the following query may be used to manually release the lock if necessary: {2}
 			throw new Exception(self::tt("em_errors_17", 
 				$moduleDirectoryPrefix, 
