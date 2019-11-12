@@ -1669,18 +1669,17 @@ class ExternalModules
 		// This seems to work better than transactions since it has no risk of deadlock, and allows for limiting mutual exclusion to a per module and project basis (using the lock name).
 		$result = self::query("SELECT GET_LOCK(?, ?)", [$lockName, 5]);
 		$row = $result->fetch_row();
-		$releaseLockSql = "SELECT RELEASE_LOCK('$lockName')";
-
+		
 		if($row[0] !== 1){
 			//= Lock acquisition timed out while setting a setting for module {0} and project {1}. This should not happen under normal circumstances. However, the following query may be used to manually release the lock if necessary: {2}
 			throw new Exception(self::tt("em_errors_17", 
 				$moduleDirectoryPrefix, 
 				$projectId, 
-				$releaseLockSql)); 
+				"SELECT RELEASE_LOCK('$lockName')")); 
 		}
 
-		$releaseLock = function() use ($lockName, $releaseLockSql) {
-			ExternalModules::query($releaseLockSql);
+		$releaseLock = function() use ($lockName) {
+			ExternalModules::query("SELECT RELEASE_LOCK(?)", [$lockName]);
 		};
 
 		try{
