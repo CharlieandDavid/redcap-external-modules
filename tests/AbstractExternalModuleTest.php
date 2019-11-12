@@ -1178,4 +1178,26 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$this->assertSame($expected, $actual);
 	}
+
+	function testMultipleDAGMethods(){
+		$_GET['pid'] = TEST_SETTING_PID;
+
+		$getName = function($id){
+			$result = ExternalModules::query('select group_name from redcap_data_access_groups s where project_id = ? and group_id = ?', [TEST_SETTING_PID, $id]);
+			return $result->fetch_assoc()['group_name'];
+		};
+
+		$m = $this->getInstance();
+		$name = 'test dag ' . rand();
+		$id = $m->createDag($name);
+		
+		$this->assertSame($name, $getName($id));
+
+		$name .= '-2';
+		$m->renameDAG($id, $name);
+		$this->assertSame($name, $getName($id));
+
+		$m->deleteDAG($id);
+		$this->assertNull($getName($id));
+	}
 }
