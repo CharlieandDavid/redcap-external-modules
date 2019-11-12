@@ -3546,9 +3546,9 @@ class ExternalModules
 		# flag for deletion in the edocs database
 		$sql = "UPDATE `redcap_edocs_metadata`
 				SET `delete_date` = NOW()
-				WHERE doc_id = $edocId";
+				WHERE doc_id = ?";
 
-		self::query($sql);
+		self::query($sql, [$edocId]);
 	}
 	
 	// Display alert message in Control Center if any modules have updates in the REDCap Repo
