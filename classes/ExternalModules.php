@@ -2165,7 +2165,14 @@ class ExternalModules
 			throw new Exception(self::tt('em_errors_111'));
 		}
 		
-		return $statement->get_result();
+		$result = $statement->get_result();
+		if(!$result && empty(db_error())){
+			// There was no error, this is just a query type that doesn't return a result (like an UPDATE or DELETE).
+			// Return true like the regular query method would in this case.
+			return true;
+		}
+
+		return $result;
 	}
 
 	private static function errorLog($message)
@@ -3814,7 +3821,7 @@ class ExternalModules
 				// The directory was re-created AFTER deletion.
 				// This likely means a developer recreated the directory manually via git clone instead of using the REDCap Repo to download the module.
 				// We should remove this row from the module downloads table since this module is no longer managed via the REDCap Rep.
-				self::query("delete from redcap_external_modules_downloads where module_name = '$moduleFolderName'");
+				self::query("delete from redcap_external_modules_downloads where module_name = ?", [$moduleFolderName]);
 			}
 		}
 
