@@ -7,6 +7,7 @@ use ExternalModules\FrameworkVersion2;
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
 require_once __DIR__ . "/AbstractExternalModule.php";
+require_once __DIR__ . "/Query.php";
 
 if(PHP_SAPI == 'cli'){
 	// This is required for redcap when running on the command line (including unit testing).
@@ -1891,30 +1892,38 @@ class ExternalModules
 		return $settings;
 	}
 
+	static function createQuery()
+	{
+		return new Query();
+	}
+
 	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
 	{
-		$whereClauses = array();
+		$query = self::createQuery();
+		$query->add("
+			SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
+			FROM redcap_external_modules m
+			JOIN redcap_external_module_settings s
+				ON m.external_module_id = s.external_module_id
+			WHERE true
+		");
 
 		if (!empty($moduleDirectoryPrefixes)) {
-			$whereClauses[] = self::getSQLInClause('m.directory_prefix', $moduleDirectoryPrefixes);
+			$query->add('and')->addInClause('m.directory_prefix', $moduleDirectoryPrefixes);
 		}
 
 		if (!empty($projectIds)) {
-			$whereClauses[] = self::getSQLInClause('s.project_id', $projectIds);
+			$query->add('and')->addInClause('s.project_id', $projectIds);
 		}
 		else if($projectIds !== null) {
-			$whereClauses[] = self::getSQLInClause('s.project_id', ["NULL"]);
+			$query->add('and')->addInClause('s.project_id', ["NULL"]);
 		}
 
 		if (!empty($keys)) {
-			$whereClauses[] = self::getSQLInClause('s.key', $keys);
+			$query->add('and')->addInClause('s.key', $keys);
 		}
 
-		return self::query("SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
-							FROM redcap_external_modules m
-							JOIN redcap_external_module_settings s
-								ON m.external_module_id = s.external_module_id
-							WHERE " . implode(' AND ', $whereClauses));
+		return $query->execute();
 	}
 
 	static function getEnabledProjects($prefix)
@@ -2201,7 +2210,7 @@ class ExternalModules
 	}
 
 	# converts an IN array clause into SQL
-	public static function getSQLInClause($columnName, $array)
+	public static function getSQLInClause($columnName, $array, $preparedStatement = false)
 	{
 		if(!is_array($array)){
 			$array = array($array);
@@ -2215,6 +2224,7 @@ class ExternalModules
 
 		$valueListSql = "";
 		$nullSql = "";
+		$parameters = [];
 
 		foreach($array as $item){
 			$item = db_real_escape_string($item);
@@ -2227,7 +2237,15 @@ class ExternalModules
 					$valueListSql .= ', ';
 				}
 
-				$valueListSql .= "'$item'";
+				if($preparedStatement){
+					$parameters[] = $item;
+					$item = '?';
+				}
+				else{
+					$item = "'$item'";
+				}
+
+				$valueListSql .= $item;
 			}
 		}
 
@@ -2241,7 +2259,14 @@ class ExternalModules
 			$parts[] = $nullSql;
 		}
 
-		return "(" . implode(" OR ", $parts) . ")";
+		$sql = "(" . implode(" OR ", $parts) . ")";
+
+		if($preparedStatement){
+			return [$sql, $parameters];
+		}
+		else{
+			return $sql;
+		}
 	}
 
     /**
