@@ -2124,6 +2124,7 @@ class ExternalModules
 			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
+				'Parameters' => $parameterValues,
 				'DB Error' => db_error(),
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
