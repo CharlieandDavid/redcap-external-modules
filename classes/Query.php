@@ -3,10 +3,11 @@
 class Query{
     private $sql = '';
     private $parameters = [];
+    private $statement;
 
     function add($sql, $parameters = []){
         if(!is_array($parameters)){
-            $parameters = [];
+            $parameters = [$parameters];
         }
 
         $this->sql .= " $sql ";
@@ -21,6 +22,22 @@ class Query{
     }
 
     function execute(){
-        return ExternalModules::query($this->sql, $this->parameters);
+        return ExternalModules::query($this);
+    }
+
+    function getSQL(){
+        return $this->sql;
+    }
+
+    function getParameters(){
+        return $this->parameters;
+    }
+
+    function getStatement(){
+        return $this->statement;
+    }
+
+    function setStatement($statement){
+        $this->statement = $statement;
     }
 }

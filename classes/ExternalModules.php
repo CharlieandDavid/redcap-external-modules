@@ -2087,14 +2087,24 @@ class ExternalModules
 		return db_result($result, 0);
 	}
 
-	public static function query($sql, $parameterValues = null, $retriesLeft = 2)
+	public static function query($sql, $parameters = [], $retriesLeft = 2)
 	{
+		if($sql instanceof Query){
+			$query = $sql;
+			$sql = $query->getSQL();
+			$parameters = $query->getParameters();
+		}
+		else{
+			$query = self::createQuery();
+			$query->add($sql, $parameters);
+		}
+
 		try{
-			if($parameterValues){
-				$result = self::queryWithParameters($sql, $parameterValues);
+			if(empty($parameters)){
+				$result = db_query($sql);
 			}
 			else{
-				$result = db_query($sql);
+				$result = self::queryWithParameters($query);
 			}
 		
 			if($result == FALSE){
@@ -2109,7 +2119,7 @@ class ExternalModules
 					//= REDCap External Module Deadlocked Query
 					self::sendAdminEmail(self::tt('em_errors_107') . " - $prefix", $message, $prefix);
 		
-					$result = self::query($sql, $parameterValues, $retriesLeft-1);
+					$result = self::query($sql, $parameters, $retriesLeft-1);
 				}
 				else{
 					//= Query execution failed
@@ -2124,7 +2134,7 @@ class ExternalModules
 			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
-				'Parameters' => $parameterValues,
+				'Parameters' => $parameters,
 				'DB Error' => db_error(),
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
@@ -2141,10 +2151,12 @@ class ExternalModules
 		return $result;
 	}
 
-	private static function queryWithParameters($sql, $parameterValues)
+	private static function queryWithParameters($query)
 	{
+		$parameters = $query->getParameters();
+
 		$parameterTypes = [];
-		foreach($parameterValues as $value){
+		foreach($parameters as $value){
 			$phpType = gettype($value);
 			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
 			
@@ -2156,16 +2168,17 @@ class ExternalModules
 			$parameterTypes[] = $mysqliType;
 		}
 
-		$parameterValueReferences = [implode('', $parameterTypes)];
-		foreach($parameterValues as $i=>$value){
+		$parameterReferences = [implode('', $parameterTypes)];
+		foreach($parameters as $i=>$value){
 			// bind_param and call_user_func_array require references
-			$parameterValueReferences[] = &$parameterValues[$i];
+			$parameterReferences[] = &$parameters[$i];
 		}
 		
 		global $rc_connection;
-		$statement = $rc_connection->prepare($sql);
-
-		if(!call_user_func_array([$statement, 'bind_param'], $parameterValueReferences)){
+		$statement = $rc_connection->prepare($query->getSQL());
+		$query->setStatement($statement);
+		
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
 			//= Binding query parameters failed
 			throw new Exception(self::tt('em_errors_110'));
 		}
