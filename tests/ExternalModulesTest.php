@@ -180,13 +180,13 @@ class ExternalModulesTest extends BaseTest
 		$method = 'isTimeToRun';
 
 		$offsets = array(
-				0 => "assertTrue",
-				3600 => "assertFalse",
-				-3600 => "assertFalse",
-				60 => "assertFalse",
-				-60 => "assertFalse",
-				24 * 3600 => "assertTrue",
-				-24 * 3600 => "assertTrue",
+				"nul" => "assertTrue",
+				"addPT1H" => "assertFalse",
+				"subPT1H" => "assertFalse",
+				"addPT1M" => "assertFalse",
+				"subPT1M" => "assertFalse",
+				"addP1D" => "assertTrue",
+				"subP1D" => "assertTrue",
 				);
 		$defaultCron = array(
 					'cron_name' => 'test_name',
@@ -194,7 +194,7 @@ class ExternalModulesTest extends BaseTest
 					'method' => 'test_method',
 					);
 
-		foreach ($offsets as $offset => $validationMethod) {
+		foreach ($offsets as $displacement => $validationMethod) {
 			$currentTime = time();
 			if($currentTime%60 >= 59){
 				// We don't want the clock to turn over to the next minute in the middle of this test.
@@ -206,10 +206,16 @@ class ExternalModulesTest extends BaseTest
 			// Simulate the process starting now.
 			$_SERVER["REQUEST_TIME_FLOAT"] = microtime(true);
 
-			$time = $currentTime + $offset;
+			$func = substr($displacement, 0, 3);
+			$offset = substr($displacement, 3);
+
+			$datetime = new \DateTime();
+			if ($func != "nul") {
+				$datetime->$func(new \DateInterval($offset));
+			}
 			$cron = array(
-                			'cron_hour' => date("G", $time),
-                			'cron_minute' => date("i", $time),
+					'cron_hour' => $datetime->format("G"),
+					'cron_minute' => $datetime->format("i"),
 					);
 			$this->$validationMethod(self::callPrivateMethod($method, array_merge($defaultCron, $cron)));
 		}
@@ -217,7 +223,6 @@ class ExternalModulesTest extends BaseTest
 		# move forward one day => should fail on weekday
 		$datetime2 = new \DateTime();
 		$datetime2->add(new \DateInterval("P1D"));
-		$time2 = time() + 24 * 3600;
 		$cron2 = array(
 				'cron_hour' => $datetime2->format("G"),
 				'cron_minute' => $datetime2->format("i"),
@@ -1202,5 +1207,47 @@ class ExternalModulesTest extends BaseTest
 		$assert("column_name IN ('1') OR column_name IS NULL", 'column_name', [1, 'NULL']);
 		$assert("column_name\\' IN ('value\\'')", 'column_name\'', ['value\'']); // make sure quotes are escaped
 		$assert("false", 'column_name', []);
+	}
+
+	function testIsCompatibleWithREDCapPHP_minVersions(){
+		$versionTypes = [
+			'PHP' => PHP_VERSION,
+			'REDCap' => REDCAP_VERSION
+		];
+		
+		foreach($versionTypes as $versionType=>$systemVersion){
+			$settingKey = strtolower($versionType) . "-version-min";
+
+			$test = function($configMinVersion) use ($settingKey, $systemVersion){
+				$this->setConfig([
+					'compatibility' => [
+						$settingKey => $configMinVersion
+					]
+				]);
+	
+				$this->callPrivateMethod('isCompatibleWithREDCapPHP', TEST_MODULE_PREFIX, TEST_MODULE_VERSION);
+			};
+
+			$assertValid = function($configMinVersion) use ($settingKey, $test){
+				// Simply make sure the following call completes without an Exception.
+				$test($configMinVersion);
+			};
+	
+			$assertInvalid = function($configMinVersion) use ($settingKey, $test, $versionType){
+				$expectedMessage = "minimum required $versionType version";
+
+				$this->assertThrowsException(function() use ($configMinVersion, $test){
+					$test($configMinVersion);
+				}, $expectedMessage);
+			};
+	
+			list($major, $minor, $patch) = explode('.', $systemVersion);
+
+			$assertValid("$major.$minor.$patch");
+			$assertInvalid("$major.$minor." . ($patch+1));
+			$assertValid($major);
+			$assertValid($major-1);
+			$assertInvalid($major+1);
+		}
 	}
 }
