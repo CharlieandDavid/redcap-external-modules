@@ -41,7 +41,10 @@ $menu_id = 'projMenuExternalModules';
 					}
 				}
 				catch(\Exception $e){
-					ExternalModules::sendAdminEmail("An exception was thrown when generating links", $e->__toString(), $prefix);
+					ExternalModules::sendAdminEmail(
+						//= An exception was thrown when generating links
+						ExternalModules::tt("em_errors_77"), 
+						$e->__toString(), $prefix);
 				}
 			}
 			?>

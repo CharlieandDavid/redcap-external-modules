@@ -12,24 +12,47 @@ $(function(){
 		var row = $(event.target).closest('tr');
 		var title = row.find('td:eq(0)').text().trim();
 		var prefix = row.data('module');
-		var version = row.find('[name="version"]').val();		
-		simpleDialog("Do you wish to delete the module \"<b>"+title+"</b>\" (<b>"+prefix+"_"+version+"</b>)? "
-			+"Doing so will permanently remove the module's directory from the REDCap server.","DELETE MODULE?",null,null,null,"Cancel",function(){
+		var version = row.find('[name="version"]').val();	
+		
+		simpleDialog(
+			//= Do you wish to delete the module <b>{0}</b> (<b>{1}_{2}</b>)? Doing so will permanently remove the module's directory from the REDCap server.	
+			ExternalModules.$lang.tt('em_manage_64', title, prefix, version), 
+			//= DELETE MODULE?
+			ExternalModules.$lang.tt('em_manage_65'),
+			null, null, null, 
+			//= Cancel
+			ExternalModules.$lang.tt('em_manage_12'), 
+			function(){
 				showProgress(1);
 				$.post('ajax/delete-module.php', { module_dir: prefix+'_'+version },function(data){
 					showProgress(0,0);
 					if (data == '1') {
-						simpleDialog("An error occurred because the External Module directory could not be found on the REDCap web server.","ERROR");
+						simpleDialog(
+							//= An error occurred because the External Module directory could not be found on the REDCap web server.
+							ExternalModules.$lang.tt('em_manage_66'),
+							//= ERROR
+							ExternalModules.$lang.tt('em_manage_30'));
 					} else if (data == '0') {
-						simpleDialog("An error occurred because the External Module directory could not be deleted from the REDCap web server.","ERROR");
+						simpleDialog(
+							//= An error occurred because the External Module directory could not be deleted from the REDCap web server.
+							ExternalModules.$lang.tt('em_manage_67'),
+							//= ERROR
+							ExternalModules.$lang.tt('em_manage_30'));
 					} else {
 						$('#external-modules-disabled-modal').hide();
-						simpleDialog(data,"SUCCESS",null,null,function(){
-							window.location.reload();
-						},"Close");
+						simpleDialog(data, 
+							//= SUCCESS
+							ExternalModules.$lang.tt('em_manage_27'), 
+							null,null,function(){
+								window.location.reload();
+						}, 
+						//= Close
+						ExternalModules.$lang.tt('em_manage_68'));
 					}
 				});
-			},"Delete module");
+			}, 
+			//= Delete module
+			ExternalModules.$lang.tt('em_manage_63'));
 		return false;
 	});
 
@@ -55,7 +78,8 @@ $(function(){
 			}
 
 			var showErrorAlert = function(message){
-				var message = 'An error occurred while enabling the module: ' + message;
+				//= An error occurred while enabling the module:
+				var message = ExternalModules.$lang.tt('em_manage_69')+' '+message; 
 				console.log('AJAX Request Error:', message);
 				alert(message);
 				disabledModal.modal('hide');
@@ -111,20 +135,23 @@ $(function(){
 				}
 			});
 			if (permissionCount == 0) {
-				list.append("<li><i>None (no permissions requested)</i></li>");
+				list.append('<li><i>' + 
+					//= None (no permissions requested)
+					ExternalModules.$lang.tt('em_manage_70') + 
+					'</i></li>');
 			}
 
 			enableButton.off('click'); // disable any events attached from other modules
 			enableButton.click(function(){
-				enableButton.html('Enabling...');
+				//= Enabling... 
+				enableButton.html(ExternalModules.$lang.tt('em_manage_71')); 
 				enableModal.find('button').attr('disabled', true);
-
-				enableModule()
+				enableModule();
 			});
 			enableButton.show();
 			enableModal.modal('show');
 		} else {   // pid
-			enableModule()
+			enableModule();
 		}
 	});
 
