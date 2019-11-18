@@ -1222,6 +1222,21 @@ class ExternalModulesTest extends BaseTest
 		$assert("false", 'column_name', []);
 	}
 
+	function testGetSQLInClause_preparedStatements(){
+		$assert = function($expectedSql, $expectedParams, $columnName, $array){
+			list($actualSql, $actualParams) = ExternalModules::getSQLInClause($columnName, $array, true);
+			
+			$this->assertSame("($expectedSql)", $actualSql);
+			$this->assertSame($expectedParams, $actualParams);
+		};
+
+		$assert("column_name IN (?)", [1], 'column_name', 1);
+		$assert("column_name IN (?)", ['1'], 'column_name', '1');
+		$assert("column_name IN (?, ?)", [1, 2], 'column_name', [1, 2]);
+		$assert("column_name IN (?) OR column_name IS NULL", [1], 'column_name', [1, null]);
+		$assert("column_name IN (?)", ['NULL'], 'column_name', ['NULL']);
+	}
+
 	function testIsCompatibleWithREDCapPHP_minVersions(){
 		$versionTypes = [
 			'PHP' => PHP_VERSION,

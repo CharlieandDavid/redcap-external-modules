@@ -2234,6 +2234,15 @@ class ExternalModules
 			return '(false)';
 		}
 
+		// Prepared statements don't really have anything to do with this null handling,
+		// we just wanted to change it going forward and prepared statements were a good opportunity to do so.
+		if($preparedStatement){
+			$nullValue = null;
+		}
+		else{
+			$nullValue = 'NULL';
+		}
+
 		$columnName = db_real_escape_string($columnName);
 
 		$valueListSql = "";
@@ -2241,9 +2250,7 @@ class ExternalModules
 		$parameters = [];
 
 		foreach($array as $item){
-			$item = db_real_escape_string($item);
-
-			if($item == 'NULL'){
+			if($item === $nullValue){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
@@ -2256,6 +2263,7 @@ class ExternalModules
 					$item = '?';
 				}
 				else{
+					$item = db_real_escape_string($item);
 					$item = "'$item'";
 				}
 
