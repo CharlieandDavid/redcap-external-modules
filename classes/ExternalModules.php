@@ -1901,7 +1901,7 @@ class ExternalModules
 	{
 		$query = self::createQuery();
 		$query->add("
-			SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
+			SELECT directory_prefix, s.project_id, s.key, s.value, s.type
 			FROM redcap_external_modules m
 			JOIN redcap_external_module_settings s
 				ON m.external_module_id = s.external_module_id
