@@ -1151,8 +1151,7 @@ $(function(){
 			lengthOfFiles++;
 			formData.append(name, files[name]);   // filename agnostic
 		}
-		console.log(url);
-		console.log(formData);
+
 		if (lengthOfFiles > 0) {
 			// AJAX rather than $.post
 			$.ajax({
@@ -1163,7 +1162,6 @@ $(function(){
 				async: false,
 				type: 'POST',
 				success: function(returnData) {
-					// alert(JSON.stringify(returnData))
 					if (returnData.status != 'success') {
 						//= One or more of the files could not be saved.
 						alert(ExternalModules.$lang.tt('em_errors_95')+' '+JSON.stringify(returnData));

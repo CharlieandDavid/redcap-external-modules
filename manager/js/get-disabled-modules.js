@@ -59,7 +59,8 @@ $(function(){
 	disabledModal.find('.enable-button').click(function(event){
 		// Prevent form submission
 		event.preventDefault();
-
+		var myClass = $(this).attr('class');
+		var classArray = myClass.split(" ");
 		disabledModal.hide();
 
 		var row = $(event.target).closest('tr');
@@ -73,13 +74,16 @@ $(function(){
 
 		var enableModule = function(){
 			var url = 'ajax/enable-module.php'
+			if (classArray.includes('module-request')) {
+				url = 'ajax/send-email.php';
+			}
 			if (pid) {
 				url += '?pid=' + pid
 			}
 
 			var showErrorAlert = function(message){
 				//= An error occurred while enabling the module:
-				var message = ExternalModules.$lang.tt('em_manage_69')+' '+message; 
+				//var message = ExternalModules.$lang.tt('em_manage_69')+' '+message;
 				console.log('AJAX Request Error:', message);
 				alert(message);
 				disabledModal.modal('hide');
@@ -101,7 +105,14 @@ $(function(){
 					return
 				}
 
-				var errorMessage = jsonAjax['error_message']
+				var errorPrefix = '';
+				if (classArray.includes('module-request')) {
+					errorPrefix = ExternalModules.$lang.tt('em_manage_89')+' ';
+				}
+				else {
+					errorPrefix = ExternalModules.$lang.tt('em_manage_69')+' ';
+				}
+				var errorMessage = errorPrefix+jsonAjax['error_message']
 				if (errorMessage) {
 					if(pid){
 						showErrorAlert(errorMessage)

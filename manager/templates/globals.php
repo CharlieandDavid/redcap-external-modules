@@ -35,7 +35,9 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'globals.j
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'spin.js');
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min.js');
 ?>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/4.5.6/tinymce.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/tinymce/4.5.6/jquery.tinymce.min.js"></script>
 <link rel="stylesheet" type="text/css" href="<?php echo APP_PATH_CSS ?>select2.css">
 <script type="text/javascript" src="<?php echo APP_PATH_JS ?>select2.js"></script>
 
