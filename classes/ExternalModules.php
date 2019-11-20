@@ -1151,6 +1151,17 @@ class ExternalModules
 		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
+	static function sendBasicEmail($from,$to,$subject,$message) {
+        $email = new \Message();
+        $email->setFrom($from);
+        $email->setTo(implode(',', $to));
+        $email->setSubject($subject);
+
+        $message = str_replace("\n", "<br>", $message);
+        $email->setBody($message, true);
+
+        return $email->send();
+    }
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";

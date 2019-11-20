@@ -116,7 +116,15 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 						<?php require __DIR__ . '/../templates/module-table.php'; ?>
 					</td>
 					<td class="external-modules-action-buttons">
-						<?php if (SUPER_USER) { ?><button class='enable-button'>Enable</button><?php } ?>
+						<?php
+                            if (SUPER_USER) {
+                                ?><button class='enable-button'>Enable</button><?php
+                            }
+                            //else if(isVanderbilt()) {
+                            else {
+                                ?><button class='enable-button module-request'>Request Activation</button><?php
+                            }
+                        ?>
 					</td>
 				</tr>
 			<?php
@@ -155,6 +163,7 @@ ExternalModules::tt_transferToJSLanguageStore(
 		"em_manage_69",
 		"em_manage_70",
 		"em_manage_71",
+        "em_manage_89",
 	));
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); 
 ?>
