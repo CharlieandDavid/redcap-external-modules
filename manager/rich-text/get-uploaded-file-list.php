@@ -7,7 +7,8 @@ $prefix = $_GET['prefix'];
 $pid = @$_GET['pid'];
 
 if(!ExternalModules::hasProjectSettingSavePermission($prefix)){
-	throw new Exception('You do not have permission to get or set rich text files.');
+	//= You do not have permission to get or set rich text files.
+	throw new Exception(ExternalModules::tt("em_errors_98")); 
 }
 
 $files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
@@ -68,8 +69,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 </style>
 
 <?php ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'jquery.js'); ?>
-
-<button id="external-modules-rich-text-upload-button">Upload a file</button>
+<button id="external-modules-rich-text-upload-button">
+	<!--= Upload a file -->
+	<?=ExternalModules::tt("em_manage_83")?>
+</button>
 
 <table id="external-modules-rich-text-file-table">
 	<?php
@@ -82,7 +85,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 			<td>
 				<form method='POST' enctype='multipart/form-data'>
 					<input type="hidden" name="edoc-to-delete" value="<?=$edocId?>">
-					<button class="delete">Delete</button>
+					<button class="delete">
+						<!--= Delete -->
+						<?=ExternalModules::tt("em_manage_84")?>
+					</button>
 				</form>
 			</td>
 		</tr>
@@ -118,7 +124,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST'){
 		})
 
 		table.find('button.delete').click(function(){
-			return confirm('Are you sure you want to permanently delete this file?')
+			//= Are you sure you want to permanently delete this file?
+			return confirm(<?=ExternalModules::tt_js("em_manage_85")?>)
 		})
 	})
 </script>

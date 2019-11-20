@@ -34,7 +34,12 @@
 
 	"no-auth-pages": [
         "public-page"
-    ],
+	],
+	
+	"compatibility": {
+		"redcap-version-min": "8.0.0",
+		"php-version-min": "5.5.0"
+    },
 
 	"system-settings": [
 		{
