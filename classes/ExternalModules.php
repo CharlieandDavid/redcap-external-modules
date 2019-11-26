@@ -7,6 +7,7 @@ use ExternalModules\FrameworkVersion2;
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
 require_once __DIR__ . "/AbstractExternalModule.php";
+require_once __DIR__ . "/Query.php";
 
 if(PHP_SAPI == 'cli'){
 	// This is required for redcap when running on the command line (including unit testing).
@@ -1667,19 +1668,19 @@ class ExternalModules
 		// That unfortunately doesn't work for the settings table since the total length of the appropriate key columns is longer than the maximum unique key length.
 		// Instead, we use GET_LOCK() and check the existing value before inserting/updating to prevent duplicates.
 		// This seems to work better than transactions since it has no risk of deadlock, and allows for limiting mutual exclusion to a per module and project basis (using the lock name).
-		$result = self::query("SELECT GET_LOCK('$lockName', 5)");
+		$result = self::query("SELECT GET_LOCK(?, ?)", [$lockName, 5]);
 		$row = $result->fetch_row();
-		$releaseLockSql = "SELECT RELEASE_LOCK('$lockName')";
-		if($row[0] !== '1'){
+		
+		if($row[0] !== 1){
 			//= Lock acquisition timed out while setting a setting for module {0} and project {1}. This should not happen under normal circumstances. However, the following query may be used to manually release the lock if necessary: {2}
 			throw new Exception(self::tt("em_errors_17", 
 				$moduleDirectoryPrefix, 
 				$projectId, 
-				$releaseLockSql)); 
+				"SELECT RELEASE_LOCK('$lockName')")); 
 		}
 
-		$releaseLock = function() use ($lockName, $releaseLockSql) {
-			ExternalModules::query($releaseLockSql);
+		$releaseLock = function() use ($lockName) {
+			ExternalModules::query("SELECT RELEASE_LOCK(?)", [$lockName]);
 		};
 
 		try{
@@ -1692,8 +1693,8 @@ class ExternalModules
 						//= You don't have permission to save system settings! {0} 
 						throw new Exception(self::tt("em_errors_19", $errorMessageSuffix)); 
 					}
-			}
-			else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+				}
+				else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
 					//= You don't have permission to save project settings! {0}
 					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
 				}
@@ -1891,30 +1892,38 @@ class ExternalModules
 		return $settings;
 	}
 
+	static function createQuery()
+	{
+		return new Query();
+	}
+
 	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
 	{
-		$whereClauses = array();
+		$query = self::createQuery();
+		$query->add("
+			SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
+			FROM redcap_external_modules m
+			JOIN redcap_external_module_settings s
+				ON m.external_module_id = s.external_module_id
+			WHERE true
+		");
 
 		if (!empty($moduleDirectoryPrefixes)) {
-			$whereClauses[] = self::getSQLInClause('m.directory_prefix', $moduleDirectoryPrefixes);
+			$query->add('and')->addInClause('m.directory_prefix', $moduleDirectoryPrefixes);
 		}
 
 		if (!empty($projectIds)) {
-			$whereClauses[] = self::getSQLInClause('s.project_id', $projectIds);
+			$query->add('and')->addInClause('s.project_id', $projectIds);
 		}
 		else if($projectIds !== null) {
-			$whereClauses[] = self::getSQLInClause('s.project_id', ["NULL"]);
+			$query->add('and')->addInClause('s.project_id', ["NULL"]);
 		}
 
 		if (!empty($keys)) {
-			$whereClauses[] = self::getSQLInClause('s.key', $keys);
+			$query->add('and')->addInClause('s.key', $keys);
 		}
 
-		return self::query("SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
-							FROM redcap_external_modules m
-							JOIN redcap_external_module_settings s
-								ON m.external_module_id = s.external_module_id
-							WHERE " . implode(' AND ', $whereClauses));
+		return $query->execute();
 	}
 
 	static function getEnabledProjects($prefix)
@@ -1927,10 +1936,10 @@ class ExternalModules
 								ON m.external_module_id = s.external_module_id
 							JOIN redcap_projects p
 								ON s.project_id = p.project_id
-							WHERE m.directory_prefix = '$prefix'
+							WHERE m.directory_prefix = ?
 								and p.date_deleted IS NULL
-								and `key` = '" . self::KEY_ENABLED . "'
-								and value = 'true'");
+								and `key` = ?
+								and value = 'true'", [$prefix, self::KEY_ENABLED]);
 	}
 
 	# row contains the data type in field 'type' and the value in field 'value'
@@ -2043,7 +2052,7 @@ class ExternalModules
 
 		$id = @self::$idsByPrefix[$prefix];
 		if($id == null){
-			self::query("INSERT INTO redcap_external_modules (directory_prefix) VALUES ('$prefix')");
+			self::query("INSERT INTO redcap_external_modules (directory_prefix) VALUES (?)", [$prefix]);
 			$id = db_insert_id();
 			self::$idsByPrefix[$prefix] = $id;
 		}
@@ -2078,14 +2087,24 @@ class ExternalModules
 		return db_result($result, 0);
 	}
 
-	public static function query($sql, $parameterValues = null, $retriesLeft = 2)
+	public static function query($sql, $parameters = [], $retriesLeft = 2)
 	{
+		if($sql instanceof Query){
+			$query = $sql;
+			$sql = $query->getSQL();
+			$parameters = $query->getParameters();
+		}
+		else{
+			$query = self::createQuery();
+			$query->add($sql, $parameters);
+		}
+
 		try{
-			if($parameterValues){
-				$result = self::queryWithParameters($sql, $parameterValues);
+			if(empty($parameters)){
+				$result = db_query($sql);
 			}
 			else{
-				$result = db_query($sql);
+				$result = self::queryWithParameters($query);
 			}
 		
 			if($result == FALSE){
@@ -2100,7 +2119,7 @@ class ExternalModules
 					//= REDCap External Module Deadlocked Query
 					self::sendAdminEmail(self::tt('em_errors_107') . " - $prefix", $message, $prefix);
 		
-					$result = self::query($sql, $parameterValues, $retriesLeft-1);
+					$result = self::query($sql, $parameters, $retriesLeft-1);
 				}
 				else{
 					//= Query execution failed
@@ -2115,6 +2134,7 @@ class ExternalModules
 			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
+				'Parameters' => $parameters,
 				'DB Error' => db_error(),
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
@@ -2131,10 +2151,12 @@ class ExternalModules
 		return $result;
 	}
 
-	private static function queryWithParameters($sql, $parameterValues)
+	private static function queryWithParameters($query)
 	{
+		$parameters = $query->getParameters();
+
 		$parameterTypes = [];
-		foreach($parameterValues as $value){
+		foreach($parameters as $value){
 			$phpType = gettype($value);
 			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
 			
@@ -2146,16 +2168,17 @@ class ExternalModules
 			$parameterTypes[] = $mysqliType;
 		}
 
-		$parameterValueReferences = [implode('', $parameterTypes)];
-		foreach($parameterValues as $i=>$value){
+		$parameterReferences = [implode('', $parameterTypes)];
+		foreach($parameters as $i=>$value){
 			// bind_param and call_user_func_array require references
-			$parameterValueReferences[] = &$parameterValues[$i];
+			$parameterReferences[] = &$parameters[$i];
 		}
 		
 		global $rc_connection;
-		$statement = $rc_connection->prepare($sql);
-
-		if(!call_user_func_array([$statement, 'bind_param'], $parameterValueReferences)){
+		$statement = $rc_connection->prepare($query->getSQL());
+		$query->setStatement($statement);
+		
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
 			//= Binding query parameters failed
 			throw new Exception(self::tt('em_errors_110'));
 		}
@@ -2165,7 +2188,14 @@ class ExternalModules
 			throw new Exception(self::tt('em_errors_111'));
 		}
 		
-		return $statement->get_result();
+		$result = $statement->get_result();
+		if(!$result && empty(db_error())){
+			// There was no error, this is just a query type that doesn't return a result (like an UPDATE or DELETE).
+			// Return true like the regular query method would in this case.
+			return true;
+		}
+
+		return $result;
 	}
 
 	private static function errorLog($message)
@@ -2194,7 +2224,7 @@ class ExternalModules
 	}
 
 	# converts an IN array clause into SQL
-	public static function getSQLInClause($columnName, $array)
+	public static function getSQLInClause($columnName, $array, $preparedStatement = false)
 	{
 		if(!is_array($array)){
 			$array = array($array);
@@ -2208,6 +2238,7 @@ class ExternalModules
 
 		$valueListSql = "";
 		$nullSql = "";
+		$parameters = [];
 
 		foreach($array as $item){
 			$item = db_real_escape_string($item);
@@ -2220,7 +2251,15 @@ class ExternalModules
 					$valueListSql .= ', ';
 				}
 
-				$valueListSql .= "'$item'";
+				if($preparedStatement){
+					$parameters[] = $item;
+					$item = '?';
+				}
+				else{
+					$item = "'$item'";
+				}
+
+				$valueListSql .= $item;
 			}
 		}
 
@@ -2234,7 +2273,14 @@ class ExternalModules
 			$parts[] = $nullSql;
 		}
 
-		return "(" . implode(" OR ", $parts) . ")";
+		$sql = "(" . implode(" OR ", $parts) . ")";
+
+		if($preparedStatement){
+			return [$sql, $parameters];
+		}
+		else{
+			return $sql;
+		}
 	}
 
     /**
@@ -3074,9 +3120,9 @@ class ExternalModules
 
 				$sql = "SELECT role_id,role_name
 						FROM redcap_user_roles
-						WHERE project_id = '" . db_real_escape_string($pid) . "'
+						WHERE project_id = ?
 						ORDER BY role_id";
-				$result = self::query($sql);
+				$result = self::query($sql, [$pid]);
 
 				while ($row = db_fetch_assoc($result)) {
 						$choices[] = ['value' => $row['role_id'], 'name' => strip_tags(nl2br($row['role_name']))];
@@ -3089,10 +3135,10 @@ class ExternalModules
 
 				$sql = "SELECT ur.username,ui.user_firstname,ui.user_lastname
 						FROM redcap_user_rights ur, redcap_user_information ui
-						WHERE ur.project_id = '" . db_real_escape_string($pid) . "'
+						WHERE ur.project_id = ?
 								AND ui.username = ur.username
 						ORDER BY ui.ui_id";
-				$result = self::query($sql);
+				$result = self::query($sql, [$pid]);
 
 				while ($row = db_fetch_assoc($result)) {
 						$choices[] = ['value' => strtolower($row['username']), 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
@@ -3105,9 +3151,9 @@ class ExternalModules
 
 				$sql = "SELECT group_id,group_name
 						FROM redcap_data_access_groups
-						WHERE project_id = '" . db_real_escape_string($pid) . "'
+						WHERE project_id = ?
 						ORDER BY group_id";
-				$result = self::query($sql);
+				$result = self::query($sql, [$pid]);
 
 				while ($row = db_fetch_assoc($result)) {
 						$choices[] = ['value' => $row['group_id'], 'name' => strip_tags(nl2br($row['group_name']))];
@@ -3120,9 +3166,9 @@ class ExternalModules
 
 			$sql = "SELECT field_name,element_label
 					FROM redcap_metadata
-					WHERE project_id = '" . db_real_escape_string($pid) . "'
+					WHERE project_id = ?
 					ORDER BY field_order";
-			$result = self::query($sql);
+			$result = self::query($sql, [$pid]);
 
 			while ($row = db_fetch_assoc($result)) {
 				$row['element_label'] = strip_tags(nl2br($row['element_label']));
@@ -3139,9 +3185,9 @@ class ExternalModules
 
 			$sql = "SELECT DISTINCT form_name
 					FROM redcap_metadata
-					WHERE project_id = '" . db_real_escape_string($pid) . "'
+					WHERE project_id = ?
 					ORDER BY field_order";
-			$result = self::query($sql);
+			$result = self::query($sql, [$pid]);
 
 			while ($row = db_fetch_assoc($result)) {
 				$choices[] = ['value' => $row['form_name'], 'name' => strip_tags(nl2br($row['form_name']))];
@@ -3154,9 +3200,9 @@ class ExternalModules
 
 			$sql = "SELECT a.arm_id, a.arm_name
 					FROM redcap_events_arms a
-					WHERE a.project_id = '" . db_real_escape_string($pid) . "'
+					WHERE a.project_id = ?
 					ORDER BY a.arm_id";
-			$result = self::query($sql);
+			$result = self::query($sql, [$pid]);
 
 			while ($row = db_fetch_assoc($result)) {
 				$choices[] = ['value' => $row['arm_id'], 'name' => $row['arm_name']];
@@ -3169,10 +3215,10 @@ class ExternalModules
 
 			$sql = "SELECT e.event_id, e.descrip, a.arm_id, a.arm_name
 					FROM redcap_events_metadata e, redcap_events_arms a
-					WHERE a.project_id = '" . db_real_escape_string($pid) . "'
+					WHERE a.project_id = ?
 						AND e.arm_id = a.arm_id
 					ORDER BY e.event_id";
-			$result = self::query($sql);
+			$result = self::query($sql, [$pid]);
 
 			while ($row = db_fetch_assoc($result)) {
 				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".strip_tags(nl2br($row['arm_name']))." - Event: ".strip_tags(nl2br($row['descrip']))];
@@ -3539,9 +3585,9 @@ class ExternalModules
 		# flag for deletion in the edocs database
 		$sql = "UPDATE `redcap_edocs_metadata`
 				SET `delete_date` = NOW()
-				WHERE doc_id = $edocId";
+				WHERE doc_id = ?";
 
-		self::query($sql);
+		self::query($sql, [$edocId]);
 	}
 	
 	// Display alert message in Control Center if any modules have updates in the REDCap Repo
@@ -3814,7 +3860,7 @@ class ExternalModules
 				// The directory was re-created AFTER deletion.
 				// This likely means a developer recreated the directory manually via git clone instead of using the REDCap Repo to download the module.
 				// We should remove this row from the module downloads table since this module is no longer managed via the REDCap Rep.
-				self::query("delete from redcap_external_modules_downloads where module_name = '$moduleFolderName'");
+				self::query("delete from redcap_external_modules_downloads where module_name = ?", [$moduleFolderName]);
 			}
 		}
 
@@ -4733,7 +4779,11 @@ class ExternalModules
 			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
 		  	where project_id = $sourceProjectId and `key` != '" . ExternalModules::KEY_ENABLED . "'
-		");
+		", [
+			// Ideally we'd pass the parameters here instead of manually appending them to the query string.
+			// However, that doesn't work for combo insert/select statements in mysql.
+			// The integer casts in the calling function should safely protect against SQL injection in this case.
+		]);
 	}
 
 	// We recreate edocs when copying settings between projects so that edocs removed from
@@ -4770,7 +4820,7 @@ class ExternalModules
 			return $value;
 		};
 
-		$result = self::query("select * from redcap_external_module_settings where project_id = $pid");
+		$result = self::query("select * from redcap_external_module_settings where project_id = ?", [$pid]);
 		$richTextSettingsByPrefix = [];
 		while($row = db_fetch_assoc($result)){
 			$prefix = self::getPrefixForID($row['external_module_id']);
@@ -4796,7 +4846,11 @@ class ExternalModules
 
 	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
 	{
-		$results = ExternalModules::query("select * from redcap_external_module_settings where `key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "' and project_id = $pid");
+		$results = ExternalModules::query(
+			"select * from redcap_external_module_settings where `key` = ? and project_id = ?",
+			[ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $pid]
+		);
+		
 		while($row = db_fetch_assoc($results)){
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
 			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
@@ -4852,8 +4906,8 @@ class ExternalModules
 			return '';
 		}
 
-		$sql = "select * from redcap_edocs_metadata where doc_id = $edocId and date_deleted_server is null";
-		$result = self::query($sql);
+		$sql = "select * from redcap_edocs_metadata where doc_id = ? and date_deleted_server is null";
+		$result = self::query($sql, [$edocId]);
 		$row = db_fetch_assoc($result);
 		if(!$row){
 			return '';
@@ -4931,7 +4985,7 @@ class ExternalModules
 		}
 
 		if(empty(ExternalModules::getUnsafeEDocReferences())){
-			self::query("insert into redcap_config values ('$fieldName', 1)");
+			self::query("insert into redcap_config values (?, ?)", [$fieldName, 1]);
 			return true;
 		}
 

@@ -1,5 +1,13 @@
 <?php
 namespace ExternalModules;
+
+if(!defined('USERID')){
+	// Only execute this file for authenticated users.
+	// This was added because the redcap_module_import_page_top hook at the bottom of this file was causing error emails,
+	// but really nothing should be executing in this file in that case.
+	return;
+}
+
 set_include_path('.' . PATH_SEPARATOR . get_include_path());
 require_once dirname(__FILE__) . '/../../../classes/ExternalModules.php';
 
