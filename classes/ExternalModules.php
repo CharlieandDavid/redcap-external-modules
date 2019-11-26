@@ -4457,7 +4457,7 @@ class ExternalModules
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
 		self::setActiveModulePrefix($moduleDirectoryPrefix);
-		self::$hookBeingExecuted = "$cronName (cron)";
+		self::$hookBeingExecuted = $cronName;
 
 		$returnMessage = null;
 		try{
