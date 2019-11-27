@@ -2187,7 +2187,7 @@ class ExternalModules
 		}
 		
 		global $rc_connection;
-		$statement = $rc_connection->prepare($query->getSQL() . ' asldfjk');
+		$statement = $rc_connection->prepare($query->getSQL());
 		$query->setStatement($statement);
 		
 		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
