@@ -29,14 +29,6 @@
 				"url": "configure.php",
 				"show-header-and-footer": true
 			}
-		],
-		"control-center": [
-			{
-				"name": "Example Module Control Center Page",
-				"icon": "report",
-				"url": "control-center-page.php",
-				"show-header-and-footer": true
-			}
 		]
 	},
 

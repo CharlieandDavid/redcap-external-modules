@@ -49,7 +49,7 @@ $getLink = function () use ($prefix, $version, $page) {
 };
 
 $link = $getLink();
-$showHeaderAndFooter = @$link['show-header-and-footer'] === true;
+$showHeaderAndFooter = false;
 if($pid != null){
 	$enabledGlobal = ExternalModules::getSystemSetting($prefix,ExternalModules::KEY_ENABLED);
 	$enabled = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::KEY_ENABLED);
@@ -57,12 +57,7 @@ if($pid != null){
 		throw new Exception("The '$prefix' module is not currently enabled on project $pid.");
 	}
 
-	$headerPath = 'ProjectGeneral/header.php';
-	$footerPath = 'ProjectGeneral/footer.php';
-}
-else{
-	$headerPath = 'ControlCenter/header.php';
-	$footerPath = 'ControlCenter/footer.php';
+	$showHeaderAndFooter = @$link['show-header-and-footer'] === true;
 }
 
 $pageExtension = strtolower(pathinfo($page, PATHINFO_EXTENSION));
@@ -97,13 +92,13 @@ switch ($pageExtension) {
 		$checkLinkPermission($module);
 
 		if($showHeaderAndFooter){
-			require_once APP_PATH_DOCROOT . $headerPath;
+			require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 		}
 
         require_once $pagePath;
 
 		if($showHeaderAndFooter){
-			require_once APP_PATH_DOCROOT . $footerPath;
+			require_once APP_PATH_DOCROOT . 'ProjectGeneral/footer.php';
 		}
 
         break;
