@@ -2140,13 +2140,14 @@ class ExternalModules
 		}
 		catch(Exception $e){
 			$message = $e->getMessage();
+			$dbError = db_error();
 
 			// Log query details instead of showing them to the user to minimize risk of exploitation (it could appear on a public URL).
-			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
+			self::errorLog(self::tt("em_errors_29") . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
 				'Parameters' => $parameters,
-				'DB Error' => db_error(),
+				'DB Error' => $dbError,
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
 				'Line' => $e->getLine(),
@@ -2155,7 +2156,7 @@ class ExternalModules
 			
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
-			$message = self::tt("em_errors_29") . ". $message " . self::tt("em_errors_30");
+			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
 
@@ -2186,7 +2187,7 @@ class ExternalModules
 		}
 		
 		global $rc_connection;
-		$statement = $rc_connection->prepare($query->getSQL());
+		$statement = $rc_connection->prepare($query->getSQL() . ' asldfjk');
 		$query->setStatement($statement);
 		
 		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
