@@ -13,6 +13,29 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 		return ExternalModules::createQuery();
 	}
 
+	function getEventId($projectId = null){
+        if(!$projectId){
+            $projectId = $this->module->getProjectId();
+		}
+		
+		$sql = '
+			select event_id
+			from redcap_events_arms a
+			join redcap_events_metadata m
+				on m.arm_id = a.arm_id
+			where project_id = ?
+		';
+
+		$result = $this->query($sql, $projectId);
+		$row = $result->fetch_assoc();
+
+		if($result->fetch_assoc()){
+			throw new Exception("Multiple event IDs found from project $projectId");
+		}
+
+		return $row['event_id'];
+    }
+
 	function getRecordIdField($pid = null){
 		$pid = db_escape($this->requireProjectId($pid));
 
