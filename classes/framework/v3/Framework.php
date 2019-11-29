@@ -9,6 +9,10 @@ use SplFileInfo;
 
 class Framework extends \ExternalModules\FrameworkVersion2\Framework
 {
+	function createQuery(){
+		return ExternalModules::createQuery();
+	}
+
 	function getRecordIdField($pid = null){
 		$pid = db_escape($this->requireProjectId($pid));
 
