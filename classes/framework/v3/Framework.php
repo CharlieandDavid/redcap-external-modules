@@ -14,6 +14,11 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 	}
 
 	function getEventId($projectId = null){
+		$eventId = @$_GET['event_id'];
+		if($eventId){
+			return $eventId;
+		}
+
         if(!$projectId){
             $projectId = $this->module->getProjectId();
 		}
