@@ -83,7 +83,14 @@ $(function(){
 
 			var showErrorAlert = function(message){
 				//= An error occurred while enabling the module:
-				//var message = ExternalModules.$lang.tt('em_manage_69')+' '+message;
+				var errorPrefix = '';
+				if (classArray.includes('module-request')) {
+					errorPrefix = ExternalModules.$lang.tt('em_manage_89')+' ';
+				}
+				else {
+					errorPrefix = ExternalModules.$lang.tt('em_manage_69')+' ';
+				}
+				var message = errorPrefix+' '+message;
 				console.log('AJAX Request Error:', message);
 				alert(message);
 				disabledModal.modal('hide');
@@ -105,14 +112,7 @@ $(function(){
 					return
 				}
 
-				var errorPrefix = '';
-				if (classArray.includes('module-request')) {
-					errorPrefix = ExternalModules.$lang.tt('em_manage_89')+' ';
-				}
-				else {
-					errorPrefix = ExternalModules.$lang.tt('em_manage_69')+' ';
-				}
-				var errorMessage = errorPrefix+jsonAjax['error_message']
+				var errorMessage = jsonAjax['error_message']
 				if (errorMessage) {
 					if(pid){
 						showErrorAlert(errorMessage)
