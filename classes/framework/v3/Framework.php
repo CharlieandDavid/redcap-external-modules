@@ -9,6 +9,21 @@ use SplFileInfo;
 
 class Framework extends \ExternalModules\FrameworkVersion2\Framework
 {
+	function getRepeatingForms($eventId = null, $projectId = null){
+		if($eventId === null){
+			$eventId = $this->getEventId($projectId);
+		}
+
+        $result = $this->query('select * from redcap_events_repeat where event_id = ?', $eventId);
+
+        $forms = [];
+        while($row = $result->fetch_assoc()){
+            $forms[] = $row['form_name'];
+        }
+
+        return $forms;
+    }
+
 	function createQuery(){
 		return ExternalModules::createQuery();
 	}
