@@ -2191,6 +2191,11 @@ class ExternalModules
 		
 		global $rc_connection;
 		$statement = $rc_connection->prepare($query->getSQL());
+		if(!$statement){
+			//= Statement preparation failed
+			throw new Exception(self::tt('em_errors_113'));
+		}
+
 		$query->setStatement($statement);
 		
 		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
