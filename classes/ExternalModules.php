@@ -2143,6 +2143,7 @@ class ExternalModules
 			$dbError = db_error();
 
 			// Log query details instead of showing them to the user to minimize risk of exploitation (it could appear on a public URL).
+			//= An error occurred while running an External Module query
 			self::errorLog(self::tt("em_errors_29") . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
