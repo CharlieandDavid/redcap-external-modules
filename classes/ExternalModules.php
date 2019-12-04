@@ -34,6 +34,7 @@ class ExternalModules
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
+	const LANGUAGE_KEY_FOUND = 'Language Key Found';
 
 	//region Language feature-related constants
 
