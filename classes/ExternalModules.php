@@ -2157,6 +2157,7 @@ class ExternalModules
 			
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
+			// This message MUST contain the DB error for the 'MySQL server has gone away' check to work.
 			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
