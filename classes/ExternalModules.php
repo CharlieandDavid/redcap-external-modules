@@ -2503,8 +2503,10 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
+			// We originally started ignoring this MySQL error because it seems to trigger during normal database maintenance.
 			// If the database was actually down, we'd find out pretty darn quickly anyway.
+			// More recently we decided to keep this check in place because it happens many hundreds of times a day on DataEntry/search.php.
+			// We suspect something about the volume of search request causes PHP processed to get killed and/or DB connections to be closed.
 			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
 				//= REDCap External Modules threw the following exception:
 				$message = self::tt("em_errors_34") . "\n\n$e"; 
