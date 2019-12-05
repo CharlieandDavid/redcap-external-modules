@@ -3,6 +3,12 @@ namespace ExternalModules;
 
 class FrameworkV3Test extends FrameworkBaseTest
 {
+    function testGetEventId_urlParam(){
+        $_GET['pid'] = (string) TEST_SETTING_PID;
+        $_GET['event_id'] = rand();
+        $this->assertSame($_GET['event_id'], $this->framework->getEventId());
+    }
+
     function testGetSafePath(){
         $test = function($path, $root=null){
             // Get the actual value before manipulating the root for testing.

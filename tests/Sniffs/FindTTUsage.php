@@ -37,7 +37,7 @@ final class TestSniff implements Sniff
         }
 
         $languageKey = $this->stripQuotes($firstArg['content']);
-        $file->addFixableWarning($languageKey, $position, 'Language Key Found');
+        $file->addFixableWarning($languageKey, $position, \ExternalModules\ExternalModules::LANGUAGE_KEY_FOUND);
     }
 
      /**

@@ -1338,8 +1338,16 @@ class ExternalModulesTest extends BaseTest
 	{
 		$languageKeyCount = 0;
 
-		$this->processSniff('FindTTUsage.php', function($warning) use (&$languageKeyCount){
-			$languageKey = $warning['message'];
+		$this->processSniff('FindTTUsage.php', function($path, $warning) use (&$languageKeyCount){
+			$message = $warning['message'];
+
+			if(strpos($warning['source'], ExternalModules::LANGUAGE_KEY_FOUND) === false){
+				$warning['path'] = $path;
+				var_dump($warning);
+				throw new Exception($message);
+			}
+
+			$languageKey = $message;
 
 			if(strpos($languageKey, 'em_') !== 0){
 				throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
@@ -1377,7 +1385,7 @@ class ExternalModulesTest extends BaseTest
 			foreach($phpcsFile->getWarnings() as $lineWarnings){
 				foreach($lineWarnings as $characterWarnings){
 					foreach($characterWarnings as $warning){
-						$warningAction($warning);
+						$warningAction($path, $warning);
 					}
 				}
 			}

@@ -34,6 +34,7 @@ class ExternalModules
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
+	const LANGUAGE_KEY_FOUND = 'Language Key Found';
 
 	//region Language feature-related constants
 
@@ -1151,6 +1152,17 @@ class ExternalModules
 		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
+	static function sendBasicEmail($from,$to,$subject,$message) {
+        $email = new \Message();
+        $email->setFrom($from);
+        $email->setTo(implode(',', $to));
+        $email->setSubject($subject);
+
+        $message = str_replace("\n", "<br>", $message);
+        $email->setBody($message, true);
+
+        return $email->send();
+    }
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
@@ -1901,7 +1913,7 @@ class ExternalModules
 	{
 		$query = self::createQuery();
 		$query->add("
-			SELECT directory_prefix, s.project_id, s.project_id, s.key, s.value, s.type
+			SELECT directory_prefix, s.project_id, s.key, s.value, s.type
 			FROM redcap_external_modules m
 			JOIN redcap_external_module_settings s
 				ON m.external_module_id = s.external_module_id
@@ -2129,13 +2141,15 @@ class ExternalModules
 		}
 		catch(Exception $e){
 			$message = $e->getMessage();
+			$dbError = db_error();
 
 			// Log query details instead of showing them to the user to minimize risk of exploitation (it could appear on a public URL).
-			self::errorLog(self::tt("em_errors_29") . ': ' . json_encode([
+			//= An error occurred while running an External Module query
+			self::errorLog(self::tt("em_errors_29") . json_encode([
 				'Message' => $message,
 				'SQL' => $sql,
 				'Parameters' => $parameters,
-				'DB Error' => db_error(),
+				'DB Error' => $dbError,
 				'Code' => $e->getCode(),
 				'File' => $e->getFile(),
 				'Line' => $e->getLine(),
@@ -2144,7 +2158,8 @@ class ExternalModules
 			
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
-			$message = self::tt("em_errors_29") . ". $message " . self::tt("em_errors_30");
+			// This message MUST contain the DB error for the 'MySQL server has gone away' check to work.
+			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
 
@@ -2176,6 +2191,11 @@ class ExternalModules
 		
 		global $rc_connection;
 		$statement = $rc_connection->prepare($query->getSQL());
+		if(!$statement){
+			//= Statement preparation failed
+			throw new Exception(self::tt('em_errors_113'));
+		}
+
 		$query->setStatement($statement);
 		
 		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
@@ -2483,8 +2503,10 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			// We ignore this MySQL error because it seems to trigger during normal database maintenance.
+			// We originally started ignoring this MySQL error because it seems to trigger during normal database maintenance.
 			// If the database was actually down, we'd find out pretty darn quickly anyway.
+			// More recently we decided to keep this check in place because it happens many hundreds of times a day on DataEntry/search.php.
+			// We suspect something about the volume of search request causes PHP processed to get killed and/or DB connections to be closed.
 			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
 				//= REDCap External Modules threw the following exception:
 				$message = self::tt("em_errors_34") . "\n\n$e"; 
@@ -4503,7 +4525,7 @@ class ExternalModules
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
 		self::setActiveModulePrefix($moduleDirectoryPrefix);
-		self::$hookBeingExecuted = "$cronName (cron)";
+		self::$hookBeingExecuted = $cronName;
 
 		$returnMessage = null;
 		try{
