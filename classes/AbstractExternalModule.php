@@ -340,12 +340,12 @@ class AbstractExternalModule
 		else {
 			$sql = "SELECT p.participant_id, p.hash, r.return_code, r.response_id, COALESCE(p.participant_email,'NULL') as participant_email
 					FROM redcap_surveys_participants p, redcap_surveys_response r
-					WHERE p.survey_id = '$surveyId'
+					WHERE p.survey_id = ?
 						AND p.participant_id = r.participant_id
-						AND r.record = '".prep($recordId)."'
-						AND p.event_id = '".prep($eventId)."'";
+						AND r.record = ?
+						AND p.event_id = ?";
 
-			$q = db_query($sql);
+			$q = self::query($sql, [$surveyId, $recordId, $eventId]);
 			$rows = [];
 			while($row = db_fetch_assoc($q)) {
 				$rows[] = $row;
