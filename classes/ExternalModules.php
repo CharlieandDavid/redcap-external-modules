@@ -2162,8 +2162,8 @@ class ExternalModules
 				'File' => $e->getFile(),
 				'Line' => $e->getLine(),
 				'Trace' => $e->getTrace()
-			], JSON_PRETTY_PRINT));
-			
+			], JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR|JSON_PARTIAL_OUTPUT_ON_ERROR));
+
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
 			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
