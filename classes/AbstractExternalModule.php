@@ -330,13 +330,8 @@ class AbstractExternalModule
 		if($participantId == "" || $responseId == "") {
 			$hash = self::generateUniqueRandomSurveyHash();
 
-			## Insert a participant row for this survey
-			$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
-					VALUES ($surveyId,".prep($eventId).", '', null, '$hash')";
-
-			if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
-			$participantId = db_insert_id();
-
+			$participantId = ExternalModules::addSurveyParticipant($surveyId, $eventId, $hash);
+			
 			## Insert a response row for this survey and record
 			$returnCode = generateRandomHash();
 			$firstSubmitDate = "'".date('Y-m-d h:m:s')."'";
@@ -389,13 +384,7 @@ class AbstractExternalModule
 			## If this is only as a public survey link, generate new participant row
 			if($row["participant_email"] == "NULL") {
 				$hash = self::generateUniqueRandomSurveyHash();
-
-				## Insert a participant row for this survey
-				$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
-						VALUES ($surveyId,".prep($eventId).", '', null, '$hash')";
-
-				if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
-				$participantId = db_insert_id();
+				$participantId = ExternalModules::addSurveyParticipant($surveyId, $eventId, $hash);
 			}
 
 			// Set the response as incomplete in the response table, update participantId if on public survey link

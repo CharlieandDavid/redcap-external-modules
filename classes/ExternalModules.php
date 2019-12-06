@@ -5180,4 +5180,14 @@ class ExternalModules
 
 		return $testPIDs;
 	}
+	
+	public static function addSurveyParticipant($surveyId, $eventId, $hash){
+		## Insert a participant row for this survey
+		$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
+		VALUES (?, ?, '', null, ?)";
+
+		self::query($sql, [$surveyId, $eventId, $hash]);
+		
+		return db_insert_id();
+	}
 }
