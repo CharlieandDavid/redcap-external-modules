@@ -430,10 +430,9 @@ class AbstractExternalModule
 
 			$sql = "SELECT p.hash
 						FROM redcap_surveys_participants p
-						WHERE p.hash = '$hash'";
+						WHERE p.hash = ?";
 
-			$result = db_query($sql);
-
+			$result = self::query($sql, $hash);
 			$hashExists = (db_num_rows($result) > 0);
 		} while($hashExists);
 
