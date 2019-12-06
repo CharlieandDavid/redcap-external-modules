@@ -355,9 +355,8 @@ class AbstractExternalModule
 			if(db_num_rows($q) > 1) {
 				foreach($rows as $thisRow) {
 					if($thisRow["participant_email"] == "NULL" && $thisRow["response_id"] != "") {
-						$sql = "DELETE FROM redcap_surveys_response
-								WHERE response_id = ".$thisRow["response_id"];
-						if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
+						self::query("DELETE FROM redcap_surveys_response
+								WHERE response_id = ?", $thisRow["response_id"]);
 					}
 					else {
 						$row = $thisRow;
