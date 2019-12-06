@@ -2162,7 +2162,7 @@ class ExternalModules
 				'File' => $e->getFile(),
 				'Line' => $e->getLine(),
 				'Trace' => $e->getTrace()
-			], JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR|JSON_PARTIAL_OUTPUT_ON_ERROR));
+			], JSON_PRETTY_PRINT|JSON_PARTIAL_OUTPUT_ON_ERROR));
 
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
