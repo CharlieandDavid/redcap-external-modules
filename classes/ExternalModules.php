@@ -2140,6 +2140,14 @@ class ExternalModules
 			}
 		}
 		catch(Exception $e){
+			$errorCode = db_errno();
+			if($errorCode === 2006){
+				// REDCap most likely detected a duplicate request and killed it in System::killConcurrentRequests().
+				// Simply ignore this error and exit like REDCap does in db_query().
+				echo "A 'MySQL server has gone away' error was detected.  It is possible that there was an actual database issue, but it is more likely that REDCap detected this request as a duplicate and killed it.";
+				exit;
+			}
+
 			$message = $e->getMessage();
 			$dbError = db_error();
 
