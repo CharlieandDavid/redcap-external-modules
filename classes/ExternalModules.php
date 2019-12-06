@@ -5190,4 +5190,14 @@ class ExternalModules
 		
 		return db_insert_id();
 	}
+
+	public static function addSurveyResponse($participantId, $recordId, $returnCode){
+		$sql = "INSERT INTO redcap_surveys_response (participant_id, record, first_submit_time, return_code)
+					VALUES (?, ?, ?, ?)";
+
+		$firstSubmitDate = "'".date('Y-m-d h:m:s')."'";
+		self::query($sql, [$participantId, $recordId, $firstSubmitDate, $returnCode]);
+		
+		return db_insert_id();
+	}
 }
