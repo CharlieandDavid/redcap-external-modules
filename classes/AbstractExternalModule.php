@@ -381,16 +381,22 @@ class AbstractExternalModule
 			}
 
 			// Set the response as incomplete in the response table, update participantId if on public survey link
-			$sql = "UPDATE redcap_surveys_participants p, redcap_surveys_response r
+			$q = $this->framework->createQuery();
+			$q->add("UPDATE redcap_surveys_participants p, redcap_surveys_response r
 					SET r.completion_time = null,
 						r.first_submit_time = '".date('Y-m-d h:m:s')."',
-						r.return_code = '".prep($returnCode)."'".
-						($participantId == "" ? "" : ", r.participant_id = '$participantId'")."
-					WHERE p.survey_id = $surveyId
-						AND p.event_id = ".prep($eventId)."
+						r.return_code = ?", $returnCode);
+
+			if($participantId != ""){
+				$q->add(", r.participant_id = ?", $participantId);
+			}
+
+			$q->add("WHERE p.survey_id = ?
+						AND p.event_id = ?
 						AND r.participant_id = p.participant_id
-						AND r.record = '".prep($recordId)."'";
-			db_query($sql);
+						AND r.record = ?", [$surveyId, $eventId, $recordId]);
+			
+			$q->execute();
 		}
 
 		// Set the response as incomplete in the data table
