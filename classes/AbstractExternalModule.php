@@ -402,12 +402,12 @@ class AbstractExternalModule
 		// Set the response as incomplete in the data table
 		$sql = "UPDATE redcap_data
 				SET value = '0'
-				WHERE project_id = ".prep($projectId)."
-					AND record = '".prep($recordId)."'
-					AND event_id = ".prep($eventId)."
-					AND field_name = '{$surveyFormName}_complete'";
+				WHERE project_id = ?
+					AND record = ?
+					AND event_id = ?
+					AND field_name = CONCAT(?, '_complete')";
 
-		$q = db_query($sql);
+		$q = self::query($sql, [$projectId, $recordId, $eventId, $surveyFormName]);
 		// Log the event (if value changed)
 		if ($q && db_affected_rows() > 0) {
 			if(function_exists("log_event")) {
