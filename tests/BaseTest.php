@@ -22,8 +22,10 @@ const TEST_MODULE_VERSION = 'v1.0.0';
 const TEST_LOG_MESSAGE = 'This is a unit test log message';
 const TEST_SETTING_KEY = 'unit-test-setting-key';
 const FILE_SETTING_KEY = 'unit-test-file-setting-key';
-const TEST_SETTING_PID = 1;
-const TEST_SETTING_PID_2 = 2;
+
+$testPIDs = ExternalModules::getTestPIDs();
+define('TEST_SETTING_PID', $testPIDs[0]);
+define('TEST_SETTING_PID_2', $testPIDs[1]);
 
 abstract class BaseTest extends TestCase
 {

@@ -5168,4 +5168,16 @@ class ExternalModules
 		}
 		return array_values($finalVersion);
 	}
+
+	public static function getTestPIDs(){
+		$fieldName = 'external_modules_test_pids';
+		$r = self::query('select * from redcap_config where field_name = ?', $fieldName);
+		$testPIDs = explode(',', @$r->fetch_assoc()['value']);
+
+		if(count($testPIDs) !== 2){
+			throw new Exception("In order to run external module tests on this system, you must create two projects dedicated to testing that the framework can use.  One you have done so, you must specify these two project IDs in the config table separated by a comma by running a query like the following (but with your project IDs): \n\ninsert into redcap_config values ('$fieldName', '123,456')\n\n");
+		}
+
+		return $testPIDs;
+	}
 }
