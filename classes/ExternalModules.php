@@ -2140,6 +2140,14 @@ class ExternalModules
 			}
 		}
 		catch(Exception $e){
+			$errorCode = db_errno();
+			if($errorCode === 2006){
+				// REDCap most likely detected a duplicate request and killed it in System::killConcurrentRequests().
+				// Simply ignore this error and exit like REDCap does in db_query().
+				echo "A 'MySQL server has gone away' error was detected.  It is possible that there was an actual database issue, but it is more likely that REDCap detected this request as a duplicate and killed it.";
+				exit;
+			}
+
 			$message = $e->getMessage();
 			$dbError = db_error();
 
@@ -2158,7 +2166,6 @@ class ExternalModules
 			
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
-			// This message MUST contain the DB error for the 'MySQL server has gone away' check to work.
 			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
@@ -2503,19 +2510,13 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
-			// We originally started ignoring this MySQL error because it seems to trigger during normal database maintenance.
-			// If the database was actually down, we'd find out pretty darn quickly anyway.
-			// More recently we decided to keep this check in place because it happens many hundreds of times a day on DataEntry/search.php.
-			// We suspect something about the volume of search request causes PHP processed to get killed and/or DB connections to be closed.
-			if(strpos($e->getMessage(), 'MySQL server has gone away') == false){
-				//= REDCap External Modules threw the following exception:
-				$message = self::tt("em_errors_34") . "\n\n$e"; 
-				error_log($message);
-				ExternalModules::sendAdminEmail(
-					//= REDCap External Module Exception
-					self::tt("em_errors_35"), 
-					$message, $prefix);
-			}
+			//= REDCap External Modules threw the following exception:
+			$message = self::tt("em_errors_34") . "\n\n$e";
+			error_log($message);
+			ExternalModules::sendAdminEmail(
+				//= REDCap External Module Exception
+				self::tt("em_errors_35"),
+				$message, $prefix);
 		}
 
         // As this is currently written, any function that returns a value cannot also exit.
