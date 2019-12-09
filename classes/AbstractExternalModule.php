@@ -438,14 +438,18 @@ class AbstractExternalModule
 	}
 
 	public function getProjectAndRecordFromHashes($surveyHash, $returnCode) {
-		$sql = "SELECT s.project_id as projectId, r.record as recordId, s.form_name as surveyForm, p.event_id as eventId
+		$sql = "SELECT
+					CAST(s.project_id as CHAR) as projectId,
+					r.record as recordId,
+					s.form_name as surveyForm,
+					CAST(p.event_id as CHAR) as eventId
 				FROM redcap_surveys_participants p, redcap_surveys_response r, redcap_surveys s
-				WHERE p.hash = '".prep($surveyHash)."'
+				WHERE p.hash = ?
 					AND p.survey_id = s.survey_id
 					AND p.participant_id = r.participant_id
-					AND r.return_code = '".prep($returnCode)."'";
+					AND r.return_code = ?";
 
-		$q = db_query($sql);
+		$q = self::query($sql, [$surveyHash, $returnCode]);
 
 		$row = db_fetch_assoc($q);
 
