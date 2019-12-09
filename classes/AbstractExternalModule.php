@@ -418,8 +418,6 @@ class AbstractExternalModule
 			}
 		}
 
-		@db_query("COMMIT");
-
 		return array("hash" => $hash, "return_code" => $returnCode);
 	}
 
