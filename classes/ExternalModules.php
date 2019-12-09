@@ -2145,6 +2145,10 @@ class ExternalModules
 				// REDCap most likely detected a duplicate request and killed it in System::killConcurrentRequests().
 				// Simply ignore this error and exit like REDCap does in db_query().
 				echo "A 'MySQL server has gone away' error was detected.  It is possible that there was an actual database issue, but it is more likely that REDCap detected this request as a duplicate and killed it.";
+
+				// Unset the active module prefix so the shutdown function error handling does not trigger.
+				self::setActiveModulePrefix(null);
+
 				exit;
 			}
 
