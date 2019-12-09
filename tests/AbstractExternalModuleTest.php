@@ -1212,6 +1212,7 @@ class AbstractExternalModuleTest extends BaseTest
 				AND p.participant_id = r.participant_id
 				and return_code is not null
 			ORDER BY p.participant_id DESC
+			LIMIT 1
 		");
 
 		$expected = $result->fetch_assoc();
