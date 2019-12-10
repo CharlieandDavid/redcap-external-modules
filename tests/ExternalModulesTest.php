@@ -1508,5 +1508,10 @@ class ExternalModulesTest extends BaseTest
 		$assert([ExternalModules::SYSTEM_SETTING_PROJECT_ID, 1], true, true);
 		$assert([1], true, false);
 		$assert(1, true, false);
+
+		// I'm not sure if these cases are actually ever used.
+		// If they are, perhaps they shouldn't be.
+		$assert('', false, true);
+		$assert(0, false, true);
 	}
 }
