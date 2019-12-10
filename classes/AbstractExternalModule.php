@@ -338,7 +338,7 @@ class AbstractExternalModule
 		}
 		## Reset response status if it already exists
 		else {
-			$sql = "SELECT CAST(p.participant_id as CHAR), p.hash, r.return_code, CAST(r.response_id as CHAR), COALESCE(p.participant_email,'NULL') as participant_email
+			$sql = "SELECT CAST(p.participant_id as CHAR) as participant_id, p.hash, r.return_code, CAST(r.response_id as CHAR) as response_id, COALESCE(p.participant_email,'NULL') as participant_email
 					FROM redcap_surveys_participants p, redcap_surveys_response r
 					WHERE p.survey_id = ?
 						AND p.participant_id = r.participant_id
