@@ -3145,7 +3145,7 @@ class ExternalModules
 		if ($configRow['type'] == 'user-role-list') {
 				$choices = [];
 
-				$sql = "SELECT role_id,role_name
+				$sql = "SELECT CAST(role_id as CHAR) as role_id,role_name
 						FROM redcap_user_roles
 						WHERE project_id = ?
 						ORDER BY role_id";
