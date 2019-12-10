@@ -381,7 +381,7 @@ class AbstractExternalModule
 			}
 
 			// Set the response as incomplete in the response table, update participantId if on public survey link
-			$q = $this->framework->createQuery();
+			$q = ExternalModules::createQuery();
 			$q->add("UPDATE redcap_surveys_participants p, redcap_surveys_response r
 					SET r.completion_time = null,
 						r.first_submit_time = '".date('Y-m-d h:m:s')."',
