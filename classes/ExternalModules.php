@@ -4954,6 +4954,10 @@ class ExternalModules
 			return '';
 		}
 
+		foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $columnName){
+			$row[$columnName] = (string) $row[$columnName];
+		}
+
 		$oldPid = $row['project_id'];
 		if($oldPid === $pid){
 			// This edoc is already associated with this project.  No need to recreate it.
