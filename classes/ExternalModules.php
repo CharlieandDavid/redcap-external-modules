@@ -1909,7 +1909,7 @@ class ExternalModules
 		return new Query();
 	}
 
-	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
+	static function getSettingsQuery($moduleDirectoryPrefixes, $projectIds, $keys = array())
 	{
 		$query = self::createQuery();
 		$query->add("
@@ -1935,6 +1935,12 @@ class ExternalModules
 			$query->add('and')->addInClause('s.key', $keys);
 		}
 
+		return $query;
+	}
+
+	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
+	{
+		$query = self::getSettingsQuery($moduleDirectoryPrefixes, $projectIds, $keys);
 		return $query->execute();
 	}
 

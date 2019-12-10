@@ -1492,4 +1492,21 @@ class ExternalModulesTest extends BaseTest
 		// The following delete cascades and deletes the redcap_surveys_response row as well.
 		ExternalModules::query('delete from redcap_surveys_participants where participant_id = ?', $participantId);
 	}
+
+	function testGetSettingsQuery_projectIds(){
+		$assert = function($projectIds, $hasInClause, $hasNullClause){
+			$query = ExternalModules::getSettingsQuery(null, $projectIds);
+			$sql = $query->getSQL();
+			
+			$this->assertSame($hasInClause, strpos($sql, 'project_id IN ') !== false);
+			$this->assertSame($hasNullClause, strpos($sql, 'project_id IS NULL') !== false);
+		};
+		
+		$assert(null, false, false);
+		$assert(ExternalModules::SYSTEM_SETTING_PROJECT_ID, false, true);
+		$assert([ExternalModules::SYSTEM_SETTING_PROJECT_ID], false, true);
+		$assert([ExternalModules::SYSTEM_SETTING_PROJECT_ID, 1], true, true);
+		$assert([1], true, false);
+		$assert(1, true, false);
+	}
 }
