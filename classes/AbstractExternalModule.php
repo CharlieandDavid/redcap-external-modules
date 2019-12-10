@@ -407,9 +407,12 @@ class AbstractExternalModule
 					AND event_id = ?
 					AND field_name = CONCAT(?, '_complete')";
 
-		$q = self::query($sql, [$projectId, $recordId, $eventId, $surveyFormName]);
+		$q = ExternalModules::createQuery();
+		$q->add($sql, [$projectId, $recordId, $eventId, $surveyFormName]);
+		$r = $q->execute();
+
 		// Log the event (if value changed)
-		if ($q && db_affected_rows() > 0) {
+		if ($r && $q->getStatement()->affected_rows > 0) {
 			if(function_exists("log_event")) {
 				\log_event($sql,"redcap_data","UPDATE",$recordId,"{$surveyFormName}_complete = '0'","Update record");
 			}
