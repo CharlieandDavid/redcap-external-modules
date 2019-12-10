@@ -29,7 +29,11 @@ use \RecursiveIteratorIterator;
 
 class ExternalModules
 {
+	// Mark has twice started refactoring to use actual null values so that the following placeholder string is unnecessary.
+	// It would be a large & risky change that affects most get & set settings methods.
+	// It's do-able, but it would be time consuming, and we'd have to be very careful to test dozens of edge cases.
 	const SYSTEM_SETTING_PROJECT_ID = 'NULL';
+
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
@@ -1924,11 +1928,26 @@ class ExternalModules
 			$query->add('and')->addInClause('m.directory_prefix', $moduleDirectoryPrefixes);
 		}
 
-		if (!empty($projectIds)) {
-			$query->add('and')->addInClause('s.project_id', $projectIds);
-		}
-		else if($projectIds !== null) {
-			$query->add('and')->addInClause('s.project_id', ["NULL"]);
+		if($projectIds !== null){
+			if(!is_array($projectIds)){
+				if(empty($projectIds)){
+					// This probabaly shouldn't be a valid use case, but it's easier to add the following line
+					// than verify whether it's actually used anywhere.
+					$projectIds = self::SYSTEM_SETTING_PROJECT_ID;
+				}
+
+				$projectIds = [$projectIds];
+			}
+
+			if (!empty($projectIds)) {
+				foreach($projectIds as &$projectId){
+					if($projectId === self::SYSTEM_SETTING_PROJECT_ID){
+						$projectId = null;
+					}
+				}
+	
+				$query->add('and')->addInClause('s.project_id', $projectIds);
+			}
 		}
 
 		if (!empty($keys)) {
@@ -2271,6 +2290,15 @@ class ExternalModules
 			return '(false)';
 		}
 
+		// Prepared statements don't really have anything to do with this null handling,
+		// we just wanted to change it going forward and prepared statements were a good opportunity to do so.
+		if($preparedStatement){
+			$nullValue = null;
+		}
+		else{
+			$nullValue = 'NULL';
+		}
+
 		$columnName = db_real_escape_string($columnName);
 
 		$valueListSql = "";
@@ -2278,9 +2306,7 @@ class ExternalModules
 		$parameters = [];
 
 		foreach($array as $item){
-			$item = db_real_escape_string($item);
-
-			if($item == 'NULL'){
+			if($item === $nullValue){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
@@ -2293,6 +2319,7 @@ class ExternalModules
 					$item = '?';
 				}
 				else{
+					$item = db_real_escape_string($item);
 					$item = "'$item'";
 				}
 
