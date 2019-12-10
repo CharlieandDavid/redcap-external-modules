@@ -3225,7 +3225,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'arm-list') {
 			$choices = [];
 
-			$sql = "SELECT a.arm_id, a.arm_name
+			$sql = "SELECT CAST(a.arm_id as CHAR) as arm_id, a.arm_name
 					FROM redcap_events_arms a
 					WHERE a.project_id = ?
 					ORDER BY a.arm_id";
