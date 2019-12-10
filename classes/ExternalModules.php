@@ -3240,7 +3240,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'event-list') {
 			$choices = [];
 
-			$sql = "SELECT e.event_id, e.descrip, a.arm_id, a.arm_name
+			$sql = "SELECT CAST(e.event_id as CHAR) as event_id, e.descrip, CAST(a.arm_id as CHAR) as arm_id, a.arm_name
 					FROM redcap_events_metadata e, redcap_events_arms a
 					WHERE a.project_id = ?
 						AND e.arm_id = a.arm_id
