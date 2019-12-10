@@ -3176,7 +3176,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'dag-list') {
 				$choices = [];
 
-				$sql = "SELECT group_id,group_name
+				$sql = "SELECT CAST(group_id as CHAR) as group_id,group_name
 						FROM redcap_data_access_groups
 						WHERE project_id = ?
 						ORDER BY group_id";
