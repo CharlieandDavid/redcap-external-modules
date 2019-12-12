@@ -120,8 +120,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
                             if (SUPER_USER) {
                                 ?><button class='enable-button'>Enable</button><?php
                             }
-                            //else if(isVanderbilt()) {
-                            else {
+                            else if(false) {
                                 ?><button class='enable-button module-request'>Request Activation</button><?php
                             }
                         ?>
