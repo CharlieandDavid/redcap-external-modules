@@ -1229,4 +1229,12 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->assertSame($expected[$fieldName], $actual[$fieldName]);
 		}
 	}
+
+	function testGetProjectDetails(){
+		$m = $this->getInstance();
+		$details = $m->getProjectDetails(TEST_SETTING_PID);
+
+		$this->assertSame(TEST_SETTING_PID, $details['project_id']);
+		$this->assertGreaterThan(100, count($details));
+	}
 }

@@ -585,11 +585,19 @@ class AbstractExternalModule
 	public function getProjectDetails($projectId) {
 		$sql = "SELECT *
 				FROM redcap_projects
-				WHERE project_id = '".prep($projectId)."'";
+				WHERE project_id = ?";
 
-		$q = db_query($sql);
+		$q = ExternalModules::query($sql, $projectId);
 
-		return db_fetch_assoc($q);
+		$row = db_fetch_assoc($q);
+
+		foreach($row as $key=>$value){
+			if($value !== null){
+				$row[$key] = (string) $value;
+			}
+		}
+		
+		return $row;
 	}
 
 	public function getMetadata($projectId,$forms = NULL) {
