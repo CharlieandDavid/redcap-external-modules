@@ -255,6 +255,10 @@ abstract class BaseTest extends TestCase
 			}
 		}
 	}
+
+	function assertIsInt($i){
+		$this->assertInternalType('int', $i);
+	}
 }
 
 class BaseTestExternalModule extends AbstractExternalModule {

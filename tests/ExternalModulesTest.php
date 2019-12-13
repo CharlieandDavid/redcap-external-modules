@@ -1499,10 +1499,10 @@ class ExternalModulesTest extends BaseTest
 		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
 
 		$participantId = ExternalModules::addSurveyParticipant($surveyId, $m->framework->getEventId(TEST_SETTING_PID), $m->generateUniqueRandomSurveyHash());
-		$this->assertInternalType('int', $participantId);
+		$this->assertIsInt($participantId);
 
 		$responseId = ExternalModules::addSurveyResponse($participantId, 1, generateRandomHash());
-		$this->assertInternalType('int', $responseId);
+		$this->assertIsInt($responseId);
 
 		// The following delete cascades and deletes the redcap_surveys_response row as well.
 		ExternalModules::query('delete from redcap_surveys_participants where participant_id = ?', $participantId);
