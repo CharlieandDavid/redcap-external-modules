@@ -526,17 +526,32 @@ class AbstractExternalModule
 
 	public function getSurveyId($projectId,$surveyFormName = "") {
 		// Get survey_id, form status field, and save and return setting
-		$sql = "SELECT s.survey_id, s.form_name, s.save_and_return
-		 		FROM redcap_projects p, redcap_surveys s, redcap_metadata m
-					WHERE p.project_id = ".prep($projectId)."
-						AND p.project_id = s.project_id
-						AND m.project_id = p.project_id
-						AND s.form_name = m.form_name
-						".($surveyFormName != "" ? (is_numeric($surveyFormName) ? "AND s.survey_id = '$surveyFormName'" : "AND s.form_name = '".prep($surveyFormName)."'") : "")
-				."ORDER BY s.survey_id ASC
-				 LIMIT 1";
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT CAST(s.survey_id as CHAR) as survey_id, s.form_name, CAST(s.save_and_return as CHAR) as save_and_return
+			FROM redcap_projects p, redcap_surveys s, redcap_metadata m
+			WHERE p.project_id = ?
+				AND p.project_id = s.project_id
+				AND m.project_id = p.project_id
+				AND s.form_name = m.form_name
+		", [$projectId]);
 
-		$q = db_query($sql);
+		if($surveyFormName != ""){
+			if(is_numeric($surveyFormName)){
+				$query->add("AND s.survey_id = ?", $surveyFormName);
+			}
+			else{
+				$query->add("AND s.form_name = ?", $surveyFormName);
+			}
+		}
+		
+		$query->add("
+			ORDER BY s.survey_id ASC
+			LIMIT 1
+		");
+
+		$q = $query->execute();
+
 		$surveyId = db_result($q, 0, 'survey_id');
 		$surveyFormName = db_result($q, 0, 'form_name');
 
