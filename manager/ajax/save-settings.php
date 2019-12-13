@@ -22,12 +22,16 @@ $saveSqlByField = ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $r
 if(!empty($saveSqlByField)){
 	// At least one setting changed.  Log this event.
 	$logText = "Modify configuration for external module \"{$moduleDirectoryPrefix}_{$module->VERSION}\" for " . (!empty($_GET['pid']) ? "project" : "system");
+	
+	// We do NOT include the values of changed settings here, since they could contain sensitive data that some users shouldn't see (API keys, etc.).
 	$changeText = join(', ', array_keys($saveSqlByField));
 
-	// We do NOT include the values of changed settings, since they could contain sensitive data that some users shouldn't see (API keys, etc.).
-	$saveSql = join(";\n\n", array_values($saveSqlByField));
+	$queryDetails = '';
+	foreach($saveSqlByField as $query){
+		$queryDetails .= "SQL: " . $query->getSQL() . "\nParameters: " . json_encode($query->getParameters()) . "\n\n";
+	}
 
-	\REDCap::logEvent($logText, $changeText, $saveSql);
+	\REDCap::logEvent($logText, $changeText, $queryDetails);
 }
 
 ExternalModules::callHook('redcap_module_save_configuration', array($pid), $moduleDirectoryPrefix);

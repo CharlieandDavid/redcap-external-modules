@@ -1717,10 +1717,7 @@ class ExternalModules
 			}
 
 			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
-
-			$projectId = db_real_escape_string($projectId);
-			$key = db_real_escape_string($key);
-
+			
 			$oldType = gettype($oldValue);
 			if ($oldType == 'array' || $oldType == 'object') {
 				$oldValue = json_encode($oldValue);
@@ -1747,27 +1744,31 @@ class ExternalModules
 			}
 
 			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
-				$pidString = "NULL";
+				$projectId = null;
 			}
 			else{
-				// Require an integer to prevent sql injection.
-				$pidString = self::requireInteger($projectId);
+				// This used to be for preventing SQL injection, but that reason no longer makes sense now that we have prepared statements.
+				// We left it in place for normalization purposes, and to prevent hook parameter injection (which could lead to other injection types).
+				$projectId = self::requireInteger($projectId);
 			}
 
 			if ($type == "boolean") {
 				$value = ($value) ? 'true' : 'false';
 			}
 
+			$query = ExternalModules::createQuery();
+			
 			if ($value === null) {
 				$event = "DELETE";
-				$sql = "DELETE FROM redcap_external_module_settings
-						WHERE
-							external_module_id = $externalModuleId
-							AND " . self::getSqlEqualClause('project_id', $pidString) . "
-							AND `key` = '$key'";
-			} else {
-				$value = db_real_escape_string($value);
+				$query->add('
+					DELETE FROM redcap_external_module_settings
+					WHERE
+						external_module_id = ?
+						AND `key` = ?
+				', [$externalModuleId, $key]);
 
+				$query->add('AND')->addInClause('project_id', $projectId);
+			} else {
 				if (strlen($key) > self::SETTING_KEY_SIZE_LIMIT) {
 					//= Cannot save the setting for prefix '{0}' and key '{1}' because the key is longer than the {2} character limit.
 					throw new Exception(self::tt("em_errors_21", 
@@ -1786,53 +1787,58 @@ class ExternalModules
 
 				if ($oldValue === null) {
 					$event = "INSERT";
-					$sql = "INSERT INTO redcap_external_module_settings
-								(
-									`external_module_id`,
-									`project_id`,
-									`key`,
-									`type`,
-									`value`
-								)
-							VALUES
+					$query->add('
+						INSERT INTO redcap_external_module_settings
 							(
-								$externalModuleId,
-								$pidString,
-								'$key',
-								'$type',
-								'$value'
-							)";
+								`external_module_id`,
+								`project_id`,
+								`key`,
+								`type`,
+								`value`
+							)
+						VALUES
+							(
+								?,
+								?,
+								?,
+								?,
+								?
+							)
+					', [$externalModuleId, $projectId, $key, $type, $value]);
 				} else {
-					if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+					if ($key == self::KEY_ENABLED && $value == "false" && $projectId) {
 						$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 						self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
 					}
 
 					$event = "UPDATE";
-					$sql = "UPDATE redcap_external_module_settings
-							SET value = '$value',
-								type = '$type'
-							WHERE
-								external_module_id = $externalModuleId
-								AND " . self::getSqlEqualClause('project_id', $pidString) . "
-								AND `key` = '$key'";
+					$query->add('
+						UPDATE redcap_external_module_settings
+						SET value = ?,
+							type = ?
+						WHERE
+							external_module_id = ?
+							AND `key` = ?
+					', [$value, $type, $externalModuleId, $key]);
+
+					$query->add('AND')->addInClause('project_id', $projectId);
 				}
 			}
 
-			self::query($sql);
+			$query->execute();
 
-			$affectedRows = db_affected_rows();
+			$affectedRows = $query->getStatement()->affected_rows;
 
 			if ($affectedRows != 1) {
 				//= Unexpected number of affected rows ({0}) on External Module setting query: {1}
 				throw new Exception(self::tt("em_errors_23", 
 					$affectedRows, 
-					$sql)); 
+					"\nQuery: " . $query->getSQL() . "\nParameters: " . json_encode($query->getParameters())));
 			}
 
 			$releaseLock();
 
-			return $sql;
+			return $query;
 		}
 		catch(Exception $e){
 			$releaseLock();
