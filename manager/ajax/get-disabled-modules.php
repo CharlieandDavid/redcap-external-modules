@@ -120,9 +120,13 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
                             if (SUPER_USER) {
                                 ?><button class='enable-button'>Enable</button><?php
                             }
-                            //else if(isVanderbilt()) {
-                            else {
-                                ?><button class='enable-button module-request'>Request Activation</button><?php
+                            elseif ($GLOBALS['external_modules_allow_activation_user_request']) {
+                                $requestPending = \ToDoList::isExternalModuleRequestPending($prefix, $_GET['pid']);
+								$requestPendingDisabled = $requestPending ? "disabled" : "";
+                                ?><button class='enable-button module-request' <?=$requestPendingDisabled?>>Request Activation</button><?php
+                                if ($requestPending) {
+									?><div class='text-danger'>Activation request is pending</div><?php
+                                }
                             }
                         ?>
 					</td>

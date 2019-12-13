@@ -1,5 +1,8 @@
 <?php
 namespace ExternalModules;
+
+use Exception;
+
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
 // Only administrators can enable/disable modules
@@ -8,7 +11,10 @@ if (!SUPER_USER) exit;
 $return_data['message'] = "success";
 
 if (isset($_GET['pid'])) {
-	 ExternalModules::enableForProject($_POST['prefix'], $_POST['version'], $_GET['pid']);
+	ExternalModules::enableForProject($_POST['prefix'], $_POST['version'], $_GET['pid']);
+	if (isset($_GET['request_id'])) {
+		ExternalModules::finalizeModuleActivationRequest($_POST['prefix'], $_POST['version'], $_GET['pid'], (int)$_GET['request_id']);
+	}
 }
 else {
     $config = ExternalModules::getConfig($_POST['prefix'], $_POST['version']);

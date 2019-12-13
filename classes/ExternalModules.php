@@ -1150,9 +1150,10 @@ class ExternalModules
 		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
-	static function sendBasicEmail($from,$to,$subject,$message) {
+	static function sendBasicEmail($from,$to,$subject,$message,$fromName='') {
         $email = new \Message();
         $email->setFrom($from);
+		$email->setFromName($fromName);
         $email->setTo(implode(',', $to));
         $email->setSubject($subject);
 
@@ -5101,5 +5102,30 @@ class ExternalModules
 			}
 		}
 		return array_values($finalVersion);
+	}
+
+	public static function finalizeModuleActivationRequest($prefix, $version, $project_id, $request_id)
+    {
+        global $project_contact_email, $project_contact_name, $app_title;
+		// If this was enabled by admin as a user request, then remove from To-Do List (if applicable)
+		if (SUPER_USER && \ToDoList::updateTodoStatus($project_id, 'module activation', 'completed', null, $request_id))
+		{
+			// For To-Do List requests only, send email back to user who requested module be enabled
+			try {
+				$config = self::getConfig($prefix, $version);
+
+				$request_userid = \ToDoList::getRequestorByRequestId($request_id);
+				$userInfo = \User::getUserInfoByUiid($request_userid);
+				$project_url = APP_URL_EXTMOD . 'manager/project.php?pid=' . $project_id;
+
+				$from = $project_contact_email;
+				$fromName = $project_contact_name;
+				$to = [$userInfo['user_email']];
+				$subject = "[REDCap] External Module \"{$config['name']}\" has been activated";
+				$message = "The External Module \"<b>{$config['name']}</b>\" has been successfully activated for the project named \""
+					. \RCView::a(array('href' => $project_url), strip_tags($app_title)) . "\".";
+				$email = self::sendBasicEmail($from, $to, $subject, $message, $fromName);
+			} catch (Exception $e) { }
+		}
 	}
 }
