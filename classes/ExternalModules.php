@@ -1759,7 +1759,6 @@ class ExternalModules
 			$query = ExternalModules::createQuery();
 			
 			if ($value === null) {
-				$event = "DELETE";
 				$query->add('
 					DELETE FROM redcap_external_module_settings
 					WHERE
@@ -1786,7 +1785,6 @@ class ExternalModules
 				}
 
 				if ($oldValue === null) {
-					$event = "INSERT";
 					$query->add('
 						INSERT INTO redcap_external_module_settings
 							(
@@ -1811,7 +1809,6 @@ class ExternalModules
 						self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
 					}
 
-					$event = "UPDATE";
 					$query->add('
 						UPDATE redcap_external_module_settings
 						SET value = ?,
