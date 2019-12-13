@@ -823,7 +823,7 @@ class AbstractExternalModule
             }
         } else if ($metadata[$fieldName]['field_type'] == 'sql') {
             if (!empty($params['value'])) {
-                $q = db_query($metadata[$fieldName]['select_choices_or_calculations']);
+                $q = ExternalModules::query($metadata[$fieldName]['select_choices_or_calculations'], []);
 
                 if ($error = db_error()) {
                     die($metadata[$fieldName]['select_choices_or_calculations'] . ': ' . $error);
