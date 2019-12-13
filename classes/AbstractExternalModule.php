@@ -491,14 +491,14 @@ class AbstractExternalModule
 		$projectDetails = $this->getProjectDetails($projectId);
 
 		if($projectDetails["repeatforms"] == 0) {
-			$sql = "SELECT e.event_id
+			$sql = "SELECT CAST(e.event_id as CHAR) as event_id
 					FROM redcap_events_metadata e, redcap_events_arms a
-					WHERE a.project_id = $projectId
+					WHERE a.project_id = ?
 						AND a.arm_id = e.arm_id
 					ORDER BY e.event_id ASC
 					LIMIT 1";
 
-			$q = db_query($sql);
+			$q = ExternalModules::query($sql, [$projectId]);
 
 			if($row = db_fetch_assoc($q)) {
 				return $row['event_id'];
