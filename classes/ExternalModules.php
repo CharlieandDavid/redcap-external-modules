@@ -32,6 +32,7 @@ class ExternalModules
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
+	const KEY_USER_ACTIVATE_PERMISSION = 'user-activate-permission';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 
 	//region Language feature-related constants
@@ -162,6 +163,12 @@ class ExternalModules
 				'key' => self::KEY_DISCOVERABLE,
 				//= Make module discoverable by users: Display info on External Modules page in all projects
 				'name' => self::tt("em_config_2"),
+				'type' => 'checkbox'
+			),
+			array(
+				'key' => self::KEY_USER_ACTIVATE_PERMISSION,
+				//= Allow the module to be activated in projects by users with Project Setup/Design rights
+				'name' => self::tt("em_config_7"),
 				'type' => 'checkbox'
 			),
 			array(
@@ -1694,8 +1701,13 @@ class ExternalModules
 			ExternalModules::query($releaseLockSql);
 		};
 
+		// If module is being enabled for a project and users can activate this module on their own, then skip the user-based permissions check
+        // (Not sure if this is the best insertion point for this check, but it works well enough.)
+		$skipUserBasedPermissionsCheck = ($key == self::KEY_ENABLED && is_numeric($projectId)
+                && ExternalModules::getSystemSetting($moduleDirectoryPrefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true && ExternalModules::hasDesignRights());
+
 		try{
-			if (self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			if (!$skipUserBasedPermissionsCheck && self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
 				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.
 				$errorMessageSuffix = self::tt("em_errors_18"); 
 

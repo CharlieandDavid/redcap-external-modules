@@ -103,6 +103,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
+			$userCanEnable = (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
 
 			$name = trim($config['name']);
 			if(empty($name)){
@@ -117,7 +118,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 					</td>
 					<td class="external-modules-action-buttons">
 						<?php
-                            if (SUPER_USER) {
+                            if ($userCanEnable) {
                                 ?><button class='enable-button'>Enable</button><?php
                             }
                             elseif ($GLOBALS['external_modules_allow_activation_user_request']) {
