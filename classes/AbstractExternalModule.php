@@ -505,16 +505,16 @@ class AbstractExternalModule
 			}
 		}
 		else {
-			$sql = "SELECT f.event_id
+			$sql = "SELECT CAST(f.event_id as CHAR) as event_id
 					FROM redcap_events_forms f, redcap_events_metadata m, redcap_events_arms a
-					WHERE a.project_id = $projectId
+					WHERE a.project_id = ?
 						AND a.arm_id = m.arm_id
 						AND m.event_id = f.event_id
-						AND f.form_name = '".prep($formName)."'
+						AND f.form_name = ?
 					ORDER BY f.event_id ASC
 					LIMIT 1";
 
-			$q = db_query($sql);
+			$q = ExternalModules::query($sql, [$projectId, $formName]);
 
 			if($row = db_fetch_assoc($q)) {
 				return $row['event_id'];
