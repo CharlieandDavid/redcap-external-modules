@@ -559,14 +559,23 @@ class AbstractExternalModule
 	}
 
 	public function getParticipantAndResponseId($surveyId,$recordId,$eventId = "") {
-		$sql = "SELECT p.participant_id, r.response_id
-				FROM redcap_surveys_participants p, redcap_surveys_response r
-				WHERE p.survey_id = '$surveyId'
-					AND p.participant_id = r.participant_id
-					AND r.record = '".$recordId."'".
-				($eventId != "" ? " AND p.event_id = '".prep($eventId)."'" : "");
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT
+				CAST(p.participant_id as CHAR) as participant_id,
+				CAST(r.response_id as CHAR) as response_id
+			FROM redcap_surveys_participants p, redcap_surveys_response r
+			WHERE p.survey_id = ?
+				AND p.participant_id = r.participant_id
+				AND r.record = ?
+		", [$surveyId, $recordId]);
 
-		$q = db_query($sql);
+		if($eventId != ""){
+			$query->add(" AND p.event_id = ?", $eventId);
+		}
+
+		$q = $query->execute();
+
 		$participantId = db_result($q, 0, 'participant_id');
 		$responseId = db_result($q, 0, 'response_id');
 
