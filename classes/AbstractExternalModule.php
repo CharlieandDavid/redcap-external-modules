@@ -929,16 +929,14 @@ class AbstractExternalModule
 	}
 
 	public function setData($record, $fieldName, $values){
-		$instanceId = db_escape(self::requireInstanceId());
+		$instanceId = self::requireInstanceId();
 		if($instanceId != 1){
 			//= Multiple instances are not currently supported!
 			throw new Exception(ExternalModules::tt("em_errors_66")); 
 		}
 
-		$pid = db_escape(self::requireProjectId());
-		$eventId = db_escape(self::requireEventId());
-		$record = db_escape($record);
-		$fieldName = db_escape($fieldName);
+		$pid = self::requireProjectId();
+		$eventId = self::requireEventId();
 
 		if(!is_array($values)){
 			$values = [$values];
@@ -946,20 +944,26 @@ class AbstractExternalModule
 
 		$beginTransactionVersion = '5.5';
 		if($this->isPHPGreaterThan($beginTransactionVersion)){
-			$this->query("SET AUTOCOMMIT=0");
-			$this->query("BEGIN");
+			$this->query("SET AUTOCOMMIT=0", []);
+			$this->query("BEGIN", []);
 		}
 
-		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
+		$this->query(
+			"DELETE FROM redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ?",
+			[$pid, $eventId, $record, $fieldName]
+		);
 
 		foreach($values as $value){
 			$value = db_escape($value);
-			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
+			$this->query(
+				"INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES (?, ?, ?, ?, ?)",
+				[$pid, $eventId, $record, $fieldName, $value]
+			);
 		}
 
 		if($this->isPHPGreaterThan($beginTransactionVersion)) {
-			$this->query("COMMIT");
-			$this->query("SET AUTOCOMMIT=1");
+			$this->query("COMMIT", []);
+			$this->query("SET AUTOCOMMIT=1", []);
 		}
 	}
 

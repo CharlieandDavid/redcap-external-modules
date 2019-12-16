@@ -3,6 +3,7 @@ namespace ExternalModules;
 require_once 'BaseTest.php';
 
 use \Exception;
+use \REDCap;
 
 class AbstractExternalModuleTest extends BaseTest
 {
@@ -1236,5 +1237,47 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$this->assertSame(TEST_SETTING_PID, $details['project_id']);
 		$this->assertGreaterThan(100, count($details));
+	}
+
+	function testSetData(){
+		$_GET['pid'] = TEST_SETTING_PID;
+		$_GET['event_id'] = $this->framework->getEventId();
+		$_GET['instance'] = 1;
+		$recordId = 1;
+
+		$result = $this->query("
+			select field_name
+			from redcap_metadata
+			where
+				project_id = ?
+				and field_order = ?
+				and field_name not like '%_complete'
+		", [TEST_SETTING_PID, 2]);
+
+		$fieldName = $result->fetch_row()[0];
+		if(empty($fieldName)){
+			throw new Exception("You must add a field to the External Module test project with ID " . TEST_SETTING_PID);
+		}
+
+		$value = (string) rand();
+
+		// Calling saveData() is required to make sure the record exists.
+		REDCap::saveData(TEST_SETTING_PID, 'json', json_encode([[
+			$this->framework->getRecordIdField() => $recordId,
+		]]));
+
+		$this->setData($recordId, $fieldName, $value);
+
+		$data = json_decode(REDCap::getData(TEST_SETTING_PID, 'json', $recordId), true)[0];
+
+		$this->assertSame($value, $data[$fieldName]);
+	}
+
+	function __call($methodName, $args){
+		return call_user_func_array(array($this->getInstance(), $methodName), $args);
+	}
+
+	function __get($varName){
+		return $this->getInstance()->$varName;
 	}
 }
