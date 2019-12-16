@@ -985,12 +985,18 @@ class AbstractExternalModule
 		$fieldName = \Records::getTablePK($pid);
 		$recordId = $this->getNextAutoNumberedRecordId($pid);
 
-		$insertSql = "insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)";
-		$this->query($insertSql);
-		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
+		$insertSql = "insert into redcap_data (project_id, event_id, record, field_name, value) values (?, ?, ?, ?, ?)";
+		$this->query($insertSql, [$pid, $eventId, $recordId, $fieldName, $recordId]);
+		$result = $this->query(
+			"select count(1) as count from redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ? and value = ?",
+			[$pid, $eventId, $recordId, $fieldName, $recordId]
+		);
 		$count = $result->fetch_assoc()['count'];
 		if($count > 1){
-			$this->query("delete from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' limit 1");
+			$this->query(
+				"delete from redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ? limit 1",
+				[$pid, $eventId, $recordId, $fieldName]
+			);
 			return $this->addAutoNumberedRecord($pid);
 		}
 		else if($count == 0){

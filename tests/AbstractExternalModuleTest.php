@@ -1280,4 +1280,20 @@ class AbstractExternalModuleTest extends BaseTest
 	function __get($varName){
 		return $this->getInstance()->$varName;
 	}
+
+	function testAddAutoNumberedRecord(){
+		$_GET['pid'] = TEST_SETTING_PID;
+
+		$recordId1 = $this->addAutoNumberedRecord();
+		$recordId2 = $this->addAutoNumberedRecord();
+
+		$this->assertSame($recordId1+1, $recordId2);
+
+		$q = $this->framework->createQuery();
+		$q->add('delete from redcap_data where project_id = ? and', [TEST_SETTING_PID]);
+		$q->addInClause('record', [$recordId1, $recordId2]);
+		$q->execute();
+
+		$this->assertSame(2, $q->getStatement()->affected_rows);
+	}
 }
