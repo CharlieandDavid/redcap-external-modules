@@ -1008,7 +1008,7 @@ class AbstractExternalModule
 		
 		// Add record to the record list cache table
 		if (method_exists('Records', 'addRecordToRecordListCache')) {
-			$arm = db_result(db_query("select arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = $eventId"), 0);
+			$arm = db_result($this->query("select CAST(arm_num as CHAR) as arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = ?", [$eventId]), 0);
 			\Records::addRecordToRecordListCache($pid, $recordId, $arm);
 		}
 
