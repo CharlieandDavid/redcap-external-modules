@@ -330,33 +330,22 @@ class AbstractExternalModule
 		if($participantId == "" || $responseId == "") {
 			$hash = self::generateUniqueRandomSurveyHash();
 
-			## Insert a participant row for this survey
-			$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
-					VALUES ($surveyId,".prep($eventId).", '', null, '$hash')";
-
-			if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
-			$participantId = db_insert_id();
-
+			$participantId = ExternalModules::addSurveyParticipant($surveyId, $eventId, $hash);
+			
 			## Insert a response row for this survey and record
 			$returnCode = generateRandomHash();
-			$firstSubmitDate = "'".date('Y-m-d h:m:s')."'";
-
-			$sql = "INSERT INTO redcap_surveys_response (participant_id, record, first_submit_time, return_code)
-					VALUES ($participantId, '".prep($recordId)."', $firstSubmitDate,'$returnCode')";
-
-			if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
-			$responseId = db_insert_id();
+			$responseId = ExternalModules::addSurveyResponse($participantId, $recordId, $returnCode);
 		}
 		## Reset response status if it already exists
 		else {
-			$sql = "SELECT p.participant_id, p.hash, r.return_code, r.response_id, COALESCE(p.participant_email,'NULL') as participant_email
+			$sql = "SELECT CAST(p.participant_id as CHAR) as participant_id, p.hash, r.return_code, CAST(r.response_id as CHAR) as response_id, COALESCE(p.participant_email,'NULL') as participant_email
 					FROM redcap_surveys_participants p, redcap_surveys_response r
-					WHERE p.survey_id = '$surveyId'
+					WHERE p.survey_id = ?
 						AND p.participant_id = r.participant_id
-						AND r.record = '".prep($recordId)."'
-						AND p.event_id = '".prep($eventId)."'";
+						AND r.record = ?
+						AND p.event_id = ?";
 
-			$q = db_query($sql);
+			$q = self::query($sql, [$surveyId, $recordId, $eventId]);
 			$rows = [];
 			while($row = db_fetch_assoc($q)) {
 				$rows[] = $row;
@@ -366,9 +355,8 @@ class AbstractExternalModule
 			if(db_num_rows($q) > 1) {
 				foreach($rows as $thisRow) {
 					if($thisRow["participant_email"] == "NULL" && $thisRow["response_id"] != "") {
-						$sql = "DELETE FROM redcap_surveys_response
-								WHERE response_id = ".$thisRow["response_id"];
-						if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
+						self::query("DELETE FROM redcap_surveys_response
+								WHERE response_id = ?", $thisRow["response_id"]);
 					}
 					else {
 						$row = $thisRow;
@@ -389,39 +377,42 @@ class AbstractExternalModule
 			## If this is only as a public survey link, generate new participant row
 			if($row["participant_email"] == "NULL") {
 				$hash = self::generateUniqueRandomSurveyHash();
-
-				## Insert a participant row for this survey
-				$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
-						VALUES ($surveyId,".prep($eventId).", '', null, '$hash')";
-
-				if(!db_query($sql)) echo "Error: ".db_error()." <br />$sql<br />";
-				$participantId = db_insert_id();
+				$participantId = ExternalModules::addSurveyParticipant($surveyId, $eventId, $hash);
 			}
 
 			// Set the response as incomplete in the response table, update participantId if on public survey link
-			$sql = "UPDATE redcap_surveys_participants p, redcap_surveys_response r
+			$q = ExternalModules::createQuery();
+			$q->add("UPDATE redcap_surveys_participants p, redcap_surveys_response r
 					SET r.completion_time = null,
 						r.first_submit_time = '".date('Y-m-d h:m:s')."',
-						r.return_code = '".prep($returnCode)."'".
-						($participantId == "" ? "" : ", r.participant_id = '$participantId'")."
-					WHERE p.survey_id = $surveyId
-						AND p.event_id = ".prep($eventId)."
+						r.return_code = ?", $returnCode);
+
+			if($participantId != ""){
+				$q->add(", r.participant_id = ?", $participantId);
+			}
+
+			$q->add("WHERE p.survey_id = ?
+						AND p.event_id = ?
 						AND r.participant_id = p.participant_id
-						AND r.record = '".prep($recordId)."'";
-			db_query($sql);
+						AND r.record = ?", [$surveyId, $eventId, $recordId]);
+			
+			$q->execute();
 		}
 
 		// Set the response as incomplete in the data table
 		$sql = "UPDATE redcap_data
 				SET value = '0'
-				WHERE project_id = ".prep($projectId)."
-					AND record = '".prep($recordId)."'
-					AND event_id = ".prep($eventId)."
-					AND field_name = '{$surveyFormName}_complete'";
+				WHERE project_id = ?
+					AND record = ?
+					AND event_id = ?
+					AND field_name = CONCAT(?, '_complete')";
 
-		$q = db_query($sql);
+		$q = ExternalModules::createQuery();
+		$q->add($sql, [$projectId, $recordId, $eventId, $surveyFormName]);
+		$r = $q->execute();
+
 		// Log the event (if value changed)
-		if ($q && db_affected_rows() > 0) {
+		if ($r && $q->getStatement()->affected_rows > 0) {
 			if(function_exists("log_event")) {
 				\log_event($sql,"redcap_data","UPDATE",$recordId,"{$surveyFormName}_complete = '0'","Update record");
 			}
@@ -429,8 +420,6 @@ class AbstractExternalModule
 				\Logging::logEvent($sql,"redcap_data","UPDATE",$recordId,"{$surveyFormName}_complete = '0'","Update record");
 			}
 		}
-
-		@db_query("COMMIT");
 
 		return array("hash" => $hash, "return_code" => $returnCode);
 	}
@@ -442,10 +431,9 @@ class AbstractExternalModule
 
 			$sql = "SELECT p.hash
 						FROM redcap_surveys_participants p
-						WHERE p.hash = '$hash'";
+						WHERE p.hash = ?";
 
-			$result = db_query($sql);
-
+			$result = self::query($sql, $hash);
 			$hashExists = (db_num_rows($result) > 0);
 		} while($hashExists);
 
@@ -453,14 +441,18 @@ class AbstractExternalModule
 	}
 
 	public function getProjectAndRecordFromHashes($surveyHash, $returnCode) {
-		$sql = "SELECT s.project_id as projectId, r.record as recordId, s.form_name as surveyForm, p.event_id as eventId
+		$sql = "SELECT
+					CAST(s.project_id as CHAR) as projectId,
+					r.record as recordId,
+					s.form_name as surveyForm,
+					CAST(p.event_id as CHAR) as eventId
 				FROM redcap_surveys_participants p, redcap_surveys_response r, redcap_surveys s
-				WHERE p.hash = '".prep($surveyHash)."'
+				WHERE p.hash = ?
 					AND p.survey_id = s.survey_id
 					AND p.participant_id = r.participant_id
-					AND r.return_code = '".prep($returnCode)."'";
+					AND r.return_code = ?";
 
-		$q = db_query($sql);
+		$q = self::query($sql, [$surveyHash, $returnCode]);
 
 		$row = db_fetch_assoc($q);
 

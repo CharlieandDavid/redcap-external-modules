@@ -1200,4 +1200,33 @@ class AbstractExternalModuleTest extends BaseTest
 		$m->deleteDAG($id);
 		$this->assertNull($getName($id));
 	}
+
+	function testGetProjectAndRecordFromHashes(){
+		$m = $this->getInstance();
+
+		$result = $m->query("
+			SELECT s.project_id as projectId, r.record as recordId, s.form_name as surveyForm, p.event_id as eventId,
+				p.hash, r.return_code
+			FROM redcap_surveys_participants p, redcap_surveys_response r, redcap_surveys s
+			WHERE p.survey_id = s.survey_id
+				AND p.participant_id = r.participant_id
+				and return_code is not null
+			ORDER BY p.participant_id DESC
+			LIMIT 1
+		");
+
+		$expected = $result->fetch_assoc();
+		$actual = $m->getProjectAndRecordFromHashes($expected['hash'], $expected['return_code']);
+
+		$fieldNames = [
+			'projectId',
+			'recordId',
+			'surveyForm',
+			'eventId'
+		];
+
+		foreach($fieldNames as $fieldName){
+			$this->assertSame($expected[$fieldName], $actual[$fieldName]);
+		}
+	}
 }

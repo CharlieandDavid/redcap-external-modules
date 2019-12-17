@@ -22,8 +22,10 @@ const TEST_MODULE_VERSION = 'v1.0.0';
 const TEST_LOG_MESSAGE = 'This is a unit test log message';
 const TEST_SETTING_KEY = 'unit-test-setting-key';
 const FILE_SETTING_KEY = 'unit-test-file-setting-key';
-const TEST_SETTING_PID = 1;
-const TEST_SETTING_PID_2 = 2;
+
+$testPIDs = ExternalModules::getTestPIDs();
+define('TEST_SETTING_PID', $testPIDs[0]);
+define('TEST_SETTING_PID_2', $testPIDs[1]);
 
 abstract class BaseTest extends TestCase
 {
@@ -33,9 +35,19 @@ abstract class BaseTest extends TestCase
 
 	public static function setUpBeforeClass(){
 		ExternalModules::initialize();
+
+		$m = new BaseTestExternalModule();
+		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
+		if(empty($surveyId)){
+			throw new Exception('Please add a survey to project ' . TEST_SETTING_PID . ' to allow all tests to run.');
+		}
 	}
 
 	protected function setUp(){
+		$this->setConfig([
+			'framework-version' => 3
+		]);
+		
 		self::$testModuleInstance = new BaseTestExternalModule();
 		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 		self::setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);

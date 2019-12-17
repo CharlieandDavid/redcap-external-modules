@@ -2166,8 +2166,8 @@ class ExternalModules
 				'File' => $e->getFile(),
 				'Line' => $e->getLine(),
 				'Trace' => $e->getTrace()
-			], JSON_PRETTY_PRINT));
-			
+			], JSON_PRETTY_PRINT|JSON_PARTIAL_OUTPUT_ON_ERROR));
+
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
 			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
@@ -3145,7 +3145,7 @@ class ExternalModules
 		if ($configRow['type'] == 'user-role-list') {
 				$choices = [];
 
-				$sql = "SELECT role_id,role_name
+				$sql = "SELECT CAST(role_id as CHAR) as role_id,role_name
 						FROM redcap_user_roles
 						WHERE project_id = ?
 						ORDER BY role_id";
@@ -3176,7 +3176,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'dag-list') {
 				$choices = [];
 
-				$sql = "SELECT group_id,group_name
+				$sql = "SELECT CAST(group_id as CHAR) as group_id,group_name
 						FROM redcap_data_access_groups
 						WHERE project_id = ?
 						ORDER BY group_id";
@@ -3225,7 +3225,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'arm-list') {
 			$choices = [];
 
-			$sql = "SELECT a.arm_id, a.arm_name
+			$sql = "SELECT CAST(a.arm_id as CHAR) as arm_id, a.arm_name
 					FROM redcap_events_arms a
 					WHERE a.project_id = ?
 					ORDER BY a.arm_id";
@@ -3240,7 +3240,7 @@ class ExternalModules
 		else if ($configRow['type'] == 'event-list') {
 			$choices = [];
 
-			$sql = "SELECT e.event_id, e.descrip, a.arm_id, a.arm_name
+			$sql = "SELECT CAST(e.event_id as CHAR) as event_id, e.descrip, CAST(a.arm_id as CHAR) as arm_id, a.arm_name
 					FROM redcap_events_metadata e, redcap_events_arms a
 					WHERE a.project_id = ?
 						AND e.arm_id = a.arm_id
@@ -4847,7 +4847,16 @@ class ExternalModules
 			return $value;
 		};
 
-		$result = self::query("select * from redcap_external_module_settings where project_id = ?", [$pid]);
+		$result = self::query("
+			select
+				CAST(external_module_id as CHAR) as external_module_id,
+				CAST(project_id as CHAR) as project_id,
+				`key`,
+				type,
+				value
+			from redcap_external_module_settings where project_id = ?
+		", [$pid]);
+
 		$richTextSettingsByPrefix = [];
 		while($row = db_fetch_assoc($result)){
 			$prefix = self::getPrefixForID($row['external_module_id']);
@@ -4873,10 +4882,15 @@ class ExternalModules
 
 	private static function recreateRichTextEDocs($pid, $richTextSettingsByPrefix)
 	{
-		$results = ExternalModules::query(
-			"select * from redcap_external_module_settings where `key` = ? and project_id = ?",
-			[ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $pid]
-		);
+		$results = ExternalModules::query("
+			select
+				CAST(external_module_id as CHAR) as external_module_id,
+				CAST(project_id as CHAR) as project_id,
+				`key`,
+				type,
+				value
+			from redcap_external_module_settings where `key` = ? and project_id = ?
+		", [ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $pid]);
 		
 		while($row = db_fetch_assoc($results)){
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
@@ -4938,6 +4952,10 @@ class ExternalModules
 		$row = db_fetch_assoc($result);
 		if(!$row){
 			return '';
+		}
+
+		foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $columnName){
+			$row[$columnName] = (string) $row[$columnName];
 		}
 
 		$oldPid = $row['project_id'];
@@ -5171,5 +5189,37 @@ class ExternalModules
 			}
 		}
 		return array_values($finalVersion);
+	}
+
+	public static function getTestPIDs(){
+		$fieldName = 'external_modules_test_pids';
+		$r = self::query('select * from redcap_config where field_name = ?', $fieldName);
+		$testPIDs = explode(',', @$r->fetch_assoc()['value']);
+
+		if(count($testPIDs) !== 2){
+			throw new Exception("In order to run external module tests on this system, you must create two projects dedicated to testing that the framework can use.  One you have done so, you must specify these two project IDs in the config table separated by a comma by running a query like the following (but with your project IDs): \n\ninsert into redcap_config values ('$fieldName', '123,456')\n\n");
+		}
+
+		return $testPIDs;
+	}
+	
+	public static function addSurveyParticipant($surveyId, $eventId, $hash){
+		## Insert a participant row for this survey
+		$sql = "INSERT INTO redcap_surveys_participants (survey_id, event_id, participant_email, participant_identifier, hash)
+		VALUES (?, ?, '', null, ?)";
+
+		self::query($sql, [$surveyId, $eventId, $hash]);
+		
+		return db_insert_id();
+	}
+
+	public static function addSurveyResponse($participantId, $recordId, $returnCode){
+		$sql = "INSERT INTO redcap_surveys_response (participant_id, record, first_submit_time, return_code)
+					VALUES (?, ?, ?, ?)";
+
+		$firstSubmitDate = "'".date('Y-m-d h:m:s')."'";
+		self::query($sql, [$participantId, $recordId, $firstSubmitDate, $returnCode]);
+		
+		return db_insert_id();
 	}
 }
