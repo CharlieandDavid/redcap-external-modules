@@ -1289,11 +1289,53 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$this->assertSame($recordId1+1, $recordId2);
 
+		$this->deleteRecords(TEST_SETTING_PID, [$recordId1, $recordId2]);
+	}
+
+	function deleteRecord($pid, $recordId){
+		$this->deleteRecords($pid, [$recordId]);
+	}
+
+	function deleteRecords($pid, $recordIds){
 		$q = $this->framework->createQuery();
-		$q->add('delete from redcap_data where project_id = ? and', [TEST_SETTING_PID]);
-		$q->addInClause('record', [$recordId1, $recordId2]);
+		$q->add('delete from redcap_data where project_id = ? and', [$pid]);
+		$q->addInClause('record', $recordIds);
 		$q->execute();
 
-		$this->assertSame(2, $q->getStatement()->affected_rows);
+		$this->assertSame(count($recordIds), $q->getStatement()->affected_rows);
+	}
+
+	function testUpdateRecordCount(){
+		$pid = TEST_SETTING_PID;
+		
+		$getCachedRecordCount = function() use ($pid){
+			$results = $this->query("select record_count from redcap_record_counts where project_id = ?", [$pid]);
+			$count = $results->fetch_assoc()['record_count'];
+			return $count;
+		};
+
+		$getActualRecordCount = function() use ($pid){
+			$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = ? group by record) a", [$pid]);
+			return $results->fetch_assoc()['count'];
+		};
+
+		$setCachedRecordCount = function($count) use ($pid){
+			$this->query("update redcap_record_counts set record_count = ?, time_of_count = '".NOW."' where project_id = ?", [$count, $pid]);
+		};
+
+		$updateRecordCount = function() use ($pid){
+			$this->callPrivateMethod('updateRecordCount', $pid);
+		};
+
+		if($getCachedRecordCount() === null){
+			$this->query("insert into redcap_record_counts (project_id, record_count) values (?, ?)", [$pid, 0]);
+		}
+
+		$count = rand();
+		$setCachedRecordCount($count);
+		$this->assertSame($count, $getCachedRecordCount());
+
+		$updateRecordCount();
+		$this->assertSame($getActualRecordCount(), $getCachedRecordCount());
 	}
 }
