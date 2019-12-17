@@ -1385,15 +1385,18 @@ class ExternalModules
 
 		if (self::isValidTabledCron($cron)) {
 			// Add to table
-			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
-					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
-					'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
-			if (!db_query($sql)) {
+			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values (?, ?, ?, ?, ?)";
+			try{
+				ExternalModules::query($sql, [$cron['cron_name'], $externalModuleId, $cron['cron_description'], $cron['cron_frequency'], $cron['cron_max_run_time']]);
+			}
+			catch(Exception $e){
 				// If fails on one cron, then delete any added so far for this module
 				self::removeCronJobs($moduleInstance->PREFIX);
 				// Return error
 				//= One or more cron jobs for this module failed to be created.
-				throw new Exception(self::tt("em_errors_9")); 
+				error_log(self::tt("em_errors_9"));
+
+				throw $e;
 			}
 		}
 	}
