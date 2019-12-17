@@ -1472,8 +1472,8 @@ class ExternalModules
 		// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
 		// Remove crons from db table
-		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
-		return db_query($sql);
+		$sql = "delete from redcap_crons where external_module_id = ?";
+		return ExternalModules::query($sql, [$externalModuleId]);
 	}
 
 	# validate EVERY module config's cron jobs' attributes. fix them in the redcap_crons table if incorrect/out-of-date.
