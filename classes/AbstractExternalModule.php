@@ -1526,7 +1526,7 @@ class AbstractExternalModule
 
 			$responseId = \decryptResponseHash($responseHash, $participant_id);
 
-			$result = $this->query("select record from redcap_surveys_response where response_id = $responseId");
+			$result = $this->query("select record from redcap_surveys_response where response_id = ?", [$responseId]);
 			$row = db_fetch_assoc($result);
 			$recordId = $row['record'];
 		}
