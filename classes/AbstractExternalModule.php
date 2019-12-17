@@ -1048,9 +1048,9 @@ class AbstractExternalModule
 			from redcap_events_arms a
 			join redcap_events_metadata m
 				on a.arm_id = m.arm_id
-			where a.project_id = $pid
+			where a.project_id = ?
 			order by event_id
-		");
+		", [$pid]);
 
 		$row = db_fetch_assoc($results);
 		return $row['event_id'];
