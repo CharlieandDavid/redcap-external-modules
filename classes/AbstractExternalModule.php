@@ -1135,12 +1135,12 @@ class AbstractExternalModule
 				and m.form_name = s.form_name
 				and field_order = 1 -- getting the first field is the easiest way to get the first form
 			where
-				s.project_id = " . $this->getProjectId() . "
-				and s.form_name = '$formName'
+				s.project_id = ?
+				and s.form_name = ?
 				and participant_email is null
 		";
 		
-        $result = $this->query($sql);
+        $result = $this->query($sql, [$this->getProjectId(), $formName]);
         $row = db_fetch_assoc($result);
         $hash = @$row['hash'];
 
