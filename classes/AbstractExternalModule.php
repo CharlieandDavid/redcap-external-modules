@@ -1027,10 +1027,10 @@ class AbstractExternalModule
 	private function getNextAutoNumberedRecordId($pid){
 		$results = $this->query("
 			select record from redcap_data 
-			where project_id = $pid
+			where project_id = ?
 			group by record
 			order by cast(record as unsigned integer) desc limit 1
-		");
+		", [$pid]);
 
 		$row = $results->fetch_assoc();
 		if(empty($row)){
