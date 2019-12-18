@@ -3,8 +3,7 @@ namespace ExternalModules;
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
 // Can the current user enable/disable modules?
-$userCanDisable = (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($_POST['module'], ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
-if (!$userCanDisable) exit;
+if (!ExternalModules::userCanEnableDisableModule($_POST['module'])) exit;
 
 $module = $_POST['module'];
 

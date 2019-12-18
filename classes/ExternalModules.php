@@ -5140,4 +5140,9 @@ class ExternalModules
 			} catch (Exception $e) { }
 		}
 	}
+
+	public static function userCanEnableDisableModule($prefix)
+	{
+		return (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
+	}
 }

@@ -103,7 +103,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
-			$userCanEnable = (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
+			$userCanEnable = ExternalModules::userCanEnableDisableModule($prefix);
 
 			$name = trim($config['name']);
 			if(empty($name)){
