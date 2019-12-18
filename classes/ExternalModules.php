@@ -29,10 +29,15 @@ use \RecursiveIteratorIterator;
 
 class ExternalModules
 {
+	// Mark has twice started refactoring to use actual null values so that the following placeholder string is unnecessary.
+	// It would be a large & risky change that affects most get & set settings methods.
+	// It's do-able, but it would be time consuming, and we'd have to be very careful to test dozens of edge cases.
 	const SYSTEM_SETTING_PROJECT_ID = 'NULL';
+
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
+	const KEY_USER_ACTIVATE_PERMISSION = 'user-activate-permission';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 	const LANGUAGE_KEY_FOUND = 'Language Key Found';
 
@@ -164,6 +169,12 @@ class ExternalModules
 				'key' => self::KEY_DISCOVERABLE,
 				//= Make module discoverable by users: Display info on External Modules page in all projects
 				'name' => self::tt("em_config_2"),
+				'type' => 'checkbox'
+			),
+			array(
+				'key' => self::KEY_USER_ACTIVATE_PERMISSION,
+				//= Allow the module to be activated in projects by users with Project Setup/Design rights
+				'name' => self::tt("em_config_7"),
 				'type' => 'checkbox'
 			),
 			array(
@@ -1152,9 +1163,10 @@ class ExternalModules
 		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
-	static function sendBasicEmail($from,$to,$subject,$message) {
+	static function sendBasicEmail($from,$to,$subject,$message,$fromName='') {
         $email = new \Message();
         $email->setFrom($from);
+		$email->setFromName($fromName);
         $email->setTo(implode(',', $to));
         $email->setSubject($subject);
 
@@ -1163,6 +1175,7 @@ class ExternalModules
 
         return $email->send();
     }
+
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
@@ -1381,15 +1394,18 @@ class ExternalModules
 
 		if (self::isValidTabledCron($cron)) {
 			// Add to table
-			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values
-					('".db_escape($cron['cron_name'])."', $externalModuleId, '".db_escape($cron['cron_description'])."', 
-					'".db_escape($cron['cron_frequency'])."', '".db_escape($cron['cron_max_run_time'])."')";
-			if (!db_query($sql)) {
+			$sql = "insert into redcap_crons (cron_name, external_module_id, cron_description, cron_frequency, cron_max_run_time) values (?, ?, ?, ?, ?)";
+			try{
+				ExternalModules::query($sql, [$cron['cron_name'], $externalModuleId, $cron['cron_description'], $cron['cron_frequency'], $cron['cron_max_run_time']]);
+			}
+			catch(Exception $e){
 				// If fails on one cron, then delete any added so far for this module
 				self::removeCronJobs($moduleInstance->PREFIX);
 				// Return error
 				//= One or more cron jobs for this module failed to be created.
-				throw new Exception(self::tt("em_errors_9")); 
+				error_log(self::tt("em_errors_9"));
+
+				throw $e;
 			}
 		}
 	}
@@ -1465,8 +1481,8 @@ class ExternalModules
 		// If a module directory has been deleted, then we have to use this alternative way to remove its crons			
 		$externalModuleId = self::getIdForPrefix($moduleDirectoryPrefix);
 		// Remove crons from db table
-		$sql = "delete from redcap_crons where external_module_id = '".db_escape($externalModuleId)."'";
-		return db_query($sql);
+		$sql = "delete from redcap_crons where external_module_id = ?";
+		return ExternalModules::query($sql, [$externalModuleId]);
 	}
 
 	# validate EVERY module config's cron jobs' attributes. fix them in the redcap_crons table if incorrect/out-of-date.
@@ -1695,8 +1711,13 @@ class ExternalModules
 			ExternalModules::query("SELECT RELEASE_LOCK(?)", [$lockName]);
 		};
 
+		// If module is being enabled for a project and users can activate this module on their own, then skip the user-based permissions check
+        // (Not sure if this is the best insertion point for this check, but it works well enough.)
+		$skipUserBasedPermissionsCheck = ($key == self::KEY_ENABLED && is_numeric($projectId)
+                && ExternalModules::getSystemSetting($moduleDirectoryPrefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true && ExternalModules::hasDesignRights());
+
 		try{
-			if (self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			if (!$skipUserBasedPermissionsCheck && self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
 				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.
 				$errorMessageSuffix = self::tt("em_errors_18"); 
 
@@ -1713,10 +1734,7 @@ class ExternalModules
 			}
 
 			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
-
-			$projectId = db_real_escape_string($projectId);
-			$key = db_real_escape_string($key);
-
+			
 			$oldType = gettype($oldValue);
 			if ($oldType == 'array' || $oldType == 'object') {
 				$oldValue = json_encode($oldValue);
@@ -1743,27 +1761,30 @@ class ExternalModules
 			}
 
 			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
-				$pidString = "NULL";
+				$projectId = null;
 			}
 			else{
-				// Require an integer to prevent sql injection.
-				$pidString = self::requireInteger($projectId);
+				// This used to be for preventing SQL injection, but that reason no longer makes sense now that we have prepared statements.
+				// We left it in place for normalization purposes, and to prevent hook parameter injection (which could lead to other injection types).
+				$projectId = self::requireInteger($projectId);
 			}
 
 			if ($type == "boolean") {
 				$value = ($value) ? 'true' : 'false';
 			}
 
+			$query = ExternalModules::createQuery();
+			
 			if ($value === null) {
-				$event = "DELETE";
-				$sql = "DELETE FROM redcap_external_module_settings
-						WHERE
-							external_module_id = $externalModuleId
-							AND " . self::getSqlEqualClause('project_id', $pidString) . "
-							AND `key` = '$key'";
-			} else {
-				$value = db_real_escape_string($value);
+				$query->add('
+					DELETE FROM redcap_external_module_settings
+					WHERE
+						external_module_id = ?
+						AND `key` = ?
+				', [$externalModuleId, $key]);
 
+				$query->add('AND')->addInClause('project_id', $projectId);
+			} else {
 				if (strlen($key) > self::SETTING_KEY_SIZE_LIMIT) {
 					//= Cannot save the setting for prefix '{0}' and key '{1}' because the key is longer than the {2} character limit.
 					throw new Exception(self::tt("em_errors_21", 
@@ -1781,54 +1802,57 @@ class ExternalModules
 				}
 
 				if ($oldValue === null) {
-					$event = "INSERT";
-					$sql = "INSERT INTO redcap_external_module_settings
-								(
-									`external_module_id`,
-									`project_id`,
-									`key`,
-									`type`,
-									`value`
-								)
-							VALUES
+					$query->add('
+						INSERT INTO redcap_external_module_settings
 							(
-								$externalModuleId,
-								$pidString,
-								'$key',
-								'$type',
-								'$value'
-							)";
+								`external_module_id`,
+								`project_id`,
+								`key`,
+								`type`,
+								`value`
+							)
+						VALUES
+							(
+								?,
+								?,
+								?,
+								?,
+								?
+							)
+					', [$externalModuleId, $projectId, $key, $type, $value]);
 				} else {
-					if ($key == self::KEY_ENABLED && $value == "false" && $pidString != "NULL") {
+					if ($key == self::KEY_ENABLED && $value == "false" && $projectId) {
 						$version = self::getModuleVersionByPrefix($moduleDirectoryPrefix);
 						self::callHook('redcap_module_project_disable', array($version, $projectId), $moduleDirectoryPrefix);
 					}
 
-					$event = "UPDATE";
-					$sql = "UPDATE redcap_external_module_settings
-							SET value = '$value',
-								type = '$type'
-							WHERE
-								external_module_id = $externalModuleId
-								AND " . self::getSqlEqualClause('project_id', $pidString) . "
-								AND `key` = '$key'";
+					$query->add('
+						UPDATE redcap_external_module_settings
+						SET value = ?,
+							type = ?
+						WHERE
+							external_module_id = ?
+							AND `key` = ?
+					', [$value, $type, $externalModuleId, $key]);
+
+					$query->add('AND')->addInClause('project_id', $projectId);
 				}
 			}
 
-			self::query($sql);
+			$query->execute();
 
-			$affectedRows = db_affected_rows();
+			$affectedRows = $query->getStatement()->affected_rows;
 
 			if ($affectedRows != 1) {
 				//= Unexpected number of affected rows ({0}) on External Module setting query: {1}
 				throw new Exception(self::tt("em_errors_23", 
 					$affectedRows, 
-					$sql)); 
+					"\nQuery: " . $query->getSQL() . "\nParameters: " . json_encode($query->getParameters())));
 			}
 
 			$releaseLock();
 
-			return $sql;
+			return $query;
 		}
 		catch(Exception $e){
 			$releaseLock();
@@ -1909,7 +1933,7 @@ class ExternalModules
 		return new Query();
 	}
 
-	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
+	static function getSettingsQuery($moduleDirectoryPrefixes, $projectIds, $keys = array())
 	{
 		$query = self::createQuery();
 		$query->add("
@@ -1924,17 +1948,38 @@ class ExternalModules
 			$query->add('and')->addInClause('m.directory_prefix', $moduleDirectoryPrefixes);
 		}
 
-		if (!empty($projectIds)) {
-			$query->add('and')->addInClause('s.project_id', $projectIds);
-		}
-		else if($projectIds !== null) {
-			$query->add('and')->addInClause('s.project_id', ["NULL"]);
+		if($projectIds !== null){
+			if(!is_array($projectIds)){
+				if(empty($projectIds)){
+					// This probabaly shouldn't be a valid use case, but it's easier to add the following line
+					// than verify whether it's actually used anywhere.
+					$projectIds = self::SYSTEM_SETTING_PROJECT_ID;
+				}
+
+				$projectIds = [$projectIds];
+			}
+
+			if (!empty($projectIds)) {
+				foreach($projectIds as &$projectId){
+					if($projectId === self::SYSTEM_SETTING_PROJECT_ID){
+						$projectId = null;
+					}
+				}
+	
+				$query->add('and')->addInClause('s.project_id', $projectIds);
+			}
 		}
 
 		if (!empty($keys)) {
 			$query->add('and')->addInClause('s.key', $keys);
 		}
 
+		return $query;
+	}
+
+	static function getSettings($moduleDirectoryPrefixes, $projectIds, $keys = array())
+	{
+		$query = self::getSettingsQuery($moduleDirectoryPrefixes, $projectIds, $keys);
 		return $query->execute();
 	}
 
@@ -2170,7 +2215,7 @@ class ExternalModules
 
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
-			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
+			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_114") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
 
@@ -2265,6 +2310,15 @@ class ExternalModules
 			return '(false)';
 		}
 
+		// Prepared statements don't really have anything to do with this null handling,
+		// we just wanted to change it going forward and prepared statements were a good opportunity to do so.
+		if($preparedStatement){
+			$nullValue = null;
+		}
+		else{
+			$nullValue = 'NULL';
+		}
+
 		$columnName = db_real_escape_string($columnName);
 
 		$valueListSql = "";
@@ -2272,9 +2326,7 @@ class ExternalModules
 		$parameters = [];
 
 		foreach($array as $item){
-			$item = db_real_escape_string($item);
-
-			if($item == 'NULL'){
+			if($item === $nullValue){
 				$nullSql = "$columnName IS NULL";
 			}
 			else{
@@ -2287,6 +2339,7 @@ class ExternalModules
 					$item = '?';
 				}
 				else{
+					$item = db_real_escape_string($item);
 					$item = "'$item'";
 				}
 
@@ -5189,6 +5242,40 @@ class ExternalModules
 			}
 		}
 		return array_values($finalVersion);
+	}
+
+	public static function finalizeModuleActivationRequest($prefix, $version, $project_id, $request_id)
+    {
+        global $project_contact_email, $project_contact_name, $app_title;
+		// If this was enabled by admin as a user request, then remove from To-Do List (if applicable)
+		if (SUPER_USER && \ToDoList::updateTodoStatus($project_id, 'module activation', 'completed', null, $request_id))
+		{
+			// For To-Do List requests only, send email back to user who requested module be enabled
+			try {
+				$config = self::getConfig($prefix, $version);
+
+				$request_userid = \ToDoList::getRequestorByRequestId($request_id);
+				$userInfo = \User::getUserInfoByUiid($request_userid);
+				$project_url = APP_URL_EXTMOD . 'manager/project.php?pid=' . $project_id;
+
+				$from = $project_contact_email;
+				$fromName = $project_contact_name;
+				$to = [$userInfo['user_email']];
+				$subject = "[REDCap] External Module \"{$config['name']}\" has been activated";
+				$message = "The External Module \"<b>{$config['name']}</b>\" has been successfully activated for the project named \""
+					. \RCView::a(array('href' => $project_url), strip_tags($app_title)) . "\".";
+				$email = self::sendBasicEmail($from, $to, $subject, $message, $fromName);
+				return $email;
+			} catch (Exception $e) {
+			    return false;
+            }
+		}
+		return true;
+	}
+
+	public static function userCanEnableDisableModule($prefix)
+	{
+		return (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
 	}
 
 	public static function getTestPIDs(){

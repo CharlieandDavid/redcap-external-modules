@@ -491,30 +491,30 @@ class AbstractExternalModule
 		$projectDetails = $this->getProjectDetails($projectId);
 
 		if($projectDetails["repeatforms"] == 0) {
-			$sql = "SELECT e.event_id
+			$sql = "SELECT CAST(e.event_id as CHAR) as event_id
 					FROM redcap_events_metadata e, redcap_events_arms a
-					WHERE a.project_id = $projectId
+					WHERE a.project_id = ?
 						AND a.arm_id = e.arm_id
 					ORDER BY e.event_id ASC
 					LIMIT 1";
 
-			$q = db_query($sql);
+			$q = ExternalModules::query($sql, [$projectId]);
 
 			if($row = db_fetch_assoc($q)) {
 				return $row['event_id'];
 			}
 		}
 		else {
-			$sql = "SELECT f.event_id
+			$sql = "SELECT CAST(f.event_id as CHAR) as event_id
 					FROM redcap_events_forms f, redcap_events_metadata m, redcap_events_arms a
-					WHERE a.project_id = $projectId
+					WHERE a.project_id = ?
 						AND a.arm_id = m.arm_id
 						AND m.event_id = f.event_id
-						AND f.form_name = '".prep($formName)."'
+						AND f.form_name = ?
 					ORDER BY f.event_id ASC
 					LIMIT 1";
 
-			$q = db_query($sql);
+			$q = ExternalModules::query($sql, [$projectId, $formName]);
 
 			if($row = db_fetch_assoc($q)) {
 				return $row['event_id'];
@@ -526,17 +526,32 @@ class AbstractExternalModule
 
 	public function getSurveyId($projectId,$surveyFormName = "") {
 		// Get survey_id, form status field, and save and return setting
-		$sql = "SELECT s.survey_id, s.form_name, s.save_and_return
-		 		FROM redcap_projects p, redcap_surveys s, redcap_metadata m
-					WHERE p.project_id = ".prep($projectId)."
-						AND p.project_id = s.project_id
-						AND m.project_id = p.project_id
-						AND s.form_name = m.form_name
-						".($surveyFormName != "" ? (is_numeric($surveyFormName) ? "AND s.survey_id = '$surveyFormName'" : "AND s.form_name = '".prep($surveyFormName)."'") : "")
-				."ORDER BY s.survey_id ASC
-				 LIMIT 1";
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT CAST(s.survey_id as CHAR) as survey_id, s.form_name, CAST(s.save_and_return as CHAR) as save_and_return
+			FROM redcap_projects p, redcap_surveys s, redcap_metadata m
+			WHERE p.project_id = ?
+				AND p.project_id = s.project_id
+				AND m.project_id = p.project_id
+				AND s.form_name = m.form_name
+		", [$projectId]);
 
-		$q = db_query($sql);
+		if($surveyFormName != ""){
+			if(is_numeric($surveyFormName)){
+				$query->add("AND s.survey_id = ?", $surveyFormName);
+			}
+			else{
+				$query->add("AND s.form_name = ?", $surveyFormName);
+			}
+		}
+		
+		$query->add("
+			ORDER BY s.survey_id ASC
+			LIMIT 1
+		");
+
+		$q = $query->execute();
+
 		$surveyId = db_result($q, 0, 'survey_id');
 		$surveyFormName = db_result($q, 0, 'form_name');
 
@@ -544,14 +559,23 @@ class AbstractExternalModule
 	}
 
 	public function getParticipantAndResponseId($surveyId,$recordId,$eventId = "") {
-		$sql = "SELECT p.participant_id, r.response_id
-				FROM redcap_surveys_participants p, redcap_surveys_response r
-				WHERE p.survey_id = '$surveyId'
-					AND p.participant_id = r.participant_id
-					AND r.record = '".$recordId."'".
-				($eventId != "" ? " AND p.event_id = '".prep($eventId)."'" : "");
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT
+				CAST(p.participant_id as CHAR) as participant_id,
+				CAST(r.response_id as CHAR) as response_id
+			FROM redcap_surveys_participants p, redcap_surveys_response r
+			WHERE p.survey_id = ?
+				AND p.participant_id = r.participant_id
+				AND r.record = ?
+		", [$surveyId, $recordId]);
 
-		$q = db_query($sql);
+		if($eventId != ""){
+			$query->add(" AND p.event_id = ?", $eventId);
+		}
+
+		$q = $query->execute();
+
 		$participantId = db_result($q, 0, 'participant_id');
 		$responseId = db_result($q, 0, 'response_id');
 
@@ -561,11 +585,19 @@ class AbstractExternalModule
 	public function getProjectDetails($projectId) {
 		$sql = "SELECT *
 				FROM redcap_projects
-				WHERE project_id = '".prep($projectId)."'";
+				WHERE project_id = ?";
 
-		$q = db_query($sql);
+		$q = ExternalModules::query($sql, $projectId);
 
-		return db_fetch_assoc($q);
+		$row = db_fetch_assoc($q);
+
+		foreach($row as $key=>$value){
+			if($value !== null){
+				$row[$key] = (string) $value;
+			}
+		}
+		
+		return $row;
 	}
 
 	public function getMetadata($projectId,$forms = NULL) {
@@ -791,7 +823,7 @@ class AbstractExternalModule
             }
         } else if ($metadata[$fieldName]['field_type'] == 'sql') {
             if (!empty($params['value'])) {
-                $q = db_query($metadata[$fieldName]['select_choices_or_calculations']);
+                $q = ExternalModules::query($metadata[$fieldName]['select_choices_or_calculations'], []);
 
                 if ($error = db_error()) {
                     die($metadata[$fieldName]['select_choices_or_calculations'] . ': ' . $error);
@@ -897,16 +929,14 @@ class AbstractExternalModule
 	}
 
 	public function setData($record, $fieldName, $values){
-		$instanceId = db_escape(self::requireInstanceId());
+		$instanceId = self::requireInstanceId();
 		if($instanceId != 1){
 			//= Multiple instances are not currently supported!
 			throw new Exception(ExternalModules::tt("em_errors_66")); 
 		}
 
-		$pid = db_escape(self::requireProjectId());
-		$eventId = db_escape(self::requireEventId());
-		$record = db_escape($record);
-		$fieldName = db_escape($fieldName);
+		$pid = self::requireProjectId();
+		$eventId = self::requireEventId();
 
 		if(!is_array($values)){
 			$values = [$values];
@@ -914,20 +944,26 @@ class AbstractExternalModule
 
 		$beginTransactionVersion = '5.5';
 		if($this->isPHPGreaterThan($beginTransactionVersion)){
-			$this->query("SET AUTOCOMMIT=0");
-			$this->query("BEGIN");
+			$this->query("SET AUTOCOMMIT=0", []);
+			$this->query("BEGIN", []);
 		}
 
-		$this->query("DELETE FROM redcap_data where project_id = $pid and event_id = $eventId and record = '$record' and field_name = '$fieldName'");
+		$this->query(
+			"DELETE FROM redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ?",
+			[$pid, $eventId, $record, $fieldName]
+		);
 
 		foreach($values as $value){
 			$value = db_escape($value);
-			$this->query("INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES ($pid, $eventId, '$record', '$fieldName', '$value')");
+			$this->query(
+				"INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES (?, ?, ?, ?, ?)",
+				[$pid, $eventId, $record, $fieldName, $value]
+			);
 		}
 
 		if($this->isPHPGreaterThan($beginTransactionVersion)) {
-			$this->query("COMMIT");
-			$this->query("SET AUTOCOMMIT=1");
+			$this->query("COMMIT", []);
+			$this->query("SET AUTOCOMMIT=1", []);
 		}
 	}
 
@@ -949,12 +985,18 @@ class AbstractExternalModule
 		$fieldName = \Records::getTablePK($pid);
 		$recordId = $this->getNextAutoNumberedRecordId($pid);
 
-		$insertSql = "insert into redcap_data (project_id, event_id, record, field_name, value) values ($pid, $eventId, $recordId, '$fieldName', $recordId)";
-		$this->query($insertSql);
-		$result = $this->query("select count(1) as count from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' and value = $recordId");
+		$insertSql = "insert into redcap_data (project_id, event_id, record, field_name, value) values (?, ?, ?, ?, ?)";
+		$this->query($insertSql, [$pid, $eventId, $recordId, $fieldName, $recordId]);
+		$result = $this->query(
+			"select count(1) as count from redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ? and value = ?",
+			[$pid, $eventId, $recordId, $fieldName, $recordId]
+		);
 		$count = $result->fetch_assoc()['count'];
 		if($count > 1){
-			$this->query("delete from redcap_data where project_id = $pid and event_id = $eventId and record = $recordId and field_name = '$fieldName' limit 1");
+			$this->query(
+				"delete from redcap_data where project_id = ? and event_id = ? and record = ? and field_name = ? limit 1",
+				[$pid, $eventId, $recordId, $fieldName]
+			);
 			return $this->addAutoNumberedRecord($pid);
 		}
 		else if($count == 0){
@@ -966,7 +1008,7 @@ class AbstractExternalModule
 		
 		// Add record to the record list cache table
 		if (method_exists('Records', 'addRecordToRecordListCache')) {
-			$arm = db_result(db_query("select arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = $eventId"), 0);
+			$arm = db_result($this->query("select CAST(arm_num as CHAR) as arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = ?", [$eventId]), 0);
 			\Records::addRecordToRecordListCache($pid, $recordId, $arm);
 		}
 
@@ -977,18 +1019,18 @@ class AbstractExternalModule
 	}
 
 	private function updateRecordCount($pid){
-		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = $pid group by record) a");
+		$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = ? group by record) a", [$pid]);
 		$count = $results->fetch_assoc()['count'];
-		$this->query("update redcap_record_counts set record_count = $count, time_of_count = '".NOW."' where project_id = $pid");
+		$this->query("update redcap_record_counts set record_count = ?, time_of_count = '".NOW."' where project_id = ?", [$count, $pid]);
 	}
 
 	private function getNextAutoNumberedRecordId($pid){
 		$results = $this->query("
 			select record from redcap_data 
-			where project_id = $pid
+			where project_id = ?
 			group by record
 			order by cast(record as unsigned integer) desc limit 1
-		");
+		", [$pid]);
 
 		$row = $results->fetch_assoc();
 		if(empty($row)){
@@ -1006,9 +1048,9 @@ class AbstractExternalModule
 			from redcap_events_arms a
 			join redcap_events_metadata m
 				on a.arm_id = m.arm_id
-			where a.project_id = $pid
+			where a.project_id = ?
 			order by event_id
-		");
+		", [$pid]);
 
 		$row = db_fetch_assoc($results);
 		return $row['event_id'];
@@ -1093,12 +1135,12 @@ class AbstractExternalModule
 				and m.form_name = s.form_name
 				and field_order = 1 -- getting the first field is the easiest way to get the first form
 			where
-				s.project_id = " . $this->getProjectId() . "
-				and s.form_name = '$formName'
+				s.project_id = ?
+				and s.form_name = ?
 				and participant_email is null
 		";
 		
-        $result = $this->query($sql);
+        $result = $this->query($sql, [$this->getProjectId(), $formName]);
         $row = db_fetch_assoc($result);
         $hash = @$row['hash'];
 
@@ -1484,7 +1526,7 @@ class AbstractExternalModule
 
 			$responseId = \decryptResponseHash($responseHash, $participant_id);
 
-			$result = $this->query("select record from redcap_surveys_response where response_id = $responseId");
+			$result = $this->query("select record from redcap_surveys_response where response_id = ?", [$responseId]);
 			$row = db_fetch_assoc($result);
 			$recordId = $row['record'];
 		}

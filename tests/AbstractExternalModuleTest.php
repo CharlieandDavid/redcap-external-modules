@@ -3,6 +3,7 @@ namespace ExternalModules;
 require_once 'BaseTest.php';
 
 use \Exception;
+use \REDCap;
 
 class AbstractExternalModuleTest extends BaseTest
 {
@@ -1228,5 +1229,113 @@ class AbstractExternalModuleTest extends BaseTest
 		foreach($fieldNames as $fieldName){
 			$this->assertSame($expected[$fieldName], $actual[$fieldName]);
 		}
+	}
+
+	function testGetProjectDetails(){
+		$m = $this->getInstance();
+		$details = $m->getProjectDetails(TEST_SETTING_PID);
+
+		$this->assertSame(TEST_SETTING_PID, $details['project_id']);
+		$this->assertGreaterThan(100, count($details));
+	}
+
+	function testSetData(){
+		$_GET['pid'] = TEST_SETTING_PID;
+		$_GET['event_id'] = $this->framework->getEventId();
+		$_GET['instance'] = 1;
+		$recordId = 1;
+
+		$result = $this->query("
+			select field_name
+			from redcap_metadata
+			where
+				project_id = ?
+				and field_order = ?
+				and field_name not like '%_complete'
+		", [TEST_SETTING_PID, 2]);
+
+		$fieldName = $result->fetch_row()[0];
+		if(empty($fieldName)){
+			throw new Exception("You must add a field to the External Module test project with ID " . TEST_SETTING_PID);
+		}
+
+		$value = (string) rand();
+
+		// Calling saveData() is required to make sure the record exists.
+		REDCap::saveData(TEST_SETTING_PID, 'json', json_encode([[
+			$this->framework->getRecordIdField() => $recordId,
+		]]));
+
+		$this->setData($recordId, $fieldName, $value);
+
+		$data = json_decode(REDCap::getData(TEST_SETTING_PID, 'json', $recordId), true)[0];
+
+		$this->assertSame($value, $data[$fieldName]);
+	}
+
+	function __call($methodName, $args){
+		return call_user_func_array(array($this->getInstance(), $methodName), $args);
+	}
+
+	function __get($varName){
+		return $this->getInstance()->$varName;
+	}
+
+	function testAddAutoNumberedRecord(){
+		$_GET['pid'] = TEST_SETTING_PID;
+
+		$recordId1 = $this->addAutoNumberedRecord();
+		$recordId2 = $this->addAutoNumberedRecord();
+
+		$this->assertSame($recordId1+1, $recordId2);
+
+		$this->deleteRecords(TEST_SETTING_PID, [$recordId1, $recordId2]);
+	}
+
+	function deleteRecord($pid, $recordId){
+		$this->deleteRecords($pid, [$recordId]);
+	}
+
+	function deleteRecords($pid, $recordIds){
+		$q = $this->framework->createQuery();
+		$q->add('delete from redcap_data where project_id = ? and', [$pid]);
+		$q->addInClause('record', $recordIds);
+		$q->execute();
+
+		$this->assertSame(count($recordIds), $q->getStatement()->affected_rows);
+	}
+
+	function testUpdateRecordCount(){
+		$pid = TEST_SETTING_PID;
+		
+		$getCachedRecordCount = function() use ($pid){
+			$results = $this->query("select record_count from redcap_record_counts where project_id = ?", [$pid]);
+			$count = $results->fetch_assoc()['record_count'];
+			return $count;
+		};
+
+		$getActualRecordCount = function() use ($pid){
+			$results = $this->query("select count(1) as count from (select 1 from redcap_data where project_id = ? group by record) a", [$pid]);
+			return $results->fetch_assoc()['count'];
+		};
+
+		$setCachedRecordCount = function($count) use ($pid){
+			$this->query("update redcap_record_counts set record_count = ?, time_of_count = '".NOW."' where project_id = ?", [$count, $pid]);
+		};
+
+		$updateRecordCount = function() use ($pid){
+			$this->callPrivateMethod('updateRecordCount', $pid);
+		};
+
+		if($getCachedRecordCount() === null){
+			$this->query("insert into redcap_record_counts (project_id, record_count) values (?, ?)", [$pid, 0]);
+		}
+
+		$count = rand();
+		$setCachedRecordCount($count);
+		$this->assertSame($count, $getCachedRecordCount());
+
+		$updateRecordCount();
+		$this->assertSame($getActualRecordCount(), $getCachedRecordCount());
 	}
 }

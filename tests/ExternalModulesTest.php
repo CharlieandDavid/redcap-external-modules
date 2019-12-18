@@ -386,10 +386,11 @@ class ExternalModulesTest extends BaseTest
 		));
 
 		$systemSettings = $config['system-settings'];
-		$this->assertSame(3, count($systemSettings));
+		$this->assertSame(4, count($systemSettings));
 		$this->assertSame(ExternalModules::KEY_ENABLED, $systemSettings[0]['key']);
 		$this->assertSame(ExternalModules::KEY_DISCOVERABLE, $systemSettings[1]['key']);
-		$this->assertSame($key, $systemSettings[2]['key']);
+		$this->assertSame(ExternalModules::KEY_USER_ACTIVATE_PERMISSION, $systemSettings[2]['key']);
+		$this->assertSame($key, $systemSettings[3]['key']);
 	}
 
 	function testCacheAllEnableData()
@@ -1222,6 +1223,21 @@ class ExternalModulesTest extends BaseTest
 		$assert("false", 'column_name', []);
 	}
 
+	function testGetSQLInClause_preparedStatements(){
+		$assert = function($expectedSql, $expectedParams, $columnName, $array){
+			list($actualSql, $actualParams) = ExternalModules::getSQLInClause($columnName, $array, true);
+			
+			$this->assertSame("($expectedSql)", $actualSql);
+			$this->assertSame($expectedParams, $actualParams);
+		};
+
+		$assert("column_name IN (?)", [1], 'column_name', 1);
+		$assert("column_name IN (?)", ['1'], 'column_name', '1');
+		$assert("column_name IN (?, ?)", [1, 2], 'column_name', [1, 2]);
+		$assert("column_name IN (?) OR column_name IS NULL", [1], 'column_name', [1, null]);
+		$assert("column_name IN (?)", ['NULL'], 'column_name', ['NULL']);
+	}
+
 	function testIsCompatibleWithREDCapPHP_minVersions(){
 		$versionTypes = [
 			'PHP' => PHP_VERSION,
@@ -1484,12 +1500,34 @@ class ExternalModulesTest extends BaseTest
 		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
 
 		$participantId = ExternalModules::addSurveyParticipant($surveyId, $m->framework->getEventId(TEST_SETTING_PID), $m->generateUniqueRandomSurveyHash());
-		$this->assertInternalType('int', $participantId);
+		$this->assertIsInt($participantId);
 
 		$responseId = ExternalModules::addSurveyResponse($participantId, 1, generateRandomHash());
-		$this->assertInternalType('int', $responseId);
+		$this->assertIsInt($responseId);
 
 		// The following delete cascades and deletes the redcap_surveys_response row as well.
 		ExternalModules::query('delete from redcap_surveys_participants where participant_id = ?', $participantId);
+	}
+
+	function testGetSettingsQuery_projectIds(){
+		$assert = function($projectIds, $hasInClause, $hasNullClause){
+			$query = ExternalModules::getSettingsQuery(null, $projectIds);
+			$sql = $query->getSQL();
+			
+			$this->assertSame($hasInClause, strpos($sql, 'project_id IN ') !== false);
+			$this->assertSame($hasNullClause, strpos($sql, 'project_id IS NULL') !== false);
+		};
+		
+		$assert(null, false, false);
+		$assert(ExternalModules::SYSTEM_SETTING_PROJECT_ID, false, true);
+		$assert([ExternalModules::SYSTEM_SETTING_PROJECT_ID], false, true);
+		$assert([ExternalModules::SYSTEM_SETTING_PROJECT_ID, 1], true, true);
+		$assert([1], true, false);
+		$assert(1, true, false);
+
+		// I'm not sure if these cases are actually ever used.
+		// If they are, perhaps they shouldn't be.
+		$assert('', false, true);
+		$assert(0, false, true);
 	}
 }

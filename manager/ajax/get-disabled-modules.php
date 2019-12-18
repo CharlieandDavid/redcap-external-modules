@@ -103,6 +103,7 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 			$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
+			$userCanEnable = ExternalModules::userCanEnableDisableModule($prefix);
 
 			$name = trim($config['name']);
 			if(empty($name)){
@@ -117,11 +118,16 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 					</td>
 					<td class="external-modules-action-buttons">
 						<?php
-                            if (SUPER_USER) {
+                            if ($userCanEnable) {
                                 ?><button class='enable-button'>Enable</button><?php
                             }
-                            else if(false) {
-                                ?><button class='enable-button module-request'>Request Activation</button><?php
+                            elseif ($GLOBALS['external_modules_allow_activation_user_request']) {
+                                $requestPending = \ToDoList::isExternalModuleRequestPending($prefix, $_GET['pid']);
+								$requestPendingDisabled = $requestPending ? "disabled" : "";
+                                ?><button class='enable-button module-request' <?=$requestPendingDisabled?>>Request Activation</button><?php
+                                if ($requestPending) {
+									?><div class='text-danger'>Activation request is pending</div><?php
+                                }
                             }
                         ?>
 					</td>
@@ -163,6 +169,8 @@ ExternalModules::tt_transferToJSLanguageStore(
 		"em_manage_70",
 		"em_manage_71",
         "em_manage_89",
+        "em_errors_112",
+        "em_manage_27"
 	));
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); 
 ?>
