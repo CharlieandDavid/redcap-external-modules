@@ -169,6 +169,8 @@ ExternalModules::tt_transferToJSLanguageStore(
 		"em_manage_70",
 		"em_manage_71",
         "em_manage_89",
+        "em_errors_112",
+        "em_manage_27"
 	));
 ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'get-disabled-modules.js'); 
 ?>
