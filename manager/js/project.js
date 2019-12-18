@@ -31,4 +31,52 @@ $(function() {
 		   }
 		});
 	});
+
+	$('.external-module-activation-request .enable-button').click(function(event) {
+		var row = $(event.target).closest('tr');
+		var prefix = row.data('module');
+		var version = row.data('version');
+		adminActivateModule(prefix, version, getParameterByName('request_id'));
+	});
+
+	// To-Do List: Load activation request in a dialog
+	if (inIframe() && super_user && getParameterByName('request_id') != '' && getParameterByName('prefix') != '') {
+		simpleDialog(null,null,'external-module-activation-request-dialog',600,null,'Cancel',"adminActivateModule('"+getParameterByName('prefix')+"', '"+$('#external-module-version').val()+"', '"+getParameterByName('request_id')+"');","Enable");
+	}
 });
+
+function adminActivateModule(prefix, version, request_id)
+{
+	var url = 'ajax/enable-module.php?pid=' + pid + '&request_id=' + request_id;
+	var showErrorAlert = function (message) {
+		//= An error occurred while enabling the module:
+		console.log('AJAX Request Error:', message);
+		alert('ERROR: '+message);
+	}
+	$('.external-module-activation-request .enable-button').prop('disabled', true);
+	$.post(url, {prefix: prefix, version: version}, function (data) {
+		var jsonAjax
+		try {
+			jsonAjax = jQuery.parseJSON(data);
+		} catch (e) {
+			showErrorAlert(data)
+			return
+		}
+		if (typeof jsonAjax != 'object') {
+			showErrorAlert(data)
+			return
+		}
+		var errorMessage = jsonAjax['error_message']
+		if (errorMessage) {
+			showErrorAlert(errorMessage);
+		} else if (jsonAjax['message'] == 'success') {
+			if (inIframe()) {
+				closeToDoListFrame();
+			} else {
+				simpleDialog("The external module has been successfully enabled for the project", "SUCCESS", null, null, function() {
+					window.location.href = 'project.php?pid='+pid;
+				});
+			}
+		}
+	});
+}

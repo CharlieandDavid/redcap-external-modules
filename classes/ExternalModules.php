@@ -37,6 +37,7 @@ class ExternalModules
 	const KEY_VERSION = 'version';
 	const KEY_ENABLED = 'enabled';
 	const KEY_DISCOVERABLE = 'discoverable-in-project';
+	const KEY_USER_ACTIVATE_PERMISSION = 'user-activate-permission';
 	const KEY_CONFIG_USER_PERMISSION = 'config-require-user-permission';
 	const LANGUAGE_KEY_FOUND = 'Language Key Found';
 
@@ -168,6 +169,12 @@ class ExternalModules
 				'key' => self::KEY_DISCOVERABLE,
 				//= Make module discoverable by users: Display info on External Modules page in all projects
 				'name' => self::tt("em_config_2"),
+				'type' => 'checkbox'
+			),
+			array(
+				'key' => self::KEY_USER_ACTIVATE_PERMISSION,
+				//= Allow the module to be activated in projects by users with Project Setup/Design rights
+				'name' => self::tt("em_config_7"),
 				'type' => 'checkbox'
 			),
 			array(
@@ -1156,9 +1163,10 @@ class ExternalModules
 		return (strpos(self::$SERVER_NAME, "vanderbilt.edu") !== false);
 	}
 
-	static function sendBasicEmail($from,$to,$subject,$message) {
+	static function sendBasicEmail($from,$to,$subject,$message,$fromName='') {
         $email = new \Message();
         $email->setFrom($from);
+		$email->setFromName($fromName);
         $email->setTo(implode(',', $to));
         $email->setSubject($subject);
 
@@ -1167,6 +1175,7 @@ class ExternalModules
 
         return $email->send();
     }
+
 	private static function getAdminEmailMessage($subject, $message, $prefix)
 	{
 		$message .= "<br><br>URL: " . (isset($_SERVER['HTTPS']) ? "https" : "http") . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] . "<br>";
@@ -1702,8 +1711,13 @@ class ExternalModules
 			ExternalModules::query("SELECT RELEASE_LOCK(?)", [$lockName]);
 		};
 
+		// If module is being enabled for a project and users can activate this module on their own, then skip the user-based permissions check
+        // (Not sure if this is the best insertion point for this check, but it works well enough.)
+		$skipUserBasedPermissionsCheck = ($key == self::KEY_ENABLED && is_numeric($projectId)
+                && ExternalModules::getSystemSetting($moduleDirectoryPrefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true && ExternalModules::hasDesignRights());
+
 		try{
-			if (self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+			if (!$skipUserBasedPermissionsCheck && self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
 				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.
 				$errorMessageSuffix = self::tt("em_errors_18"); 
 
@@ -2201,7 +2215,7 @@ class ExternalModules
 
 			//= An error occurred while running an External Module query
 			//= (see the server error log for more details).
-			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_112") . "'$dbError'. " . self::tt("em_errors_30");
+			$message = self::tt("em_errors_29") . "'$message'. " . self::tt("em_errors_114") . "'$dbError'. " . self::tt("em_errors_30");
 			throw new Exception($message);
 		}
 
@@ -5228,6 +5242,40 @@ class ExternalModules
 			}
 		}
 		return array_values($finalVersion);
+	}
+
+	public static function finalizeModuleActivationRequest($prefix, $version, $project_id, $request_id)
+    {
+        global $project_contact_email, $project_contact_name, $app_title;
+		// If this was enabled by admin as a user request, then remove from To-Do List (if applicable)
+		if (SUPER_USER && \ToDoList::updateTodoStatus($project_id, 'module activation', 'completed', null, $request_id))
+		{
+			// For To-Do List requests only, send email back to user who requested module be enabled
+			try {
+				$config = self::getConfig($prefix, $version);
+
+				$request_userid = \ToDoList::getRequestorByRequestId($request_id);
+				$userInfo = \User::getUserInfoByUiid($request_userid);
+				$project_url = APP_URL_EXTMOD . 'manager/project.php?pid=' . $project_id;
+
+				$from = $project_contact_email;
+				$fromName = $project_contact_name;
+				$to = [$userInfo['user_email']];
+				$subject = "[REDCap] External Module \"{$config['name']}\" has been activated";
+				$message = "The External Module \"<b>{$config['name']}</b>\" has been successfully activated for the project named \""
+					. \RCView::a(array('href' => $project_url), strip_tags($app_title)) . "\".";
+				$email = self::sendBasicEmail($from, $to, $subject, $message, $fromName);
+				return $email;
+			} catch (Exception $e) {
+			    return false;
+            }
+		}
+		return true;
+	}
+
+	public static function userCanEnableDisableModule($prefix)
+	{
+		return (SUPER_USER || (ExternalModules::hasDesignRights() && ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true));
 	}
 
 	public static function getTestPIDs(){

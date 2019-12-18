@@ -124,9 +124,13 @@ $(function(){
 						enableButton.hide();
 					}
 				}else if (jsonAjax['message'] == 'success') {
-					reloadThisPage();
 					disabledModal.modal('hide');
 					enableModal.modal('hide');
+					if (classArray.includes('module-request')) {
+						simpleDialog(ExternalModules.$lang.tt('em_errors_112'),ExternalModules.$lang.tt('em_manage_27'));
+					} else {
+						reloadThisPage();
+					}
 				}
 			});
 		}

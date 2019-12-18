@@ -260,6 +260,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 			$enabled = false;
 			$system_enabled = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_ENABLED);
 			$isDiscoverable = (ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_DISCOVERABLE) == true);
+			$userCanEnable = ExternalModules::userCanEnableDisableModule($prefix);
 
 			if (isset($_GET['pid'])) {
 				$enabled = ExternalModules::getProjectSetting($prefix, $_GET['pid'], ExternalModules::KEY_ENABLED);
@@ -278,7 +279,7 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 							?><button class='external-modules-configure-button'><!--= Configure --><?=ExternalModules::tt("em_manage_54")?></button><?php
 						}
 
-						if(SUPER_USER) {
+						if($userCanEnable) {
 							?><button class='external-modules-disable-button'><!--= Disable --><?=ExternalModules::tt("em_manage_55")?></button><?php
 						}
 

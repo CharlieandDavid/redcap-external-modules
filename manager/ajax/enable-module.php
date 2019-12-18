@@ -1,14 +1,22 @@
 <?php
 namespace ExternalModules;
+
+use Exception;
+
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
-// Only administrators can enable/disable modules
-if (!SUPER_USER) exit;
+// Can the current user enable/disable modules?
+if (!ExternalModules::userCanEnableDisableModule($_POST['prefix'])) exit;
 
 $return_data['message'] = "success";
 
 if (isset($_GET['pid'])) {
-	 ExternalModules::enableForProject($_POST['prefix'], $_POST['version'], $_GET['pid']);
+	ExternalModules::enableForProject($_POST['prefix'], $_POST['version'], $_GET['pid']);
+	if (isset($_GET['request_id'])) {
+		if (!ExternalModules::finalizeModuleActivationRequest($_POST['prefix'], $_POST['version'], $_GET['pid'], (int)$_GET['request_id'])) {
+			$return_data['error_message'] .= ExternalModules::tt("em_manage_90", $config['name']) . "<br/>";
+		}
+	}
 }
 else {
     $config = ExternalModules::getConfig($_POST['prefix'], $_POST['version']);
