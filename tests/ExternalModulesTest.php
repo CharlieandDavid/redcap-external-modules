@@ -386,10 +386,11 @@ class ExternalModulesTest extends BaseTest
 		));
 
 		$systemSettings = $config['system-settings'];
-		$this->assertSame(3, count($systemSettings));
+		$this->assertSame(4, count($systemSettings));
 		$this->assertSame(ExternalModules::KEY_ENABLED, $systemSettings[0]['key']);
 		$this->assertSame(ExternalModules::KEY_DISCOVERABLE, $systemSettings[1]['key']);
-		$this->assertSame($key, $systemSettings[2]['key']);
+		$this->assertSame(ExternalModules::KEY_USER_ACTIVATE_PERMISSION, $systemSettings[2]['key']);
+		$this->assertSame($key, $systemSettings[3]['key']);
 	}
 
 	function testCacheAllEnableData()
