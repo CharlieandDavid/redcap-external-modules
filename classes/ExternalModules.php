@@ -1556,9 +1556,9 @@ class ExternalModules
 	# obtain the info of a cron job for a module in the redcap_crons table
 	static function getCronJobFromTable($cron_name, $externalModuleId)
 	{
-		$sql = "select cron_frequency, cron_max_run_time, cron_description from redcap_crons 
-				where cron_name = '".db_escape($cron_name)."' and external_module_id = '".db_escape($externalModuleId)."'";
-		$q = db_query($sql);
+		$sql = "select cast(cron_frequency as char) as cron_frequency, cast(cron_max_run_time as char) as cron_max_run_time, cron_description from redcap_crons 
+				where cron_name = ? and external_module_id = ?";
+		$q = ExternalModules::query($sql, [$cron_name, $externalModuleId]);
 		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
 	}
 
