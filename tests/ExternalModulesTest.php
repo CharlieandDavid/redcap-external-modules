@@ -1530,4 +1530,26 @@ class ExternalModulesTest extends BaseTest
 		$assert('', false, true);
 		$assert(0, false, true);
 	}
+
+	function testAddCronJobToTable(){
+		$m = $this->getInstance();
+		$prefix = $m->PREFIX;
+		$moduleId = ExternalModules::getIdForPrefix($prefix);
+
+		$name = "UnitTestCron";
+		$expectedCron = [
+			"cron_name" => $name,
+			"cron_description" => "This is only a test.",
+			"method" =>"some_method",
+			"cron_frequency" =>  "99999",
+			"cron_max_run_time" => "1"
+		];
+
+		ExternalModules::addCronJobToTable($expectedCron, $this->getInstance());
+		$actualCron = ExternalModules::getCronJobFromTable($name, $moduleId);
+		ExternalModules::removeCronJobs($prefix);
+		
+		unset($expectedCron['method']);
+		$this->assertSame($expectedCron, $actualCron);
+	}
 }
