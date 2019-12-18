@@ -5137,8 +5137,12 @@ class ExternalModules
 				$message = "The External Module \"<b>{$config['name']}</b>\" has been successfully activated for the project named \""
 					. \RCView::a(array('href' => $project_url), strip_tags($app_title)) . "\".";
 				$email = self::sendBasicEmail($from, $to, $subject, $message, $fromName);
-			} catch (Exception $e) { }
+				return $email;
+			} catch (Exception $e) {
+			    return false;
+            }
 		}
+		return true;
 	}
 
 	public static function userCanEnableDisableModule($prefix)

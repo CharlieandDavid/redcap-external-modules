@@ -13,7 +13,9 @@ $return_data['message'] = "success";
 if (isset($_GET['pid'])) {
 	ExternalModules::enableForProject($_POST['prefix'], $_POST['version'], $_GET['pid']);
 	if (isset($_GET['request_id'])) {
-		ExternalModules::finalizeModuleActivationRequest($_POST['prefix'], $_POST['version'], $_GET['pid'], (int)$_GET['request_id']);
+		if (!ExternalModules::finalizeModuleActivationRequest($_POST['prefix'], $_POST['version'], $_GET['pid'], (int)$_GET['request_id'])) {
+			$return_data['error_message'] .= ExternalModules::tt("em_manage_90", $config['name']) . "<br/>";
+		}
 	}
 }
 else {
