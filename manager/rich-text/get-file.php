@@ -1,9 +1,5 @@
 <?php
 namespace ExternalModules;
-define('NOAUTH', true);
-set_include_path('.' . PATH_SEPARATOR . get_include_path());
-require_once __DIR__ . '/../../classes/ExternalModules.php';
-
 
 $filename = $_GET['file'];
 $prefix = $_GET['prefix'];

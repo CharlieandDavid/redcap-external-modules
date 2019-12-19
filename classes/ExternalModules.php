@@ -14,9 +14,10 @@ if(PHP_SAPI == 'cli'){
 	define('NOAUTH', true);
 }
 
-// Call redcap_connect.php
 if(!defined('APP_PATH_WEBROOT')){
-	ExternalModules::callRedcapConnect();
+	// There may no longer be any cases where redcap_connect.php hasn't already been called by this time.
+	// We should make absolutely certain before removing the following line.
+	require_once __DIR__ . '/../redcap_connect.php';
 }
 
 if (class_exists('ExternalModules\ExternalModules')) {
@@ -3984,23 +3985,6 @@ class ExternalModules
 			}
 		}
 		rmdir($dir);
-	}
-	
-	// Find the redcap_connect.php file and require it
-	public static function callRedcapConnect()
-	{
-		if(!defined('PLUGIN')){
-			// Since a change to redcap_connect.php on 4/6/18, this is required to make sure REDCap is initialized for command line calls like cron jobs.
-			define('PLUGIN', true);
-		}
-
-		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (!file_exists($connectPath)) {
-		    // We must be using the "external_modules" folder to override the version of the framework bundled with REDCap.
-			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		}
-
-		require_once $connectPath;
 	}
 	
 	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
