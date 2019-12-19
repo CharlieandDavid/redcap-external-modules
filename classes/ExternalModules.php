@@ -3870,10 +3870,10 @@ class ExternalModules
 			}
 			// Add row to redcap_external_modules_downloads table
 			$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
-					values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+					values (?, ?, ?)
 					on duplicate key update 
-					module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
-			db_query($sql);
+					module_id = ?, time_downloaded = ?, time_deleted = null";
+			ExternalModules::query($sql, [$moduleFolderName, $module_id, NOW, $module_id, NOW]);
 			// Remove module_id from external_modules_updates_available config variable		
 			self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
 			
