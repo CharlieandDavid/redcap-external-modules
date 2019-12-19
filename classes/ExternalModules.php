@@ -4571,6 +4571,11 @@ class ExternalModules
 	public static function callCronMethod($moduleId, $cronName)
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
+
+		if($moduleDirectoryPrefix === ExternalModules::TEST_MODULE_PREFIX && !self::isTesting()){
+			return;
+		}
+
 		self::setActiveModulePrefix($moduleDirectoryPrefix);
 		self::$hookBeingExecuted = $cronName;
 
