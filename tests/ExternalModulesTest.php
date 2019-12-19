@@ -1531,7 +1531,7 @@ class ExternalModulesTest extends BaseTest
 		$assert(0, false, true);
 	}
 
-	function testAddCronJobToTable(){
+	function testCronJobMethods(){
 		$m = $this->getInstance();
 		$prefix = $m->PREFIX;
 		$moduleId = ExternalModules::getIdForPrefix($prefix);
@@ -1545,11 +1545,27 @@ class ExternalModulesTest extends BaseTest
 			"cron_max_run_time" => "1"
 		];
 
-		ExternalModules::addCronJobToTable($expectedCron, $this->getInstance());
-		$actualCron = ExternalModules::getCronJobFromTable($name, $moduleId);
-		ExternalModules::removeCronJobs($prefix);
-		
-		unset($expectedCron['method']);
-		$this->assertSame($expectedCron, $actualCron);
+		$getCron = function() use ($name, $moduleId){
+			return ExternalModules::getCronJobFromTable($name, $moduleId);
+		};
+
+		try{
+			ExternalModules::addCronJobToTable($expectedCron, $this->getInstance());
+
+			unset($expectedCron['method']);
+			
+			$actualCron = $getCron();
+			$this->assertSame($expectedCron, $actualCron);
+			
+			$expectedCron['cron_description'] = 'A new description.';
+			ExternalModules::updateCronJobInTable($expectedCron, $moduleId);
+			$actualCron = $getCron();
+
+			$this->assertSame($expectedCron, $actualCron);
+		}
+		finally{
+			ExternalModules::removeCronJobs($prefix);
+			$this->assertTrue(empty($getCron()));
+		}
 	}
 }
