@@ -3910,8 +3910,8 @@ class ExternalModules
 	# Was this module originally downloaded from the central repository of ext mods? Exclude it if the module has already been marked as deleted via the UI.
 	private static function wasModuleDownloadedFromRepo($moduleFolderName=null){
 		$sql = "select 1 from redcap_external_modules_downloads 
-				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is null";
-		$q = db_query($sql);
+				where module_name = ? and time_deleted is null";
+		$q = ExternalModules::query($sql, [$moduleFolderName]);
 		return (db_num_rows($q) > 0);
 	}
 
