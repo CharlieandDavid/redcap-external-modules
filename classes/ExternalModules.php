@@ -1572,10 +1572,16 @@ class ExternalModules
 	static function updateCronJobInTable($cron=array(), $externalModuleId)
 	{
 		if (empty($cron) || empty($externalModuleId)) return false;
-		$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
-				cron_description = '".db_escape($cron['cron_description'])."'
-				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
-		return db_query($sql);
+		$sql = "update redcap_crons set cron_frequency = ?, cron_max_run_time = ?, 
+				cron_description = ?
+				where cron_name = ? and external_module_id = ?";
+		return ExternalModules::query($sql, [
+			$cron['cron_frequency'],
+			$cron['cron_max_run_time'],
+			$cron['cron_description'],
+			$cron['cron_name'],
+			$externalModuleId
+		]);
 	}
 
 	# initializes the system settings
