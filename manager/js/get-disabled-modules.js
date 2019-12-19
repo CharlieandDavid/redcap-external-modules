@@ -10,7 +10,7 @@ $(function(){
 
 	disabledModal.find('.disable-button').click(function(event){
 		var row = $(event.target).closest('tr');
-		var title = row.find('td:eq(0)').text().trim();
+		var title = row.find('td:eq(0)')[0].childNodes[0].textContent.trim();
 		var prefix = row.data('module');
 		var version = row.find('[name="version"]').val();	
 		
