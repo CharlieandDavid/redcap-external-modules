@@ -3919,10 +3919,10 @@ class ExternalModules
 		}
 		// Add to deleted modules array
 		self::$deletedModules[basename($moduleFolderDir)] = time();
-		// Remove row from redcap_external_modules_downloads table
-		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
-				where module_name = '".db_escape($moduleFolderName)."'";
-		db_query($sql);
+		
+		$sql = "update redcap_external_modules_downloads set time_deleted = ? 
+				where module_name = ?";
+		ExternalModules::query($sql, [NOW, $moduleFolderName]);
 
 		// Give success message
 		//= The module and its corresponding directory were successfully deleted from the REDCap server.
