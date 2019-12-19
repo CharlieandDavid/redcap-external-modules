@@ -1573,4 +1573,18 @@ class ExternalModulesTest extends BaseTest
 		$id = ExternalModules::getIDForPrefix(TEST_MODULE_PREFIX);
 		$this->assertSame(TEST_MODULE_PREFIX, ExternalModules::getPrefixForID($id));
 	}
+
+	function testGetModuleVersionByPrefix(){
+		$row = ExternalModules::query("
+			SELECT m.directory_prefix, s.value
+			FROM redcap_external_modules m, redcap_external_module_settings s 
+			WHERE
+				m.external_module_id = s.external_module_id
+				AND s.project_id IS NULL AND s.`key` = ?
+			LIMIT 1
+		", [ExternalModules::KEY_VERSION])->fetch_assoc();
+
+		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
+		$this->assertSame($row['value'], $version);
+	}
 }

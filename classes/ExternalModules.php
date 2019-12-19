@@ -2148,10 +2148,10 @@ class ExternalModules
 		$prefix = db_real_escape_string($prefix);
 		
 		$sql = "SELECT s.value FROM redcap_external_modules m, redcap_external_module_settings s 
-				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = '$prefix'
-				AND s.project_id IS NULL AND s.`key` = '" . self::KEY_VERSION . "' LIMIT 1";
+				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = ?
+				AND s.project_id IS NULL AND s.`key` = ? LIMIT 1";
 		
-		$result = self::query($sql);
+		$result = self::query($sql, [$prefix, self::KEY_VERSION]);
 
 		return db_result($result, 0);
 	}
