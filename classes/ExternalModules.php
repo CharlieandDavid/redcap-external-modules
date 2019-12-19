@@ -577,36 +577,14 @@ class ExternalModules
 							delete this.strings[key]
 					}
 					/**
-					 * Extracts interpolation values from variable function arguments.
-					 * @param {Array} inputs An array of interpolation values.
-					 * @returns {Array} An array with the interpolation values.
-					 */
-					lang._getValues = function(inputs) {
-						var values = Array()
-						// Store type of arguments ... for debug purposes.
-						var argsType = 'params'
-						if (inputs.length > 1) {
-							// If the first value is an array or object, use it instead.
-							if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
-								argsType = Array.isArray(inputs[1]) ? 'array' : 'object'
-								values = inputs[1]
-							}
-							else {
-								values = inputs.slice(1)
-							}
-						}
-						return values
-					}
-					/**
 					 * Get and interpolate a translation.
 					 * @param {string} key The key for the string.
 					 * Note: Any further arguments after key will be used for interpolation. If the first such argument is an array, it will be used as the interpolation source.
 					 * @returns {string} The interpolated string.
 					 */
 					lang.tt = function(key) {
-						// Get any further arguments.
-						var values = this._getValues(Array(arguments))
 						var string = this.get(key)
+						var values = Array.prototype.slice.call(arguments, 1)
 						return this.interpolate(string, values)
 					}
 					/**
@@ -629,7 +607,7 @@ class ExternalModules
 						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
 						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						const regex = new RegExp('(?<all>((?<escape>\\*){|{)(?<index>[\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
+						const regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
 						var m
 						var result = ''
 						var prevEnd = 0

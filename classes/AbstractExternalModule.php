@@ -1286,28 +1286,7 @@ class AbstractExternalModule
 				module._constructLanguageKey = function(key) {
 					return <?=json_encode(ExternalModules::EM_LANG_PREFIX . $this->PREFIX)?> + '_' + key
 				}
-				/**
-				 * Extracts interpolation values from variable function arguments.
-				 * @private
-				 * @param {Array} inputs An array of interpolation values.
-				 * @returns {Array} An array with the interpolation values.
-				 */
-				module._getValues = function(inputs) {
-					var values = Array()
-					// Store type of arguments ... for debug purposes.
-					var argsType = 'params'
-					if (inputs.length > 1) {
-						// If the first value is an array or object, use it instead.
-						if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
-							argsType = Array.isArray(inputs[1]) ? 'array' : 'object'
-							values = inputs[1]
-						}
-						else {
-							values = inputs.slice(1)
-						}
-					}
-					return values
-				}
+				
 				/**
 				 * Gets and interpolate a translation.
 				 * @param {string} key The key for the string.
@@ -1315,9 +1294,11 @@ class AbstractExternalModule
 				 * @returns {string} The interpolated string.
 				 */
 				module.tt = function (key) {
-					var values = this._getValues(Array(arguments))
-					key = this._constructLanguageKey(key)
-					return window.ExternalModules.$lang.tt(key, values)
+					var argArray = Array.prototype.slice.call(arguments)
+					argArray[0] = this._constructLanguageKey(key)
+					
+					var lang = window.ExternalModules.$lang
+					return lang.tt.apply(lang, argArray)
 				}
 				/**
 				 * Adds a key/value pair to the language store.
