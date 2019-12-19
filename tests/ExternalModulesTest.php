@@ -1568,4 +1568,9 @@ class ExternalModulesTest extends BaseTest
 			$this->assertTrue(empty($getCron()));
 		}
 	}
+
+	function testGetPrefixForID(){
+		$id = ExternalModules::getIDForPrefix(TEST_MODULE_PREFIX);
+		$this->assertSame(TEST_MODULE_PREFIX, ExternalModules::getPrefixForID($id));
+	}
 }
