@@ -2109,7 +2109,7 @@ class ExternalModules
 	public static function getIdForPrefix($prefix)
 	{
 		if(!isset(self::$idsByPrefix)){
-			$result = self::query("SELECT external_module_id, directory_prefix FROM redcap_external_modules");
+			$result = self::query("SELECT external_module_id, directory_prefix FROM redcap_external_modules", []);
 
 			$idsByPrefix = array();
 			while($row = db_fetch_assoc($result)){
