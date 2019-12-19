@@ -3954,8 +3954,8 @@ class ExternalModules
 	# If module was originally downloaded from the central repository of ext mods,
 	# then return its module_id (from the repo)
 	public static function getRepoModuleId($moduleFolderName=null){
-		$sql = "select module_id from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
-		$q = db_query($sql);
+		$sql = "select module_id from redcap_external_modules_downloads where module_name = ?";
+		$q = self::query($sql, [$moduleFolderName]);
 		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
 	}
 	
