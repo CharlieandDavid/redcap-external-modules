@@ -3331,14 +3331,14 @@ class ExternalModules
 			}
 		}
 		else if($configRow['type'] == 'project-id') {
-			$escaped_pid = strtolower(db_real_escape_string($pid));
-			$sql = "SELECT p.project_id, p.app_title
+			$escaped_pid = strtolower($pid);
+			$sql = "SELECT CAST(p.project_id as char) as project_id, p.app_title
 					FROM redcap_projects p, redcap_user_rights u
 					WHERE p.project_id = u.project_id
-						AND u.username = '".db_real_escape_string(USERID)."'
-						AND (LOWER(p.app_title) LIKE '%$escaped_pid%' OR p.project_id = '$escaped_pid')";
+						AND u.username = ?
+						AND (LOWER(p.app_title) LIKE CONCAT('%', ?, '%') OR p.project_id = ?)";
 
-			$result = db_query($sql);
+			$result = ExternalModules::query($sql, [USERID, $escaped_pid, $escaped_pid]);
 
 			$matchingProjects = [
 				[
