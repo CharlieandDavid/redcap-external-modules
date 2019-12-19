@@ -3942,7 +3942,7 @@ class ExternalModules
 		if(!isset(self::$deletedModules)){
 			$sql = "select module_name, time_deleted from redcap_external_modules_downloads 
 					where time_deleted is not null";
-			$q = db_query($sql);
+			$q = self::query($sql, []);
 			self::$deletedModules = array();
 			while ($row = db_fetch_assoc($q)) {
 				self::$deletedModules[$row['module_name']] = strtotime($row['time_deleted']);
