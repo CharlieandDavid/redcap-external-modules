@@ -1,6 +1,8 @@
 <?php
 namespace ExternalModules\FrameworkVersion2;
 
+use ExternalModules\ExternalModules;
+
 class Records
 {
 	function __construct($module){
@@ -64,5 +66,34 @@ class Records
 			insert ignore into redcap_locking_data (project_id, record, event_id, form_name, instance, timestamp)
 			values $lockValuesSql
 		");
+	}
+
+	function unlock($recordIds){
+		$pid = $this->module->getProjectId();
+
+		$query = ExternalModules::createQuery();
+		$query->add("
+			delete from redcap_locking_data
+			where project_id = ?
+			and
+		", [$pid]);
+
+		$query->addInClause('record', $recordIds);
+
+		$query->execute();
+	}
+
+	function isLocked($recordId){
+		$pid = $this->module->getProjectId();
+		
+		$result = $this->module->query("
+			select 1
+			from redcap_locking_data
+			where 
+				project_id = ?
+				and record = ?
+		", [$pid, $recordId]);
+
+		return $result->fetch_assoc() !== null;
 	}
 }

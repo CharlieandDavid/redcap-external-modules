@@ -137,4 +137,16 @@ class FrameworkV2Test extends FrameworkBaseTest
 			$i++;
 		}
 	}
+
+	function testRecords_lock(){
+		$_GET['pid'] = TEST_SETTING_PID;
+		$recordId = 1;
+		$records = $this->framework->records;
+		
+		$records->lock([$recordId]);
+		$this->assertTrue($records->isLocked($recordId));
+
+		$records->unlock([$recordId]);
+		$this->assertFalse($records->isLocked($recordId));
+	}
 }
