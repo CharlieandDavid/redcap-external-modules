@@ -1260,9 +1260,9 @@ class AbstractExternalModule
 				 * @returns {string} The interpolated string.
 				 */
 				module.tt = function (key) {
-					const argArray = Array.prototype.slice.call(arguments)
+					var argArray = Array.prototype.slice.call(arguments)
 					argArray[0] = this._constructLanguageKey(key)
-					const lang = window.ExternalModules.$lang
+					var lang = window.ExternalModules.$lang
 					return lang.tt.apply(lang, argArray)
 				}
 				/**
