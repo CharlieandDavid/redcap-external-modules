@@ -4861,6 +4861,10 @@ class ExternalModules
 	}
 
 	private static function copySettingValues($sourceProjectId, $destinationProjectId){
+		// Prevent SQL Injection
+		$sourceProjectId = (int) $sourceProjectId;
+		$destinationProjectId = (int) $destinationProjectId;
+
 		self::query("
 			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
@@ -4868,7 +4872,7 @@ class ExternalModules
 		", [
 			// Ideally we'd pass the parameters here instead of manually appending them to the query string.
 			// However, that doesn't work for combo insert/select statements in mysql.
-			// The integer casts in the calling function should safely protect against SQL injection in this case.
+			// The integer casts should safely protect against SQL injection in this case.
 		]);
 	}
 
