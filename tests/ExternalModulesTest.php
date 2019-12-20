@@ -1236,6 +1236,8 @@ class ExternalModulesTest extends BaseTest
 		$assert("column_name IN (?, ?)", [1, 2], 'column_name', [1, 2]);
 		$assert("column_name IN (?) OR column_name IS NULL", [1], 'column_name', [1, null]);
 		$assert("column_name IN (?)", ['NULL'], 'column_name', ['NULL']);
+		$assert("column_name\\' IN (?)", ['value\''], 'column_name\'', ['value\'']); // make sure quotes are escaped
+		$assert("false", [], 'column_name', []);
 	}
 
 	function testIsCompatibleWithREDCapPHP_minVersions(){

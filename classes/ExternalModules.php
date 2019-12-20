@@ -2314,8 +2314,17 @@ class ExternalModules
 			$array = array($array);
 		}
 
+		$getReturnValue = function($sql, $parameters = []) use ($preparedStatement){
+			if($preparedStatement){
+				return [$sql, $parameters];
+			}
+			else{
+				return $sql;
+			}
+		};
+
 		if(empty($array)){
-			return '(false)';
+			return $getReturnValue('(false)');
 		}
 
 		// Prepared statements don't really have anything to do with this null handling,
@@ -2367,12 +2376,7 @@ class ExternalModules
 
 		$sql = "(" . implode(" OR ", $parts) . ")";
 
-		if($preparedStatement){
-			return [$sql, $parameters];
-		}
-		else{
-			return $sql;
-		}
+		return $getReturnValue($sql, $parameters);
 	}
 
     /**
