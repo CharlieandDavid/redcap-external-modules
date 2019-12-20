@@ -1296,7 +1296,6 @@ class AbstractExternalModule
 				module.tt = function (key) {
 					var argArray = Array.prototype.slice.call(arguments)
 					argArray[0] = this._constructLanguageKey(key)
-					
 					var lang = window.ExternalModules.$lang
 					return lang.tt.apply(lang, argArray)
 				}
