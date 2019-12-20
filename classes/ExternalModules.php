@@ -4685,12 +4685,12 @@ class ExternalModules
 
 		$ts = date('YmdHis', time()-$seconds);
 
-		$result = db_query("
+		$result = ExternalModules::query("
 			select count(*) as count
 			from redcap_log_event l
-			where description = '$description'
-			and ts >= $ts
-		");
+			where description = ?
+			and ts >= ?
+		", [$description, $ts]);
 
 		$row = $result->fetch_assoc();
 
