@@ -577,14 +577,32 @@ class ExternalModules
 							delete this.strings[key]
 					}
 					/**
+					 * Extracts interpolation values from variable function arguments.
+					 * @param {Array} inputs An array of interpolation values (must include the key as first element).
+					 * @returns {Array} An array with the interpolation values.
+					 */
+					lang._getValues = function(inputs) {
+						var values = Array()
+						if (inputs.length > 1) {
+							// If the first value is an array or object, use it instead.
+							if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
+								values = inputs[1]
+							}
+							else {
+								values = Array.prototype.slice.call(inputs, 1)
+							}
+						}
+						return values
+					}
+					/**
 					 * Get and interpolate a translation.
 					 * @param {string} key The key for the string.
 					 * Note: Any further arguments after key will be used for interpolation. If the first such argument is an array, it will be used as the interpolation source.
 					 * @returns {string} The interpolated string.
 					 */
 					lang.tt = function(key) {
-						var string = this.get(key)
-						var values = Array.prototype.slice.call(arguments, 1)
+						const string = this.get(key)
+						const values = this._getValues(arguments)
 						return this.interpolate(string, values)
 					}
 					/**
@@ -598,8 +616,8 @@ class ExternalModules
 							console.warn('$lang.interpolate() called with undefined or null.')
 							return ''
 						}
-						// Nothing to do if there are no values or the string is empty.
-						if (values.length == 0 || string.length == 0) {
+						// Is string not a string, or empty? Then there is nothing to do.
+						if (typeof string !== 'string' || string.length == 0) {
 							return string
 						}
 						// Regular expression to find places where replacements need to be done.
@@ -643,7 +661,7 @@ class ExternalModules
 							}
 						}
 						// Add rest of original string.
-						result += string.substr(prevEnd)
+						result += String.prototype.substr.call(string, prevEnd)
 						return result
 					}
 				}
