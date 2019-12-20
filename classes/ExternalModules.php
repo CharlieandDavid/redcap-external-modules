@@ -5159,23 +5159,32 @@ class ExternalModules
 			}
 		};
 
-		$clauses = [
-			"`key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "'"
-		];
+		$query = self::createQuery();
+		$query->add("
+			select *
+			from redcap_external_module_settings
+			where
+		");
+
+		$query->add("`key` = ?", ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
 
 		foreach($keysByPrefix as $prefix=>$keys){
+			$query->add("\nor");
+			
 			$moduleId = ExternalModules::getIdForPrefix($prefix);
-			$clauses[] = "(external_module_id = $moduleId and " . ExternalModules::getSQLInClause('`key`', $keys) .  ")";
+
+			$query->add("(");
+			$query->add("external_module_id = ?", [$moduleId]);
+			$query->add("and")->addInClause('`key`', $keys);
+			$query->add(")");
 		}
 
-		$sql = "
-			select * from redcap_external_module_settings
-			where
-			" . implode("\n\t or ", $clauses) . "
-		";
-
-		$result = ExternalModules::query($sql);
+		$result = $query->execute();
 		while($row = db_fetch_assoc($result)){
+			foreach(['external_module_id', 'project_id'] as $fieldName){
+				$row[$fieldName] = (string) $row[$fieldName];
+			}
+			
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
 			$pid = $row['project_id'];
 			$key = $row['key'];
