@@ -5198,9 +5198,16 @@ class ExternalModules
 			}
 		}
 
-		$result = ExternalModules::query("select * from redcap_edocs_metadata where " . ExternalModules::getSQLInClause('doc_id', array_keys($edocs)));
+		$query = self::createQuery();
+		$query->add("select * from redcap_edocs_metadata where ");
+		$query->addInClause('doc_id', array_keys($edocs));
+		$result = $query->execute();
 		$sourceProjectsByEdocId = [];
 		while($row = db_fetch_assoc($result)){
+			foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $fieldName){
+				$row[$fieldName] = (string) $row[$fieldName];
+			}
+
 			$sourceProjectsByEdocId[$row['doc_id']] = $row['project_id'];
 		}
 
