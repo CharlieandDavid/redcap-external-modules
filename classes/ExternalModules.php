@@ -601,8 +601,8 @@ class ExternalModules
 					 * @returns {string} The interpolated string.
 					 */
 					lang.tt = function(key) {
-						const string = this.get(key)
-						const values = this._getValues(arguments)
+						var string = this.get(key)
+						var values = this._getValues(arguments)
 						return this.interpolate(string, values)
 					}
 					/**
@@ -625,7 +625,7 @@ class ExternalModules
 						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
 						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						const regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
+						var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
 						var m
 						var result = ''
 						var prevEnd = 0
