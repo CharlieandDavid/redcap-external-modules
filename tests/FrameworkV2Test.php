@@ -118,4 +118,23 @@ class FrameworkV2Test extends FrameworkBaseTest
 		$assert(true, [TEST_SETTING_PID]);
 		$assert(false, []);
 	}
+
+	function testProject_getUsers(){
+		$result = $this->framework->query("
+			select user_email
+			from redcap_user_rights r
+			join redcap_user_information i
+				on r.username = i.username
+			where project_id = ?
+			order by r.username
+		", TEST_SETTING_PID);
+
+		$actualUsers = $this->framework->getProject(TEST_SETTING_PID)->getUsers();
+
+		$i = 0;
+		while($row = $result->fetch_assoc()){
+			$this->assertSame($row['user_email'], $actualUsers[$i]->getEmail());
+			$i++;
+		}
+	}
 }

@@ -13,6 +13,7 @@ class Project
 			select username
 			from redcap_user_rights
 			where project_id = {$this->project_id}
+			order by username
 		");
 
 		$users = [];
