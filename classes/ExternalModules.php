@@ -4024,10 +4024,16 @@ class ExternalModules
 	{
 		$modules = array();
 		if (empty($prefixes)) return $modules;
-		$sql = "SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
-				WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
-				AND s.`key` = '" . self::KEY_CONFIG_USER_PERMISSION . "' AND m.directory_prefix in (" . prep_implode($prefixes) . ")";
-		$q = self::query($sql);
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
+			WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
+			AND s.`key` = ?
+		", [self::KEY_CONFIG_USER_PERMISSION]);
+		
+		$query->add('AND')->addInClause('directory_prefix', $prefixes);
+
+		$q = $query->execute();
 		while ($row = db_fetch_assoc($q)) {
 			$modules[] = $row['directory_prefix'];
 		}
