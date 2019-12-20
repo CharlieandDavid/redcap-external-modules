@@ -71,15 +71,15 @@ class Framework
 
 	function getProjectsWithModuleEnabled(){
 		$results = $this->query("
-			select project_id
+			select cast(project_id as char) as project_id
 			from redcap_external_modules m
 			join redcap_external_module_settings s
 				on m.external_module_id = s.external_module_id
 			where
-				m.directory_prefix = '" . $this->module->PREFIX . "'
+				m.directory_prefix = ?
 				and s.value = 'true'
-				and s.`key` = 'enabled'
-		");
+				and s.`key` = ?
+		", [$this->module->PREFIX, ExternalModules::KEY_ENABLED]);
 
 		$pids = [];
 		while($row = $results->fetch_assoc()) {
