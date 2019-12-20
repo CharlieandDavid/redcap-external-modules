@@ -106,4 +106,16 @@ class FrameworkV2Test extends FrameworkBaseTest
 			$this->framework->getSubSettings('one')
 		);
 	}
+
+	function testGetProjectsWithModuleEnabled(){
+		$assert = function($enableValue, $expectedPids){
+			$m = $this->getInstance();
+			$m->setProjectSetting(ExternalModules::KEY_ENABLED, $enableValue, TEST_SETTING_PID);
+			$pids = $this->framework->getProjectsWithModuleEnabled();
+			$this->assertSame($expectedPids, $pids);
+		};
+
+		$assert(true, [TEST_SETTING_PID]);
+		$assert(false, []);
+	}
 }
