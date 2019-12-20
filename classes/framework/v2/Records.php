@@ -15,19 +15,10 @@ class Records
 			return;
 		}
 
-		$recordIdSql = '';
-		foreach($recordIds as $recordId){
-			if(!empty($recordIdSql)){
-				$recordIdSql .= ',';
-			}
-
-			$recordId = db_real_escape_string($recordId);
-			$recordIdSql .= "'$recordId'";
-		}
-
 		$pid = $this->module->getProjectId();
 
-		$results = $this->module->query("
+		$query = ExternalModules::createQuery();
+		 $query->add("
 			select
 				record,
 				event_id,
@@ -39,10 +30,15 @@ class Records
 					d.project_id = m.project_id 
 					and d.field_name = m.field_name
 			where
-				d.project_id = $pid
-				and record in ($recordIdSql)
-			group by record, event_id, instance, form_name
-		");
+				d.project_id = ?
+				and
+		", $pid);
+
+		$query->addInClause('record', $recordIds);
+
+		$query->add("group by record, event_id, instance, form_name");
+
+		$results = $query->execute();
 
 		$lockValuesSql = '';
 		while($row = $results->fetch_assoc()){
