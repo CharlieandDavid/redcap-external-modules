@@ -4518,8 +4518,12 @@ class ExternalModules
 		return $_SERVER["REQUEST_TIME_FLOAT"];
 	}
 
-	private static function makeTimestamp() {
-		return date("Y-m-d H:i:s");
+	public static function makeTimestamp($time = null) {
+		if($time === null){
+			$time = time();
+		}
+		
+		return date("Y-m-d H:i:s", $time);
 	}
 
 	public static function callTimedCronMethods() {

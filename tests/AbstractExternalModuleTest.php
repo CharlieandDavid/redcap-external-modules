@@ -581,7 +581,7 @@ class AbstractExternalModuleTest extends BaseTest
 				select log_id,timestamp,username,ip,external_module_id,record,message,$paramName1,$paramName2
 				where
 					message = '$message'
-					and timestamp > '2017-07-07'
+					and timestamp > '" . date('Y-m-d', time()-10) . "'
 				order by log_id asc
 			");
 
@@ -623,6 +623,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertEquals(2, count($rows));
 
 		$row = $rows[0];
+		$this->assertSame($message, $row['message']);
 		$this->assertNull($row['username']);
 		$this->assertNull($row['ip']);
 		$this->assertNull($row['record']);
@@ -645,6 +646,20 @@ class AbstractExternalModuleTest extends BaseTest
 		$m->removeLogs("message = '$message'");
 		$rows = $query();
 		$this->assertEquals(0, count($rows));
+	}
+
+	function testLog_timestamp()
+	{
+		$m = $this->getInstance();
+
+		$timestamp = ExternalModules::makeTimestamp(time()-ExternalModules::HOUR_IN_SECONDS);
+		$logId = $m->log('test', [
+			'timestamp' => $timestamp
+		]);
+		
+		$this->assertLogValues($logId, [
+			'timestamp' => $timestamp
+		]);
 	}
 
 	function testLog_pid()
@@ -847,26 +862,19 @@ class AbstractExternalModuleTest extends BaseTest
 		}
 	}
 
-	function testGetIPSQL()
+	function testGetIP()
 	{
 		$ip = '1.2.3.4';
 		$_SERVER['HTTP_CLIENT_IP'] = $ip;
 		$username = 'jdoe';
 		ExternalModules::setUsername($username);
 
-		$ipParameter = '2.3.4.5';
-		$this->assertSame("'$ipParameter'", $this->callPrivateMethod('getIPSQL', $ipParameter));
-
-		$assertIp = function($ip){
-			if(empty($ip)){
-				$ip = 'null';
-			}
-			else{
-				$ip = "'$ip'";
-			}
-
-			$this->assertSame($ip, $this->callPrivateMethod('getIPSQL', null));
+		$assertIp = function($expected, $param = null){
+			$this->assertSame($expected, $this->callPrivateMethod('getIP', $param));
 		};
+
+		$ipParameter = '2.3.4.5';
+		$assertIp($ipParameter, $ipParameter);
 
 		$assertIp($ip);
 

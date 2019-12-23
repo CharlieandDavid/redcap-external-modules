@@ -1359,20 +1359,12 @@ class AbstractExternalModule
 			}
 		}
 
-		$timestamp = @$parameters['timestamp'];
-		if(empty($timestamp)){
-			$timestamp = 'now()';
-		}
-		else{
-			$timestamp = "'" . db_real_escape_string($timestamp) . "'";
-		}
-
 		$projectId = @$parameters['project_id'];
 		if (empty($projectId)) {
 			$projectId = $this->getProjectId();
 
 			if (empty($projectId)) {
-				$projectId = 'null';
+				$projectId = null;
 			}
 		}
 
@@ -1392,20 +1384,11 @@ class AbstractExternalModule
 		}
 
 		if (empty($recordId)) {
-			$recordId = 'null';
-		}
-		else{
-			$recordId = "'" . db_real_escape_string($recordId) . "'";
+			$recordId = null;
 		}
 
-		$logValues = [];
-		$logValues['timestamp'] = $timestamp;
-		$logValues['ui_id'] = "(select ui_id from redcap_user_information where username = '" . db_real_escape_string($username) . "')";
-		$logValues['ip'] = $this->getIPSQL(@$parameters['ip']);
-		$logValues['external_module_id'] = "(select external_module_id from redcap_external_modules where directory_prefix = '{$this->PREFIX}')";
-		$logValues['project_id'] = db_real_escape_string($projectId);
-		$logValues['record'] = $recordId;
-		$logValues['message'] = "'" . db_real_escape_string($message) . "'";
+		$timestamp = @$parameters['timestamp'];
+		$ip = $this->getIP(@$parameters['ip']);
 
 		// Remove parameter values that will be stored on the main log table,
 		// so they are not also stored in the parameter table
@@ -1413,16 +1396,44 @@ class AbstractExternalModule
 			unset($parameters[$paramName]);
 		}
 
-		$this->query("
+		$query = ExternalModules::createQuery();
+		$query->add("
 			insert into redcap_external_modules_log
 				(
-					" . implode(",\n", array_keys($logValues)) . "				
+					timestamp,
+					ui_id,
+					ip,
+					external_module_id,
+					project_id,
+					record,
+					message
 				)
 			values
-				(
-					" . implode(",\n", $logValues) . "
-				)
 		");
+
+		$query->add('(');
+
+		if(empty($timestamp)){
+			$query->add('now()');
+		}
+		else{
+			$query->add('?', $timestamp);
+		}
+
+
+		$query->add("
+			,
+			(select ui_id from redcap_user_information where username = ?),
+			?,
+			(select external_module_id from redcap_external_modules where directory_prefix = ?),
+			?,
+			?,
+			?
+		", [$username, $ip, $this->PREFIX, $projectId, $recordId, $message]);
+
+		$query->add(')');
+
+		$query->execute();
 
 		$logId = db_insert_id();
 		if (!empty($parameters)) {
@@ -1432,7 +1443,7 @@ class AbstractExternalModule
 		return $logId;
 	}
 
-	private function getIPSQL($ip)
+	private function getIP($ip)
 	{
 		$username = ExternalModules::getUsername();
 		
@@ -1447,10 +1458,7 @@ class AbstractExternalModule
 		}
 
 		if (empty($ip)) {
-			$ip = 'null';
-		}
-		else{
-			$ip = "'" . db_real_escape_string($ip) . "'";
+			$ip = null;
 		}
 
 		return $ip;
