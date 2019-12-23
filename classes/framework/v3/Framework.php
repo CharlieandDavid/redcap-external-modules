@@ -62,10 +62,10 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 		$result = $this->query("
 			select field_name
 			from redcap_metadata
-			where project_id = $pid
+			where project_id = ?
 			order by field_order
 			limit 1
-		");
+		", [$pid]);
 
 		$row = $result->fetch_assoc();
 
