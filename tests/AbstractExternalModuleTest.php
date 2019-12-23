@@ -1214,7 +1214,7 @@ class AbstractExternalModuleTest extends BaseTest
 				and return_code is not null
 			ORDER BY p.participant_id DESC
 			LIMIT 1
-		");
+		", []);
 
 		$expected = $result->fetch_assoc();
 		$actual = $m->getProjectAndRecordFromHashes($expected['hash'], $expected['return_code']);
