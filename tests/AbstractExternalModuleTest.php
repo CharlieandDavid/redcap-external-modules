@@ -810,7 +810,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function getRandomUsername()
 	{
-		$result = db_query('select username from redcap_user_information order by rand() limit 1');
+		$result = ExternalModules::query('select username from redcap_user_information order by rand() limit 1', []);
 		$username =  db_fetch_assoc($result)['username'];
 
 		return $username;
