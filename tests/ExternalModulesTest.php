@@ -1011,9 +1011,9 @@ class ExternalModulesTest extends BaseTest
 			where
 				date_deleted_server is null
 				and doc_size < 1000000
-				and project_id not in (".TEST_SETTING_PID.", ".TEST_SETTING_PID_2.")
-			limit $minEdocs
-		");
+				and project_id not in (?, ?)
+			limit ?
+		", [TEST_SETTING_PID, TEST_SETTING_PID_2, $minEdocs]);
 
 		while($row = db_fetch_assoc($result)){
 			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
