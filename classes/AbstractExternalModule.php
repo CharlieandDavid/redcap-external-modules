@@ -1466,19 +1466,23 @@ class AbstractExternalModule
 
 	private function insertLogParameters($logId, $parameters)
 	{
-		$valuesSql = '';
+		$query = ExternalModules::createQuery();
+
+		$query->add('insert into redcap_external_modules_log_parameters (log_id, name, value) VALUES');
+
+		$addComma = false;
 		foreach ($parameters as $name => $value) {
-			if (!empty($valuesSql)) {
-				$valuesSql .= ',';
+			if (!$addComma) {
+				$addComma = true;
+			}
+			else{
+				$query->add(',');
 			}
 
-			$name = db_real_escape_string($name);
-			$value = db_real_escape_string($value);
-
-			$valuesSql .= "($logId, '$name', '$value')";
+			$query->add('(?, ?, ?)', [$logId, $name, $value]);
 		}
 
-		$this->query("insert into redcap_external_modules_log_parameters (log_id, name, value) VALUES $valuesSql");
+		$query->execute();
 	}
 
 	public function logAjax($data)
