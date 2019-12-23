@@ -191,4 +191,20 @@ class Framework
 	function isRoute($routeName){
 		return ExternalModules::isRoute($routeName);
 	}
+
+	function getRecordIdField($pid = null){
+		$pid = db_escape($this->requireProjectId($pid));
+
+		$result = $this->query("
+			select field_name
+			from redcap_metadata
+			where project_id = ?
+			order by field_order
+			limit 1
+		", [$pid]);
+
+		$row = $result->fetch_assoc();
+
+		return $row['field_name'];
+	}
 }

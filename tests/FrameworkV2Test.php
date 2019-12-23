@@ -64,7 +64,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 			]
 		];
 
-		$this->assertEquals($expectedCountries, $this->framework->getSubSettings('countries'));
+		$this->assertEquals($expectedCountries, $this->getSubSettings('countries'));
 	}
 
 	function testGetSubSettings_plainOldRepeatableInsideSubSettings(){
@@ -103,7 +103,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 					]
 				]
 			],
-			$this->framework->getSubSettings('one')
+			$this->getSubSettings('one')
 		);
 	}
 
@@ -111,7 +111,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 		$assert = function($enableValue, $expectedPids){
 			$m = $this->getInstance();
 			$m->setProjectSetting(ExternalModules::KEY_ENABLED, $enableValue, TEST_SETTING_PID);
-			$pids = $this->framework->getProjectsWithModuleEnabled();
+			$pids = $this->getProjectsWithModuleEnabled();
 			$this->assertSame($expectedPids, $pids);
 		};
 
@@ -120,7 +120,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 	}
 
 	function testProject_getUsers(){
-		$result = $this->framework->query("
+		$result = $this->query("
 			select user_email
 			from redcap_user_rights r
 			join redcap_user_information i
@@ -129,7 +129,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 			order by r.username
 		", TEST_SETTING_PID);
 
-		$actualUsers = $this->framework->getProject(TEST_SETTING_PID)->getUsers();
+		$actualUsers = $this->getProject(TEST_SETTING_PID)->getUsers();
 
 		$i = 0;
 		while($row = $result->fetch_assoc()){
@@ -141,8 +141,12 @@ class FrameworkV2Test extends FrameworkBaseTest
 	function testRecords_lock(){
 		$_GET['pid'] = TEST_SETTING_PID;
 		$recordIds = [1, 2];
-		$records = $this->framework->records;
+		$records = $this->getFramework()->records;
 		
+		foreach($recordIds as $recordId){
+			$this->ensureRecordExists($recordId);
+		}
+
 		$records->lock($recordIds);
 		foreach($recordIds as $recordId){
 			$this->assertTrue($records->isLocked($recordId));
@@ -159,7 +163,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 		$row = $result->fetch_assoc();
 		$username = $row['username'];
 		
-		$user = $this->framework->getUser($username);
+		$user = $this->getUser($username);
 		$this->assertTrue($user->isSuperUser());
 	}
 }

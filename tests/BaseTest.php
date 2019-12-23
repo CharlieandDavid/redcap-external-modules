@@ -16,6 +16,7 @@ error_reporting(E_ALL);
 
 use PHPUnit\Framework\TestCase;
 use \Exception;
+use REDCap;
 
 const TEST_MODULE_PREFIX = ExternalModules::TEST_MODULE_PREFIX;
 const TEST_MODULE_VERSION = 'v1.0.0';
@@ -45,14 +46,19 @@ abstract class BaseTest extends TestCase
 
 	protected function setUp(){
 		$this->setConfig([
-			'framework-version' => 3
+			'framework-version' => $this->getFrameworkVersion()
 		]);
 		
 		self::$testModuleInstance = new BaseTestExternalModule();
+		ExternalModules::initializeFramework(self::$testModuleInstance);
 		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 		self::setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);
 		
 		self::cleanupSettings();
+	}
+
+	function getFrameworkVersion(){
+		return 3;
 	}
 
 	protected function tearDown()
@@ -258,6 +264,27 @@ abstract class BaseTest extends TestCase
 
 	function assertIsInt($i){
 		$this->assertInternalType('int', $i);
+	}
+
+	function ensureRecordExists($recordId, $pid = TEST_SETTING_PID){
+		REDCap::saveData($pid, 'json', json_encode([[
+			$this->getFramework()->getRecordIdField($pid) => $recordId,
+		]]));
+	}
+
+	function getFramework(){
+		$i = $this->getInstance();
+
+		if(property_exists($i, 'framework')){
+			return $i->framework;
+		}
+		else{
+			return $i;
+		}
+	}
+
+	function __call($methodName, $args){
+		return call_user_func_array(array($this->getReflectionClass(), $methodName), $args);
 	}
 }
 

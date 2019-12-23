@@ -1241,7 +1241,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSetData(){
 		$_GET['pid'] = TEST_SETTING_PID;
-		$_GET['event_id'] = $this->framework->getEventId();
+		$_GET['event_id'] = $this->getInstance()->framework->getEventId();
 		$_GET['instance'] = 1;
 		$recordId = 1;
 
@@ -1261,20 +1261,13 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$value = (string) rand();
 
-		// Calling saveData() is required to make sure the record exists.
-		REDCap::saveData(TEST_SETTING_PID, 'json', json_encode([[
-			$this->framework->getRecordIdField() => $recordId,
-		]]));
-
+		$this->ensureRecordExists($recordId);
+		
 		$this->setData($recordId, $fieldName, $value);
 
 		$data = json_decode(REDCap::getData(TEST_SETTING_PID, 'json', $recordId), true)[0];
 
 		$this->assertSame($value, $data[$fieldName]);
-	}
-
-	function __call($methodName, $args){
-		return call_user_func_array(array($this->getInstance(), $methodName), $args);
 	}
 
 	function __get($varName){

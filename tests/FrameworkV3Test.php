@@ -6,15 +6,15 @@ class FrameworkV3Test extends FrameworkBaseTest
     function testGetEventId_urlParam(){
         $_GET['pid'] = (string) TEST_SETTING_PID;
         $_GET['event_id'] = rand();
-        $this->assertSame($_GET['event_id'], $this->framework->getEventId());
+        $this->assertSame($_GET['event_id'], $this->getEventId());
     }
 
     function testGetSafePath(){
         $test = function($path, $root=null){
             // Get the actual value before manipulating the root for testing.
-            $actual = call_user_func_array([$this->framework, 'getSafePath'], func_get_args());
+            $actual = call_user_func_array([$this, 'getSafePath'], func_get_args());
 
-            $moduleDirectory = $this->framework->module->getModuleDirectoryName();
+            $moduleDirectory = $this->getInstance()->getModuleDirectoryName();
             if(!$root){
                 $root = $moduleDirectory;
             }
