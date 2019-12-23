@@ -567,7 +567,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$testingModuleId = $this->getUnitTestingModuleId();
 
 		// Remove left over messages in case this test previously failed
-		$m->query('delete from redcap_external_modules_log where external_module_id = ' . $testingModuleId);
+		$m->query('delete from redcap_external_modules_log where external_module_id = ?', [$testingModuleId]);
 
 		$message = TEST_LOG_MESSAGE;
 		$paramName1 = 'testParam1';
