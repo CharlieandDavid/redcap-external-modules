@@ -841,7 +841,7 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->assertLogValues($logId, $params);
 
 			// Make sure a parameter table entry was NOT made, since the value should only be stored in the main log table.
-			$result = $m->query("select * from redcap_external_modules_log_parameters where log_id = $logId");
+			$result = $m->query("select * from redcap_external_modules_log_parameters where log_id = ?", [$logId]);
 			$row = $result->fetch_assoc();
 			$this->assertNull($row);
 		}
