@@ -69,9 +69,9 @@ abstract class BaseTest extends TestCase
 		$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
 		$lockName = ExternalModules::getLockName($moduleId, TEST_SETTING_PID);
 
-		$m->query("SELECT GET_LOCK('$lockName', 5)");
-		$m->query("delete from redcap_external_module_settings where external_module_id = $moduleId");
-		$m->query("SELECT RELEASE_LOCK('$lockName')");
+		$m->query("SELECT GET_LOCK(?, 5)", [$lockName]);
+		$m->query("delete from redcap_external_module_settings where external_module_id = ?", [$moduleId]);
+		$m->query("SELECT RELEASE_LOCK(?)", [$lockName]);
 
 		$_GET = [];
 		$_POST = [];
