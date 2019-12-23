@@ -1107,7 +1107,7 @@ class ExternalModulesTest extends BaseTest
 
 	private function getEdocPath($edocId)
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = " . $edocId));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId]));
 		return EDOC_PATH . $row['stored_name'];
 	}
 
