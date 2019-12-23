@@ -18,7 +18,7 @@ class Records
 		$pid = $this->module->getProjectId();
 
 		$query = ExternalModules::createQuery();
-		 $query->add("
+		$query->add("
 			select
 				record,
 				event_id,
@@ -40,10 +40,16 @@ class Records
 
 		$results = $query->execute();
 
-		$lockValuesSql = '';
+		$query = ExternalModules::createQuery();
+		$query->add("insert ignore into redcap_locking_data (project_id, record, event_id, form_name, instance, timestamp) values");
+
+		$addComma = false;
 		while($row = $results->fetch_assoc()){
-			if(!empty($lockValuesSql)){
-				$lockValuesSql .= ",\n";
+			if($addComma){
+				$query->add(',');
+			}
+			else{
+				$addComma = true;
 			}
 
 			$record = $row['record'];
@@ -55,13 +61,10 @@ class Records
 				$instance = 1;
 			}
 
-			$lockValuesSql .= "($pid, '$record', $eventId, '$formName', $instance , now())";
+			$query->add("(?, ?, ?, ?, ? , now())", [$pid, $record, $eventId, $formName, $instance]);
 		}
 
-		$this->module->query("
-			insert ignore into redcap_locking_data (project_id, record, event_id, form_name, instance, timestamp)
-			values $lockValuesSql
-		");
+		$query->execute();
 	}
 
 	function unlock($recordIds){

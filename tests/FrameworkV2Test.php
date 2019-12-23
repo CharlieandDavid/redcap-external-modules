@@ -140,13 +140,17 @@ class FrameworkV2Test extends FrameworkBaseTest
 
 	function testRecords_lock(){
 		$_GET['pid'] = TEST_SETTING_PID;
-		$recordId = 1;
+		$recordIds = [1, 2];
 		$records = $this->framework->records;
 		
-		$records->lock([$recordId]);
-		$this->assertTrue($records->isLocked($recordId));
+		$records->lock($recordIds);
+		foreach($recordIds as $recordId){
+			$this->assertTrue($records->isLocked($recordId));
+		}
 
-		$records->unlock([$recordId]);
-		$this->assertFalse($records->isLocked($recordId));
+		$records->unlock($recordIds);
+		foreach($recordIds as $recordId){
+			$this->assertFalse($records->isLocked($recordId));
+		}
 	}
 }
