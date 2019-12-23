@@ -60,7 +60,7 @@ class User
 
 	function isSuperUser(){
 		$userInfo = $this->getUserInfo();
-		return $userInfo['super_user'] === '1';
+		return $userInfo['super_user'] === 1;
 	}
 
 	function getEmail(){
