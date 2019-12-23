@@ -404,7 +404,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
-		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'");
+		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'", []);
 		$row = $result->fetch_assoc();
 		$maxAllowedPacket = $row['Value'];
 		$threshold = $maxAllowedPacket - ExternalModules::SETTING_SIZE_LIMIT+1;
