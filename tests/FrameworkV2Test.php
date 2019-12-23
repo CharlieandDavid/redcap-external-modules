@@ -155,7 +155,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 	}
 
 	function testUser_isSuperUser(){
-		$result = ExternalModules::query('select username from redcap_user_information where super_user = 1 limit 1');
+		$result = ExternalModules::query('select username from redcap_user_information where super_user = 1 limit 1', []);
 		$row = $result->fetch_assoc();
 		$username = $row['username'];
 		

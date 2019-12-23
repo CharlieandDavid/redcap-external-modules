@@ -1113,7 +1113,7 @@ class ExternalModulesTest extends BaseTest
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1"));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", []));
 		if(empty($row)){
 			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
@@ -1433,7 +1433,7 @@ class ExternalModulesTest extends BaseTest
 
 	function testQuery_noParameters(){
 		$value = (string)rand();
-		$result = ExternalModules::query("select $value");
+		$result = ExternalModules::query("select ?", [$value]);
 		$row = $result->fetch_row();
 		$this->assertSame($value, $row[0]);
 	}
@@ -1441,7 +1441,7 @@ class ExternalModulesTest extends BaseTest
 	function testQuery_invalidQuery(){
 		$this->assertThrowsException(function(){
 			ob_start();
-			ExternalModules::query("select * from some_table_that_doesnt_exist");
+			ExternalModules::query("select * from some_table_that_doesnt_exist", []);
 		}, ExternalModules::tt("em_errors_29"));
 
 		ob_end_clean();
@@ -1456,10 +1456,7 @@ class ExternalModulesTest extends BaseTest
 			null
 		];
 
-		$row = ExternalModules::query(
-			'select ' . implode(', ', array_fill(0, count($values), '?')),
-			$values
-		)->fetch_row();
+		$row = ExternalModules::query('select ?, ?, ?, ?, ?', $values)->fetch_row();
 
 		$values[0] = 1; // The boolean 'true' will get converted to the integer '1'.  This is excepted.
 
