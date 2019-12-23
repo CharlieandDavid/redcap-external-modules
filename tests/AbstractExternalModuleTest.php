@@ -1164,7 +1164,7 @@ class AbstractExternalModuleTest extends BaseTest
 			) a
 			order by rand() -- select a random row to make sure we often end up with a different project ID than getPublicSurveyUrl() would by default if it didn't specific a project ID in it's query
 			limit 1
-		");
+		", []);
 
 		$row = $result->fetch_assoc();
 		$projectId = $row['project_id'];
