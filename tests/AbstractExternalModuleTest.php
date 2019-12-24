@@ -899,6 +899,17 @@ class AbstractExternalModuleTest extends BaseTest
 		}
 	}
 
+	function testLog_emptyParamNames()
+	{
+		$this->assertThrowsException(function(){
+			$this->log('foo', [
+				'' => rand()
+			]);
+		}, ExternalModules::tt('em_errors_116'));
+
+		$this->removeLogs('log_id = ?', db_insert_id());
+	}
+
 	function testGetIP()
 	{
 		$ip = '1.2.3.4';

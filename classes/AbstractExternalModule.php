@@ -1479,6 +1479,10 @@ class AbstractExternalModule
 				$query->add(',');
 			}
 
+			if(empty($name)){
+				throw new Exception(ExternalModules::tt('em_errors_116'));
+			}
+
 			// Limit allowed characters to prevent SQL injection when logs are queried later.
 			ExternalModules::checkForInvalidLogParameterNameCharacters($name);
 
