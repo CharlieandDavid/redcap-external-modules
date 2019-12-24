@@ -70,7 +70,6 @@ class FrameworkV3Test extends FrameworkBaseTest
     function testConvertIntsToStrings(){
         $assert = function($expected, $data){
             $actual = $this->convertIntsToStrings($data);
-            var_dump($actual);
             $this->assertSame($expected, $actual);
         };
 
