@@ -96,4 +96,8 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 
 		return $fullPath;
 	}
+
+	function convertIntsToStrings($row){
+		return ExternalModules::convertIntsToStrings($row);
+	}
 }

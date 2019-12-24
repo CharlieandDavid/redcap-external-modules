@@ -66,4 +66,15 @@ class FrameworkV3Test extends FrameworkBaseTest
             }
         }
     }
+
+    function testConvertIntsToStrings(){
+        $assert = function($expected, $data){
+            $actual = $this->convertIntsToStrings($data);
+            var_dump($actual);
+            $this->assertSame($expected, $actual);
+        };
+
+        $assert(['1', 'b', null], [1, 'b', null]);
+        $assert(['a' => '1', 'b'=>'b', 'c' => null], ['a' => 1, 'b'=>'b', 'c' => null]);
+    }
 }

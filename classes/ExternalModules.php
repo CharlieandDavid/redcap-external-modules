@@ -5025,9 +5025,7 @@ class ExternalModules
 			return '';
 		}
 
-		foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $columnName){
-			$row[$columnName] = (string) $row[$columnName];
-		}
+		$row = self::convertIntsToStrings($row);
 
 		$oldPid = $row['project_id'];
 		if($oldPid === $pid){
@@ -5348,5 +5346,15 @@ class ExternalModules
 		if(preg_match('/[^A-Za-z0-9 _\-$]/', $parameterName) !== 0){
 			throw new Exception(self::tt("em_errors_115", $parameterName));
 		}
+	}
+
+	public static function convertIntsToStrings($row){
+		foreach($row as $key=>$value){
+			if(gettype($value) === 'integer'){
+				$row[$key] = (string) $value;
+			}
+		}
+
+		return $row;
 	}
 }

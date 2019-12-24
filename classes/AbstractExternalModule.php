@@ -589,13 +589,7 @@ class AbstractExternalModule
 
 		$q = ExternalModules::query($sql, $projectId);
 
-		$row = db_fetch_assoc($q);
-
-		foreach($row as $key=>$value){
-			if($value !== null){
-				$row[$key] = (string) $value;
-			}
-		}
+		$row = ExternalModules::convertIntsToStrings(db_fetch_assoc($q));
 		
 		return $row;
 	}
