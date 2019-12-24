@@ -866,7 +866,7 @@ class AbstractExternalModule
 		return $dictionary[$fieldName]['field_label'];
 	}
 
-	public function query($sql, $parameters = null){
+	public function query($sql, $parameters = []){
 		return ExternalModules::query($sql, $parameters);
 	}
 

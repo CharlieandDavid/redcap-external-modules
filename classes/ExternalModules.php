@@ -2152,7 +2152,7 @@ class ExternalModules
 		return db_result($result, 0);
 	}
 
-	public static function query($sql, $parameters = [], $retriesLeft = 2)
+	public static function query($sql, $parameters = null, $retriesLeft = 2)
 	{
 		if($sql instanceof Query){
 			$query = $sql;
@@ -2160,6 +2160,10 @@ class ExternalModules
 			$parameters = $query->getParameters();
 		}
 		else{
+			if($parameters === null){
+				throw new Exception(ExternalModules::tt('em_errors_117'));
+			}
+
 			$query = self::createQuery();
 			$query->add($sql, $parameters);
 		}

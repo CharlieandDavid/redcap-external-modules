@@ -1433,9 +1433,14 @@ class ExternalModulesTest extends BaseTest
 
 	function testQuery_noParameters(){
 		$value = (string)rand();
-		$result = ExternalModules::query("select ?", [$value]);
+		$result = ExternalModules::query("select $value", []);
 		$row = $result->fetch_row();
 		$this->assertSame($value, $row[0]);
+
+		$this->assertThrowsException(function(){
+			// Assert that passing a parameter array is required (even if it's empty).
+			ExternalModules::query("foo");
+		}, ExternalModules::tt('em_errors_117'));
 	}
 
 	function testQuery_invalidQuery(){
