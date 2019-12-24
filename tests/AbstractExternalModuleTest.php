@@ -580,10 +580,10 @@ class AbstractExternalModuleTest extends BaseTest
 			$results = $m->queryLogs("
 				select log_id,timestamp,username,ip,external_module_id,record,message,$paramName1,$paramName2
 				where
-					message = '$message'
-					and timestamp > '" . date('Y-m-d', time()-10) . "'
+					message = ?
+					and timestamp > ?
 				order by log_id asc
-			");
+			", [$message, date('Y-m-d', time()-10)]);
 
 			$timestampThreshold = 5;
 
@@ -648,6 +648,43 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertEquals(0, count($rows));
 	}
 
+	function testLogAndQueryLog_allowedCharacters()
+	{
+		$name = 'aA1 -_$';
+		$value = (string) rand();
+		
+		$logId = $this->log('foo', [
+			$name => $value,
+			'goo' => 'doo'
+		]);
+
+		$whereClause = 'log_id = ?';
+		$result = $this->queryLogs("select log_id, timestamp, goo, `$name` where $whereClause", $logId);
+		$row = $result->fetch_assoc();
+		$this->assertSame($value, $row[$name]);
+		$this->removeLogs($whereClause, $logId);
+	}
+
+	function testLogAndQueryLog_disallowedCharacters()
+	{
+		$invalidParamName = 'sql injection ; example';
+		
+		$assertThrowsException = function($action) use ($invalidParamName){
+			$this->assertThrowsException($action, ExternalModules::tt('em_errors_115', $invalidParamName));
+		};
+
+		$assertThrowsException(function() use ($invalidParamName){
+			$this->log('foo', [
+				$invalidParamName => rand()
+			]);
+		});
+		$this->removeLogs('log_id = ?', db_insert_id());
+
+		$assertThrowsException(function() use ($invalidParamName){
+			$this->queryLogs("select 1 where `$invalidParamName` is null");
+		});
+	}
+
 	function testLog_timestamp()
 	{
 		$m = $this->getInstance();
@@ -666,11 +703,11 @@ class AbstractExternalModuleTest extends BaseTest
 	{
 		$m = $this->getInstance();
 		$message = 'test';
-		$whereClause = "message = '$message'";
+		$whereClause = "message = ?";
 		$expectedPid = rand();
 
 		$assertRowCount = function($expectedCount) use ($m, $message, $whereClause, $expectedPid){
-			$result = $m->queryLogs('select pid where ' . $whereClause);
+			$result = $m->queryLogs('select pid where ' . $whereClause, $message);
 			$rows = [];
 			while($row = db_fetch_assoc($result)){
 				$rows[] = $row;
@@ -697,14 +734,14 @@ class AbstractExternalModuleTest extends BaseTest
 
 		// Re-set the pid and attempt to remove only the pid row
 		$_GET['pid'] = $expectedPid;
-		$m->removeLogs($whereClause);
+		$m->removeLogs($whereClause, $message);
 
 		// Unset the pid and make sure only the row without the pid is returned
 		$_GET['pid'] = null;
 		$assertRowCount(1);
 
 		// Make sure removeLogs() now removes the row without the pid.
-		$m->removeLogs($whereClause);
+		$m->removeLogs($whereClause, $message);
 		$assertRowCount(0);
 	}
 
@@ -765,10 +802,10 @@ class AbstractExternalModuleTest extends BaseTest
 	private function assertLogValues($logId, $expectedValues = [])
 	{
 		$columnNamesSql = implode(',', array_keys($expectedValues));
-		$selectSql = "select $columnNamesSql where log_id = $logId";
+		$selectSql = "select $columnNamesSql where log_id = ?";
 
 		$m = $this->getInstance();
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, $logId);
 		$log = db_fetch_assoc($result);
 
 		foreach($expectedValues as $name=>$expectedValue){
@@ -786,7 +823,7 @@ class AbstractExternalModuleTest extends BaseTest
 		]);
 
 		$selectSql = 'select message, malicious_param order by timestamp desc limit 1';
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$row = db_fetch_assoc($result);
 		$this->assertSame($maliciousSql, $row['message']);
 		$this->assertSame($maliciousSql, $row['malicious_param']);
@@ -804,12 +841,12 @@ class AbstractExternalModuleTest extends BaseTest
 		]);
 
 		$selectSql = "select `$paramName` where `$paramName` is not null order by `$paramName`";
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$row = db_fetch_assoc($result);
 		$this->assertSame($paramValue, $row[$paramName]);
 
 		$m->removeLogs("`$paramName` is not null");
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$this->assertNull(db_fetch_assoc($result));
 	}
 

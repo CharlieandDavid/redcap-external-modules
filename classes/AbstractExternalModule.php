@@ -1479,6 +1479,9 @@ class AbstractExternalModule
 				$query->add(',');
 			}
 
+			// Limit allowed characters to prevent SQL injection when logs are queried later.
+			ExternalModules::checkForInvalidLogParameterNameCharacters($name);
+
 			$query->add('(?, ?, ?)', [$logId, $name, $value]);
 		}
 
@@ -1530,12 +1533,12 @@ class AbstractExternalModule
 		return $this->log($data['message'], $parameters);
 	}
 
-	public function queryLogs($sql)
+	public function queryLogs($sql, $parameters = [])
 	{
-		return $this->query($this->getQueryLogsSql($sql));
+		return $this->query($this->getQueryLogsSql($sql), $parameters);
 	}
 
-	public function removeLogs($sql)
+	public function removeLogs($sql, $parameters = [])
 	{
 		if(empty($sql)){
 			throw new Exception('You must specify a where clause.');
@@ -1551,7 +1554,7 @@ class AbstractExternalModule
 			throw new Exception("Specifying an 'external_module_id' in the where clause for removeLogs() is not allowed to prevent modules from accidentally removing logs for other modules.");
 		}
 
-		return $this->query($sql);
+		return $this->query($sql, $parameters);
 	}
 
 	public function getQueryLogsSql($sql)
@@ -1620,13 +1623,16 @@ class AbstractExternalModule
 		foreach ($parameterFields as $field) {
 			// Needed for field names with spaces.
 			$fieldString = str_replace("`", "", $field);
+			
+			// Prevent SQL injection.
+			ExternalModules::checkForInvalidLogParameterNameCharacters($fieldString);
 
 			$from .= "
 						left join redcap_external_modules_log_parameters $field on $field.name = '$fieldString'
 						and $field.log_id = redcap_external_modules_log.log_id
 					";
 		}
-
+		
 		if ($joinUsername) {
 			$from .= "
 						left join redcap_user_information on redcap_user_information.ui_id = redcap_external_modules_log.ui_id
@@ -1654,12 +1660,20 @@ class AbstractExternalModule
 				}
 				else{
 					$field = $item['base_expr'];
+					if($field === '?'){
+						continue;
+					}
+
 					$fields[] = $field;
 
 					if ($field === 'username') {
 						$newField = 'redcap_user_information.username';
 					} else if(isset(self::$LOG_PARAMETERS_ON_MAIN_TABLE[$field])) {
 						$newField = "redcap_external_modules_log.$field";
+						if($addAs){
+							// The cast is required to make numeric return values for prepared statements behave like traditional queries.
+							$newField = "cast($newField as char) as $field";
+						}
 					} else {
 						$newField = "$field.value";
 

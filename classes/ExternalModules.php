@@ -5339,4 +5339,10 @@ class ExternalModules
 		
 		return db_insert_id();
 	}
+
+	public static function checkForInvalidLogParameterNameCharacters($parameterName){
+		if(preg_match('/[^A-Za-z0-9 _\-$]/', $parameterName) !== 0){
+			throw new Exception(self::tt("em_errors_115", $parameterName));
+		}
+	}
 }
