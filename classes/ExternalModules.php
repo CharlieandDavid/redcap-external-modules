@@ -2236,27 +2236,6 @@ class ExternalModules
 
 	private static function queryWithParameters($query)
 	{
-		$parameters = $query->getParameters();
-
-		$parameterTypes = [];
-		foreach($parameters as $value){
-			$phpType = gettype($value);
-			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
-			
-			if(empty($mysqliType)){
-				//= The following query parameter type is not supported:
-				throw new Exception(self::tt('em_errors_109') . " $phpType");
-			}
-
-			$parameterTypes[] = $mysqliType;
-		}
-
-		$parameterReferences = [implode('', $parameterTypes)];
-		foreach($parameters as $i=>$value){
-			// bind_param and call_user_func_array require references
-			$parameterReferences[] = &$parameters[$i];
-		}
-		
 		global $rc_connection;
 		$statement = $rc_connection->prepare($query->getSQL());
 		if(!$statement){
@@ -2266,9 +2245,9 @@ class ExternalModules
 
 		$query->setStatement($statement);
 		
-		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
-			//= Binding query parameters failed
-			throw new Exception(self::tt('em_errors_110'));
+		$parameters = $query->getParameters();
+		if(!empty($parameters)){
+			self::bindParams($statement, $parameters);
 		}
 
 		if(!$statement->execute()){
@@ -2284,6 +2263,31 @@ class ExternalModules
 		}
 
 		return $result;
+	}
+
+	private static function bindParams($statement, $parameters){
+		$parameterReferences = [];
+		$parameterTypes = [];
+		foreach($parameters as $i=>$value){
+			$phpType = gettype($value);
+			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
+			
+			if(empty($mysqliType)){
+				//= The following query parameter type is not supported:
+				throw new Exception(self::tt('em_errors_109') . " $phpType");
+			}
+
+			// bind_param and call_user_func_array require references
+			$parameterReferences[] = &$parameters[$i];
+			$parameterTypes[] = $mysqliType;
+		}
+
+		array_unshift($parameterReferences, implode('', $parameterTypes));
+		
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
+			//= Binding query parameters failed
+			throw new Exception(self::tt('em_errors_110'));
+		}
 	}
 
 	private static function errorLog($message)
