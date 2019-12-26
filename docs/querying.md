@@ -66,4 +66,13 @@ addInClause($column_name, $parameters) | Adds a SQL `IN` clause for the specifie
 execute() | Executes and returns the query result for the SQL and parameters that have been added.
 getStatement() | Returns the statement object used to allow access to `affected_rows` and other advanced functionality.
 
+### Differences With & Without Parameters
+Queries with parameters have a couple of behavioral differences from queries with an empty parameter array specified.  This is due to MySQLi historical quirks.  The differences are as follows:
 
+- The `db_affected_rows()` method does not work for queries with parameters.  See the documentation above for an alternative.
+- Numeric column values will return as the `int` type in PHP where they previously returned as `string`.  This may require changes to any type sensitive operations like triple equals checking.  The simplest solution to prevent potential issues without refactoring is to cast the numeric columns in either SQL or PHP.
+    - In PHP you can cast all integer columns to strings manually, or by using the following utility method on each fetched row:
+      - `$row = $module->framework->convertIntsToStrings($row);`
+    - In SQL you can cast values individually.  For example:
+      - Before: `select project_id`
+      - After: &nbsp;&nbsp;`select cast(project_id as char) as project_id`.
