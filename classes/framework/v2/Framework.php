@@ -193,7 +193,7 @@ class Framework
 	}
 
 	function getRecordIdField($pid = null){
-		$pid = db_escape($this->requireProjectId($pid));
+		$pid = $this->requireProjectId($pid);
 
 		$result = $this->query("
 			select field_name

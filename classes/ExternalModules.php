@@ -1690,7 +1690,7 @@ class ExternalModules
 
 	public static function getLockName($moduleId, $projectId)
 	{
-		return db_real_escape_string("external-module-setting-$moduleId-$projectId");
+		return "external-module-setting-$moduleId-$projectId";
 	}
 
 	# this is a helper method
@@ -1993,8 +1993,6 @@ class ExternalModules
 
 	static function getEnabledProjects($prefix)
 	{
-		$prefix = db_real_escape_string($prefix);
-
 		return self::query("SELECT s.project_id, p.app_title as name
 							FROM redcap_external_modules m
 							JOIN redcap_external_module_settings s
@@ -2127,8 +2125,6 @@ class ExternalModules
 
 	# translates a module_id number into a prefix string
 	public static function getPrefixForID($id){
-		$id = db_real_escape_string($id);
-
 		$result = self::query("SELECT directory_prefix FROM redcap_external_modules WHERE external_module_id = ?", [$id]);
 
 		$row = db_fetch_assoc($result);
@@ -2141,8 +2137,6 @@ class ExternalModules
 	
 	# gets the currently installed module's version based on the module prefix string
 	public static function getModuleVersionByPrefix($prefix){
-		$prefix = db_real_escape_string($prefix);
-		
 		$sql = "SELECT s.value FROM redcap_external_modules m, redcap_external_module_settings s 
 				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = ?
 				AND s.project_id IS NULL AND s.`key` = ? LIMIT 1";
@@ -2298,20 +2292,6 @@ class ExternalModules
 		}
 		else{
 			error_log($message);
-		}
-	}
-
-	# converts an equals clause into SQL
-	private static function getSQLEqualClause($columnName, $value)
-	{
-		$columnName = db_real_escape_string($columnName);
-		$value = db_real_escape_string($value);
-
-		if($value == 'NULL'){
-			return "$columnName IS NULL";
-		}
-		else{
-			return "$columnName = '$value'";
 		}
 	}
 
@@ -4693,8 +4673,6 @@ class ExternalModules
 	// An exception is thrown if the $description occurs more than $maximumOccurrences within the past specified number of $seconds.
 	private function throttleEvent($description, $maximumOccurrences, $seconds)
 	{
-		$description = db_escape($description);
-
 		$ts = date('YmdHis', time()-$seconds);
 
 		$result = ExternalModules::query("

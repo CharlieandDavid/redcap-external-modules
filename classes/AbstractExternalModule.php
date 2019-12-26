@@ -891,7 +891,7 @@ class AbstractExternalModule
 		);
 
         while ($row = db_fetch_assoc($records)){
-            $record = db_escape($row['record']);
+            $record = $row['record'];
             $this->query("DELETE FROM redcap_data where project_id = ? and record = ?", [$pid, $record]);
 		}
 		
@@ -948,7 +948,6 @@ class AbstractExternalModule
 		);
 
 		foreach($values as $value){
-			$value = db_escape($value);
 			$this->query(
 				"INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES (?, ?, ?, ?, ?)",
 				[$pid, $eventId, $record, $fieldName, $value]
@@ -1117,7 +1116,7 @@ class AbstractExternalModule
 
     public function getPublicSurveyUrl(){
         $instrumentNames = \REDCap::getInstrumentNames();
-        $formName = db_real_escape_string(key($instrumentNames));
+        $formName = key($instrumentNames);
 
         $sql ="
 			select h.hash
