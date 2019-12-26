@@ -1618,6 +1618,9 @@ class AbstractExternalModule
 
 		$from = ' from redcap_external_modules_log';
 		foreach ($parameterFields as $field) {
+			// The invalid character check below should be enough, but lets escape too just to be safe.
+			$field = db_escape($field);
+
 			// Needed for field names with spaces.
 			$fieldString = str_replace("`", "", $field);
 			
