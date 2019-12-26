@@ -2164,6 +2164,8 @@ class ExternalModules
 
 		try{
 			if(empty($parameters)){
+				// We attempted to switch queryies without parameters to use prepared statements as well for consistent behavior in commit 5ae46e4.
+				// We reverted those changes because some queries like "BEGIN" are not supported with prepared statements.
 				$result = db_query($sql);
 			}
 			else{
