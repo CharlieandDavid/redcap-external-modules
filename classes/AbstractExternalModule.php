@@ -825,7 +825,7 @@ class AbstractExternalModule
 
                 while ($row = db_fetch_assoc($q)) {
                     if ($row['record'] == $params['value']) {
-                        $label = (string) $row['value'];
+                        $label = $row['value'];
                         break;
                     }
                 }
@@ -860,17 +860,8 @@ class AbstractExternalModule
 		return $dictionary[$fieldName]['field_label'];
 	}
 
-	public function query($sql, $parameters = null){
-		$query = ExternalModules::createQuery();
-
-		if($parameters === null){
-			$parameters = [];
-			$query->setOldQueryMethod(true);
-		}
-
-		$query->add($sql, $parameters);
-		
-		return $query->execute();
+	public function query($sql, $parameters = []){
+		return ExternalModules::query($sql, $parameters);
 	}
 
 	public function createDAG($dagName){
