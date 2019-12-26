@@ -2107,6 +2107,7 @@ class ExternalModules
 
 			$idsByPrefix = array();
 			while($row = db_fetch_assoc($result)){
+				$row = ExternalModules::convertIntsToStrings($row);
 				$idsByPrefix[$row['directory_prefix']] = $row['external_module_id'];
 			}
 
@@ -2163,7 +2164,7 @@ class ExternalModules
 		}
 
 		try{
-			if(empty($parameters)){
+			if($query->isOldQueryMethod()){
 				$result = db_query($sql);
 			}
 			else{

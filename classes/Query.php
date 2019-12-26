@@ -3,6 +3,7 @@
 class Query{
     private $sql = '';
     private $parameters = [];
+    private $oldQueryMethod = false;
     private $statement;
 
     function add($sql, $parameters = []){
@@ -39,5 +40,13 @@ class Query{
 
     function setStatement($statement){
         $this->statement = $statement;
+    }
+
+    function isOldQueryMethod(){
+        return $this->oldQueryMethod;
+    }
+
+    function setOldQueryMethod($oldQueryMethod){
+        $this->oldQueryMethod = $oldQueryMethod;
     }
 }
