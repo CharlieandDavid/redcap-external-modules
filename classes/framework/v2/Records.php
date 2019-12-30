@@ -1,6 +1,8 @@
 <?php
 namespace ExternalModules\FrameworkVersion2;
 
+use ExternalModules\ExternalModules;
+
 class Records
 {
 	function __construct($module){
@@ -13,19 +15,10 @@ class Records
 			return;
 		}
 
-		$recordIdSql = '';
-		foreach($recordIds as $recordId){
-			if(!empty($recordIdSql)){
-				$recordIdSql .= ',';
-			}
-
-			$recordId = db_real_escape_string($recordId);
-			$recordIdSql .= "'$recordId'";
-		}
-
 		$pid = $this->module->getProjectId();
 
-		$results = $this->module->query("
+		$query = ExternalModules::createQuery();
+		$query->add("
 			select
 				record,
 				event_id,
@@ -37,15 +30,26 @@ class Records
 					d.project_id = m.project_id 
 					and d.field_name = m.field_name
 			where
-				d.project_id = $pid
-				and record in ($recordIdSql)
-			group by record, event_id, instance, form_name
-		");
+				d.project_id = ?
+				and
+		", $pid);
 
-		$lockValuesSql = '';
+		$query->addInClause('record', $recordIds);
+
+		$query->add("group by record, event_id, instance, form_name");
+
+		$results = $query->execute();
+
+		$query = ExternalModules::createQuery();
+		$query->add("insert ignore into redcap_locking_data (project_id, record, event_id, form_name, instance, timestamp) values");
+
+		$addComma = false;
 		while($row = $results->fetch_assoc()){
-			if(!empty($lockValuesSql)){
-				$lockValuesSql .= ",\n";
+			if($addComma){
+				$query->add(',');
+			}
+			else{
+				$addComma = true;
 			}
 
 			$record = $row['record'];
@@ -57,12 +61,38 @@ class Records
 				$instance = 1;
 			}
 
-			$lockValuesSql .= "($pid, '$record', $eventId, '$formName', $instance , now())";
+			$query->add("(?, ?, ?, ?, ? , now())", [$pid, $record, $eventId, $formName, $instance]);
 		}
 
-		$this->module->query("
-			insert ignore into redcap_locking_data (project_id, record, event_id, form_name, instance, timestamp)
-			values $lockValuesSql
-		");
+		$query->execute();
+	}
+
+	function unlock($recordIds){
+		$pid = $this->module->getProjectId();
+
+		$query = ExternalModules::createQuery();
+		$query->add("
+			delete from redcap_locking_data
+			where project_id = ?
+			and
+		", [$pid]);
+
+		$query->addInClause('record', $recordIds);
+
+		$query->execute();
+	}
+
+	function isLocked($recordId){
+		$pid = $this->module->getProjectId();
+		
+		$result = $this->module->query("
+			select 1
+			from redcap_locking_data
+			where 
+				project_id = ?
+				and record = ?
+		", [$pid, $recordId]);
+
+		return $result->fetch_assoc() !== null;
 	}
 }

@@ -2,18 +2,22 @@
 namespace ExternalModules;
 
 $page = rawurldecode(urldecode($_GET['page']));
-if($page === '/manager/rich-text/get-file.php'){
-	require_once __DIR__ . $page;
-	return;
-}
-
-$noAuth = isset($_GET['NOAUTH']);
+$isGetFilePage = $page === '/manager/rich-text/get-file.php';
+$noAuth = isset($_GET['NOAUTH']) || $isGetFilePage;
 if($noAuth){
 	// This must be defined at the top before redcap_connect.php is required.
 	define('NOAUTH', true);
 }
 
-require_once dirname(__FILE__) . '/classes/ExternalModules.php';
+// We call redcap_connect.php before loading any classes to make sure redirections from previous REDCap
+// version URLs happen first.  We don't want to try to load old and new versions of the same class.
+require_once __DIR__ . '/redcap_connect.php';
+require_once __DIR__ . '/classes/ExternalModules.php';
+
+if($isGetFilePage){
+	require_once __DIR__ . $page;
+	return;
+}
 
 use Exception;
 

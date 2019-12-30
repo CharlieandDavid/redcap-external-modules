@@ -404,7 +404,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSettingSizeLimit()
 	{
-		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'");
+		$result = ExternalModules::query("SHOW VARIABLES LIKE 'max_allowed_packet'", []);
 		$row = $result->fetch_assoc();
 		$maxAllowedPacket = $row['Value'];
 		$threshold = $maxAllowedPacket - ExternalModules::SETTING_SIZE_LIMIT+1;
@@ -567,7 +567,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$testingModuleId = $this->getUnitTestingModuleId();
 
 		// Remove left over messages in case this test previously failed
-		$m->query('delete from redcap_external_modules_log where external_module_id = ' . $testingModuleId);
+		$m->query('delete from redcap_external_modules_log where external_module_id = ?', [$testingModuleId]);
 
 		$message = TEST_LOG_MESSAGE;
 		$paramName1 = 'testParam1';
@@ -810,7 +810,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function getRandomUsername()
 	{
-		$result = db_query('select username from redcap_user_information order by rand() limit 1');
+		$result = ExternalModules::query('select username from redcap_user_information order by rand() limit 1', []);
 		$username =  db_fetch_assoc($result)['username'];
 
 		return $username;
@@ -841,7 +841,7 @@ class AbstractExternalModuleTest extends BaseTest
 			$this->assertLogValues($logId, $params);
 
 			// Make sure a parameter table entry was NOT made, since the value should only be stored in the main log table.
-			$result = $m->query("select * from redcap_external_modules_log_parameters where log_id = $logId");
+			$result = $m->query("select * from redcap_external_modules_log_parameters where log_id = ?", [$logId]);
 			$row = $result->fetch_assoc();
 			$this->assertNull($row);
 		}
@@ -1164,7 +1164,7 @@ class AbstractExternalModuleTest extends BaseTest
 			) a
 			order by rand() -- select a random row to make sure we often end up with a different project ID than getPublicSurveyUrl() would by default if it didn't specific a project ID in it's query
 			limit 1
-		");
+		", []);
 
 		$row = $result->fetch_assoc();
 		$projectId = $row['project_id'];
@@ -1214,7 +1214,7 @@ class AbstractExternalModuleTest extends BaseTest
 				and return_code is not null
 			ORDER BY p.participant_id DESC
 			LIMIT 1
-		");
+		", []);
 
 		$expected = $result->fetch_assoc();
 		$actual = $m->getProjectAndRecordFromHashes($expected['hash'], $expected['return_code']);
@@ -1241,7 +1241,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testSetData(){
 		$_GET['pid'] = TEST_SETTING_PID;
-		$_GET['event_id'] = $this->framework->getEventId();
+		$_GET['event_id'] = $this->getInstance()->framework->getEventId();
 		$_GET['instance'] = 1;
 		$recordId = 1;
 
@@ -1261,20 +1261,13 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$value = (string) rand();
 
-		// Calling saveData() is required to make sure the record exists.
-		REDCap::saveData(TEST_SETTING_PID, 'json', json_encode([[
-			$this->framework->getRecordIdField() => $recordId,
-		]]));
-
+		$this->ensureRecordExists($recordId);
+		
 		$this->setData($recordId, $fieldName, $value);
 
 		$data = json_decode(REDCap::getData(TEST_SETTING_PID, 'json', $recordId), true)[0];
 
 		$this->assertSame($value, $data[$fieldName]);
-	}
-
-	function __call($methodName, $args){
-		return call_user_func_array(array($this->getInstance(), $methodName), $args);
 	}
 
 	function __get($varName){

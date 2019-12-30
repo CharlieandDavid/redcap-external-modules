@@ -14,9 +14,10 @@ if(PHP_SAPI == 'cli'){
 	define('NOAUTH', true);
 }
 
-// Call redcap_connect.php
 if(!defined('APP_PATH_WEBROOT')){
-	ExternalModules::callRedcapConnect();
+	// There may no longer be any cases where redcap_connect.php hasn't already been called by this time.
+	// We should make absolutely certain before removing the following line.
+	require_once __DIR__ . '/../redcap_connect.php';
 }
 
 if (class_exists('ExternalModules\ExternalModules')) {
@@ -577,21 +578,18 @@ class ExternalModules
 					}
 					/**
 					 * Extracts interpolation values from variable function arguments.
-					 * @param {Array} inputs An array of interpolation values.
+					 * @param {Array} inputs An array of interpolation values (must include the key as first element).
 					 * @returns {Array} An array with the interpolation values.
 					 */
 					lang._getValues = function(inputs) {
 						var values = Array()
-						// Store type of arguments ... for debug purposes.
-						var argsType = 'params'
 						if (inputs.length > 1) {
 							// If the first value is an array or object, use it instead.
 							if (Array.isArray(inputs[1]) || typeof inputs[1] === 'object' && inputs[1] !== null) {
-								argsType = Array.isArray(inputs[1]) ? 'array' : 'object'
 								values = inputs[1]
 							}
 							else {
-								values = inputs.slice(1)
+								values = Array.prototype.slice.call(inputs, 1)
 							}
 						}
 						return values
@@ -603,9 +601,8 @@ class ExternalModules
 					 * @returns {string} The interpolated string.
 					 */
 					lang.tt = function(key) {
-						// Get any further arguments.
-						var values = this._getValues(Array(arguments))
 						var string = this.get(key)
+						var values = this._getValues(arguments)
 						return this.interpolate(string, values)
 					}
 					/**
@@ -619,8 +616,8 @@ class ExternalModules
 							console.warn('$lang.interpolate() called with undefined or null.')
 							return ''
 						}
-						// Nothing to do if there are no values or the string is empty.
-						if (values.length == 0 || string.length == 0) {
+						// Is string not a string, or empty? Then there is nothing to do.
+						if (typeof string !== 'string' || string.length == 0) {
 							return string
 						}
 						// Regular expression to find places where replacements need to be done.
@@ -628,7 +625,7 @@ class ExternalModules
 						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
 						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						const regex = new RegExp('(?<all>((?<escape>\\*){|{)(?<index>[\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
+						var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
 						var m
 						var result = ''
 						var prevEnd = 0
@@ -664,7 +661,7 @@ class ExternalModules
 							}
 						}
 						// Add rest of original string.
-						result += string.substr(prevEnd)
+						result += String.prototype.substr.call(string, prevEnd)
 						return result
 					}
 				}
@@ -1555,9 +1552,14 @@ class ExternalModules
 	# obtain the info of a cron job for a module in the redcap_crons table
 	static function getCronJobFromTable($cron_name, $externalModuleId)
 	{
-		$sql = "select cron_frequency, cron_max_run_time, cron_description from redcap_crons 
-				where cron_name = '".db_escape($cron_name)."' and external_module_id = '".db_escape($externalModuleId)."'";
-		$q = db_query($sql);
+		$sql = "select
+					cron_name,
+					cron_description,
+					cast(cron_frequency as char) as cron_frequency,
+					cast(cron_max_run_time as char) as cron_max_run_time
+				from redcap_crons
+				where cron_name = ? and external_module_id = ?";
+		$q = ExternalModules::query($sql, [$cron_name, $externalModuleId]);
 		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
 	}
 
@@ -1566,10 +1568,16 @@ class ExternalModules
 	static function updateCronJobInTable($cron=array(), $externalModuleId)
 	{
 		if (empty($cron) || empty($externalModuleId)) return false;
-		$sql = "update redcap_crons set cron_frequency = '".db_escape($cron['cron_frequency'])."', cron_max_run_time = '".db_escape($cron['cron_max_run_time'])."', 
-				cron_description = '".db_escape($cron['cron_description'])."'
-				where cron_name = '".db_escape($cron['cron_name'])."' and external_module_id = '".db_escape($externalModuleId)."'";
-		return db_query($sql);
+		$sql = "update redcap_crons set cron_frequency = ?, cron_max_run_time = ?, 
+				cron_description = ?
+				where cron_name = ? and external_module_id = ?";
+		return ExternalModules::query($sql, [
+			$cron['cron_frequency'],
+			$cron['cron_max_run_time'],
+			$cron['cron_description'],
+			$cron['cron_name'],
+			$externalModuleId
+		]);
 	}
 
 	# initializes the system settings
@@ -2097,7 +2105,7 @@ class ExternalModules
 	public static function getIdForPrefix($prefix)
 	{
 		if(!isset(self::$idsByPrefix)){
-			$result = self::query("SELECT external_module_id, directory_prefix FROM redcap_external_modules");
+			$result = self::query("SELECT external_module_id, directory_prefix FROM redcap_external_modules", []);
 
 			$idsByPrefix = array();
 			while($row = db_fetch_assoc($result)){
@@ -2121,7 +2129,7 @@ class ExternalModules
 	public static function getPrefixForID($id){
 		$id = db_real_escape_string($id);
 
-		$result = self::query("SELECT directory_prefix FROM redcap_external_modules WHERE external_module_id = '$id'");
+		$result = self::query("SELECT directory_prefix FROM redcap_external_modules WHERE external_module_id = ?", [$id]);
 
 		$row = db_fetch_assoc($result);
 		if($row){
@@ -2136,10 +2144,10 @@ class ExternalModules
 		$prefix = db_real_escape_string($prefix);
 		
 		$sql = "SELECT s.value FROM redcap_external_modules m, redcap_external_module_settings s 
-				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = '$prefix'
-				AND s.project_id IS NULL AND s.`key` = '" . self::KEY_VERSION . "' LIMIT 1";
+				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = ?
+				AND s.project_id IS NULL AND s.`key` = ? LIMIT 1";
 		
-		$result = self::query($sql);
+		$result = self::query($sql, [$prefix, self::KEY_VERSION]);
 
 		return db_result($result, 0);
 	}
@@ -2306,8 +2314,17 @@ class ExternalModules
 			$array = array($array);
 		}
 
+		$getReturnValue = function($sql, $parameters = []) use ($preparedStatement){
+			if($preparedStatement){
+				return [$sql, $parameters];
+			}
+			else{
+				return $sql;
+			}
+		};
+
 		if(empty($array)){
-			return '(false)';
+			return $getReturnValue('(false)');
 		}
 
 		// Prepared statements don't really have anything to do with this null handling,
@@ -2359,12 +2376,7 @@ class ExternalModules
 
 		$sql = "(" . implode(" OR ", $parts) . ")";
 
-		if($preparedStatement){
-			return [$sql, $parameters];
-		}
-		else{
-			return $sql;
-		}
+		return $getReturnValue($sql, $parameters);
 	}
 
     /**
@@ -3319,14 +3331,14 @@ class ExternalModules
 			}
 		}
 		else if($configRow['type'] == 'project-id') {
-			$escaped_pid = strtolower(db_real_escape_string($pid));
-			$sql = "SELECT p.project_id, p.app_title
+			$escaped_pid = strtolower($pid);
+			$sql = "SELECT CAST(p.project_id as char) as project_id, p.app_title
 					FROM redcap_projects p, redcap_user_rights u
 					WHERE p.project_id = u.project_id
-						AND u.username = '".db_real_escape_string(USERID)."'
-						AND (LOWER(p.app_title) LIKE '%$escaped_pid%' OR p.project_id = '$escaped_pid')";
+						AND u.username = ?
+						AND (LOWER(p.app_title) LIKE CONCAT('%', ?, '%') OR p.project_id = ?)";
 
-			$result = db_query($sql);
+			$result = ExternalModules::query($sql, [USERID, $escaped_pid, $escaped_pid]);
 
 			$matchingProjects = [
 				[
@@ -3858,10 +3870,10 @@ class ExternalModules
 			}
 			// Add row to redcap_external_modules_downloads table
 			$sql = "insert into redcap_external_modules_downloads (module_name, module_id, time_downloaded) 
-					values ('".db_escape($moduleFolderName)."', '".db_escape($module_id)."', '".NOW."')
+					values (?, ?, ?)
 					on duplicate key update 
-					module_id = '".db_escape($module_id)."', time_downloaded = '".NOW."', time_deleted = null";
-			db_query($sql);
+					module_id = ?, time_downloaded = ?, time_deleted = null";
+			ExternalModules::query($sql, [$moduleFolderName, $module_id, NOW, $module_id, NOW]);
 			// Remove module_id from external_modules_updates_available config variable		
 			self::removeModuleFromREDCapRepoUpdatesInConfig($module_id);
 			
@@ -3907,10 +3919,10 @@ class ExternalModules
 		}
 		// Add to deleted modules array
 		self::$deletedModules[basename($moduleFolderDir)] = time();
-		// Remove row from redcap_external_modules_downloads table
-		$sql = "update redcap_external_modules_downloads set time_deleted = '".NOW."' 
-				where module_name = '".db_escape($moduleFolderName)."'";
-		db_query($sql);
+		
+		$sql = "update redcap_external_modules_downloads set time_deleted = ? 
+				where module_name = ?";
+		ExternalModules::query($sql, [NOW, $moduleFolderName]);
 
 		// Give success message
 		//= The module and its corresponding directory were successfully deleted from the REDCap server.
@@ -3920,8 +3932,8 @@ class ExternalModules
 	# Was this module originally downloaded from the central repository of ext mods? Exclude it if the module has already been marked as deleted via the UI.
 	private static function wasModuleDownloadedFromRepo($moduleFolderName=null){
 		$sql = "select 1 from redcap_external_modules_downloads 
-				where module_name = '".db_escape($moduleFolderName)."' and time_deleted is null";
-		$q = db_query($sql);
+				where module_name = ? and time_deleted is null";
+		$q = ExternalModules::query($sql, [$moduleFolderName]);
 		return (db_num_rows($q) > 0);
 	}
 
@@ -3952,7 +3964,7 @@ class ExternalModules
 		if(!isset(self::$deletedModules)){
 			$sql = "select module_name, time_deleted from redcap_external_modules_downloads 
 					where time_deleted is not null";
-			$q = db_query($sql);
+			$q = self::query($sql, []);
 			self::$deletedModules = array();
 			while ($row = db_fetch_assoc($q)) {
 				self::$deletedModules[$row['module_name']] = strtotime($row['time_deleted']);
@@ -3964,8 +3976,8 @@ class ExternalModules
 	# If module was originally downloaded from the central repository of ext mods,
 	# then return its module_id (from the repo)
 	public static function getRepoModuleId($moduleFolderName=null){
-		$sql = "select module_id from redcap_external_modules_downloads where module_name = '".db_escape($moduleFolderName)."'";
-		$q = db_query($sql);
+		$sql = "select cast(module_id as char) as module_id from redcap_external_modules_downloads where module_name = ?";
+		$q = self::query($sql, [$moduleFolderName]);
 		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
 	}
 	
@@ -3986,23 +3998,6 @@ class ExternalModules
 		rmdir($dir);
 	}
 	
-	// Find the redcap_connect.php file and require it
-	public static function callRedcapConnect()
-	{
-		if(!defined('PLUGIN')){
-			// Since a change to redcap_connect.php on 4/6/18, this is required to make sure REDCap is initialized for command line calls like cron jobs.
-			define('PLUGIN', true);
-		}
-
-		$connectPath = dirname(dirname(dirname(__DIR__))) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		if (!file_exists($connectPath)) {
-		    // We must be using the "external_modules" folder to override the version of the framework bundled with REDCap.
-			$connectPath = dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . "redcap_connect.php";
-		}
-
-		require_once $connectPath;
-	}
-	
 	// Return array of module dir prefixes for modules with a system-level value of TRUE for discoverable-in-project
 	public static function getDiscoverableModules()
 	{
@@ -4010,10 +4005,10 @@ class ExternalModules
 		$sql = "select m.directory_prefix, x.`value` from redcap_external_modules m, 
 				redcap_external_module_settings s, redcap_external_module_settings x
 				where m.external_module_id = s.external_module_id and s.project_id is null
-				and s.`value` = 'true' and s.`key` = '".db_escape(self::KEY_DISCOVERABLE)."'
+				and s.`value` = 'true' and s.`key` = ?
                 and m.external_module_id = x.external_module_id and x.project_id is null
-				and x.`key` = '".db_escape(self::KEY_VERSION)."'";
-		$q = db_query($sql);
+				and x.`key` = ?";
+		$q = ExternalModules::query($sql, [self::KEY_DISCOVERABLE, self::KEY_VERSION]);
 		while ($row = db_fetch_assoc($q)) {
 			$modules[$row['directory_prefix']] = $row['value'];
 		}
@@ -4033,10 +4028,16 @@ class ExternalModules
 	{
 		$modules = array();
 		if (empty($prefixes)) return $modules;
-		$sql = "SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
-				WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
-				AND s.`key` = '" . self::KEY_CONFIG_USER_PERMISSION . "' AND m.directory_prefix in (" . prep_implode($prefixes) . ")";
-		$q = self::query($sql);
+		$query = ExternalModules::createQuery();
+		$query->add("
+			SELECT m.directory_prefix FROM redcap_external_modules m, redcap_external_module_settings s 
+			WHERE m.external_module_id = s.external_module_id AND s.value = 'true'
+			AND s.`key` = ?
+		", [self::KEY_CONFIG_USER_PERMISSION]);
+		
+		$query->add('AND')->addInClause('directory_prefix', $prefixes);
+
+		$q = $query->execute();
 		while ($row = db_fetch_assoc($q)) {
 			$modules[] = $row['directory_prefix'];
 		}
@@ -4582,6 +4583,11 @@ class ExternalModules
 	public static function callCronMethod($moduleId, $cronName)
 	{
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
+
+		if($moduleDirectoryPrefix === ExternalModules::TEST_MODULE_PREFIX && !self::isTesting()){
+			return;
+		}
+
 		self::setActiveModulePrefix($moduleDirectoryPrefix);
 		self::$hookBeingExecuted = $cronName;
 
@@ -4679,12 +4685,12 @@ class ExternalModules
 
 		$ts = date('YmdHis', time()-$seconds);
 
-		$result = db_query("
+		$result = ExternalModules::query("
 			select count(*) as count
 			from redcap_log_event l
-			where description = '$description'
-			and ts >= $ts
-		");
+			where description = ?
+			and ts >= ?
+		", [$description, $ts]);
 
 		$row = $result->fetch_assoc();
 
@@ -4855,6 +4861,10 @@ class ExternalModules
 	}
 
 	private static function copySettingValues($sourceProjectId, $destinationProjectId){
+		// Prevent SQL Injection
+		$sourceProjectId = (int) $sourceProjectId;
+		$destinationProjectId = (int) $destinationProjectId;
+
 		self::query("
 			insert into redcap_external_module_settings (external_module_id, project_id, `key`, type, value)
 			select external_module_id, '$destinationProjectId', `key`, type, value from redcap_external_module_settings
@@ -4862,7 +4872,7 @@ class ExternalModules
 		", [
 			// Ideally we'd pass the parameters here instead of manually appending them to the query string.
 			// However, that doesn't work for combo insert/select statements in mysql.
-			// The integer casts in the calling function should safely protect against SQL injection in this case.
+			// The integer casts should safely protect against SQL injection in this case.
 		]);
 	}
 
@@ -5149,23 +5159,32 @@ class ExternalModules
 			}
 		};
 
-		$clauses = [
-			"`key` = '" . ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST . "'"
-		];
+		$query = self::createQuery();
+		$query->add("
+			select *
+			from redcap_external_module_settings
+			where
+		");
+
+		$query->add("`key` = ?", ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
 
 		foreach($keysByPrefix as $prefix=>$keys){
+			$query->add("\nor");
+			
 			$moduleId = ExternalModules::getIdForPrefix($prefix);
-			$clauses[] = "(external_module_id = $moduleId and " . ExternalModules::getSQLInClause('`key`', $keys) .  ")";
+
+			$query->add("(");
+			$query->add("external_module_id = ?", [$moduleId]);
+			$query->add("and")->addInClause('`key`', $keys);
+			$query->add(")");
 		}
 
-		$sql = "
-			select * from redcap_external_module_settings
-			where
-			" . implode("\n\t or ", $clauses) . "
-		";
-
-		$result = ExternalModules::query($sql);
+		$result = $query->execute();
 		while($row = db_fetch_assoc($result)){
+			foreach(['external_module_id', 'project_id'] as $fieldName){
+				$row[$fieldName] = (string) $row[$fieldName];
+			}
+			
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
 			$pid = $row['project_id'];
 			$key = $row['key'];
@@ -5179,9 +5198,16 @@ class ExternalModules
 			}
 		}
 
-		$result = ExternalModules::query("select * from redcap_edocs_metadata where " . ExternalModules::getSQLInClause('doc_id', array_keys($edocs)));
+		$query = self::createQuery();
+		$query->add("select * from redcap_edocs_metadata where ");
+		$query->addInClause('doc_id', array_keys($edocs));
+		$result = $query->execute();
 		$sourceProjectsByEdocId = [];
 		while($row = db_fetch_assoc($result)){
+			foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $fieldName){
+				$row[$fieldName] = (string) $row[$fieldName];
+			}
+
 			$sourceProjectsByEdocId[$row['doc_id']] = $row['project_id'];
 		}
 

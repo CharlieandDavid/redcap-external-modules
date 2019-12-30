@@ -12,8 +12,9 @@ class Project
 		$results = $this->framework->query("
 			select username
 			from redcap_user_rights
-			where project_id = {$this->project_id}
-		");
+			where project_id = ?
+			order by username
+		", $this->project_id);
 
 		$users = [];
 		while($row = $results->fetch_assoc()){

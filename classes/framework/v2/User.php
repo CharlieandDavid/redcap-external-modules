@@ -49,8 +49,8 @@ class User
 			$results = $this->framework->query("
 				select *
 				from redcap_user_information
-				where username = '{$this->username}'
-			");
+				where username = ?
+			", [$this->username]);
 
 			$this->user_info = $results->fetch_assoc();
 		}
@@ -60,7 +60,7 @@ class User
 
 	function isSuperUser(){
 		$userInfo = $this->getUserInfo();
-		return $userInfo['super_user'] === '1';
+		return $userInfo['super_user'] === 1;
 	}
 
 	function getEmail(){

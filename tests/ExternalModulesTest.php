@@ -1011,9 +1011,9 @@ class ExternalModulesTest extends BaseTest
 			where
 				date_deleted_server is null
 				and doc_size < 1000000
-				and project_id not in (".TEST_SETTING_PID.", ".TEST_SETTING_PID_2.")
-			limit $minEdocs
-		");
+				and project_id not in (?, ?)
+			limit ?
+		", [TEST_SETTING_PID, TEST_SETTING_PID_2, $minEdocs]);
 
 		while($row = db_fetch_assoc($result)){
 			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
@@ -1107,13 +1107,13 @@ class ExternalModulesTest extends BaseTest
 
 	private function getEdocPath($edocId)
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = " . $edocId));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId]));
 		return EDOC_PATH . $row['stored_name'];
 	}
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1"));
+		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", []));
 		if(empty($row)){
 			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
@@ -1236,6 +1236,8 @@ class ExternalModulesTest extends BaseTest
 		$assert("column_name IN (?, ?)", [1, 2], 'column_name', [1, 2]);
 		$assert("column_name IN (?) OR column_name IS NULL", [1], 'column_name', [1, null]);
 		$assert("column_name IN (?)", ['NULL'], 'column_name', ['NULL']);
+		$assert("column_name\\' IN (?)", ['value\''], 'column_name\'', ['value\'']); // make sure quotes are escaped
+		$assert("false", [], 'column_name', []);
 	}
 
 	function testIsCompatibleWithREDCapPHP_minVersions(){
@@ -1431,7 +1433,7 @@ class ExternalModulesTest extends BaseTest
 
 	function testQuery_noParameters(){
 		$value = (string)rand();
-		$result = ExternalModules::query("select $value");
+		$result = ExternalModules::query("select ?", [$value]);
 		$row = $result->fetch_row();
 		$this->assertSame($value, $row[0]);
 	}
@@ -1439,7 +1441,7 @@ class ExternalModulesTest extends BaseTest
 	function testQuery_invalidQuery(){
 		$this->assertThrowsException(function(){
 			ob_start();
-			ExternalModules::query("select * from some_table_that_doesnt_exist");
+			ExternalModules::query("select * from some_table_that_doesnt_exist", []);
 		}, ExternalModules::tt("em_errors_29"));
 
 		ob_end_clean();
@@ -1454,10 +1456,7 @@ class ExternalModulesTest extends BaseTest
 			null
 		];
 
-		$row = ExternalModules::query(
-			'select ' . implode(', ', array_fill(0, count($values), '?')),
-			$values
-		)->fetch_row();
+		$row = ExternalModules::query('select ?, ?, ?, ?, ?', $values)->fetch_row();
 
 		$values[0] = 1; // The boolean 'true' will get converted to the integer '1'.  This is excepted.
 
@@ -1529,5 +1528,62 @@ class ExternalModulesTest extends BaseTest
 		// If they are, perhaps they shouldn't be.
 		$assert('', false, true);
 		$assert(0, false, true);
+	}
+
+	function testCronJobMethods(){
+		$m = $this->getInstance();
+		$prefix = $m->PREFIX;
+		$moduleId = ExternalModules::getIdForPrefix($prefix);
+
+		$name = "UnitTestCron";
+		$expectedCron = [
+			"cron_name" => $name,
+			"cron_description" => "This is only a test.",
+			"method" =>"some_method",
+			"cron_frequency" =>  "99999",
+			"cron_max_run_time" => "1"
+		];
+
+		$getCron = function() use ($name, $moduleId){
+			return ExternalModules::getCronJobFromTable($name, $moduleId);
+		};
+
+		try{
+			ExternalModules::addCronJobToTable($expectedCron, $this->getInstance());
+
+			unset($expectedCron['method']);
+			
+			$actualCron = $getCron();
+			$this->assertSame($expectedCron, $actualCron);
+			
+			$expectedCron['cron_description'] = 'A new description.';
+			ExternalModules::updateCronJobInTable($expectedCron, $moduleId);
+			$actualCron = $getCron();
+
+			$this->assertSame($expectedCron, $actualCron);
+		}
+		finally{
+			ExternalModules::removeCronJobs($prefix);
+			$this->assertTrue(empty($getCron()));
+		}
+	}
+
+	function testGetPrefixForID(){
+		$id = ExternalModules::getIDForPrefix(TEST_MODULE_PREFIX);
+		$this->assertSame(TEST_MODULE_PREFIX, ExternalModules::getPrefixForID($id));
+	}
+
+	function testGetModuleVersionByPrefix(){
+		$row = ExternalModules::query("
+			SELECT m.directory_prefix, s.value
+			FROM redcap_external_modules m, redcap_external_module_settings s 
+			WHERE
+				m.external_module_id = s.external_module_id
+				AND s.project_id IS NULL AND s.`key` = ?
+			LIMIT 1
+		", [ExternalModules::KEY_VERSION])->fetch_assoc();
+
+		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
+		$this->assertSame($row['value'], $version);
 	}
 }

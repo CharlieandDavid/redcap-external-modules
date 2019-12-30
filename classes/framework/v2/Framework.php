@@ -71,15 +71,15 @@ class Framework
 
 	function getProjectsWithModuleEnabled(){
 		$results = $this->query("
-			select project_id
+			select cast(project_id as char) as project_id
 			from redcap_external_modules m
 			join redcap_external_module_settings s
 				on m.external_module_id = s.external_module_id
 			where
-				m.directory_prefix = '" . $this->module->PREFIX . "'
+				m.directory_prefix = ?
 				and s.value = 'true'
-				and s.`key` = 'enabled'
-		");
+				and s.`key` = ?
+		", [$this->module->PREFIX, ExternalModules::KEY_ENABLED]);
 
 		$pids = [];
 		while($row = $results->fetch_assoc()) {
@@ -190,5 +190,21 @@ class Framework
 
 	function isRoute($routeName){
 		return ExternalModules::isRoute($routeName);
+	}
+
+	function getRecordIdField($pid = null){
+		$pid = db_escape($this->requireProjectId($pid));
+
+		$result = $this->query("
+			select field_name
+			from redcap_metadata
+			where project_id = ?
+			order by field_order
+			limit 1
+		", [$pid]);
+
+		$row = $result->fetch_assoc();
+
+		return $row['field_name'];
 	}
 }

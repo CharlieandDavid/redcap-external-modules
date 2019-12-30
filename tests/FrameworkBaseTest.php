@@ -7,14 +7,15 @@ abstract class FrameworkBaseTest extends BaseTest
 		parent::__construct();
 
 		preg_match('/[0-9]+/', get_class($this), $matches);
-		$version = $matches[0];
-		require_once __DIR__ . "/../classes/framework/v$version/Framework.php";
-		$frameworkClass = "ExternalModules\\FrameworkVersion$version\\Framework";
-		$this->framework = new $frameworkClass(new BaseTestExternalModule());
+		$this->frameworkVersion = (int) $matches[0];
 	}
 
 	protected function getReflectionClass()
 	{
-		return $this->framework;
+		return $this->getInstance()->framework;
+	}
+
+	function getFrameworkVersion(){
+		return $this->frameworkVersion;
 	}
 }

@@ -29,11 +29,19 @@ if(empty($referencesByProject)){
 else{
 	$getProjectNames = function($pids){
 		$projectNames = [];
-		$result = ExternalModules::query("
-			select *
+		
+		$query = ExternalModules::createQuery();
+		$query->add("
+			select
+				cast(project_id as char) as project_id,
+				app_title
 			from redcap_projects
-			where " . ExternalModules::getSQLInClause('project_id', $pids) . "
+			where
 		");
+
+		$query->addInClause('project_id', $pids);
+
+		$result = $query->execute();
 
 		while($row = $result->fetch_assoc()){
 			$projectNames[$row['project_id']] = $row['app_title'];

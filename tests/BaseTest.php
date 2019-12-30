@@ -8,7 +8,8 @@ if(!defined('PAGE')){
 	define('PAGE', 'unit testing');
 }
 
-require_once dirname(__FILE__) . '/../classes/ExternalModules.php';
+require_once __DIR__ . '/../classes/ExternalModules.php';
+require_once __DIR__ . '/BaseTestExternalModule.php';
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -16,6 +17,7 @@ error_reporting(E_ALL);
 
 use PHPUnit\Framework\TestCase;
 use \Exception;
+use REDCap;
 
 const TEST_MODULE_PREFIX = ExternalModules::TEST_MODULE_PREFIX;
 const TEST_MODULE_VERSION = 'v1.0.0';
@@ -45,14 +47,19 @@ abstract class BaseTest extends TestCase
 
 	protected function setUp(){
 		$this->setConfig([
-			'framework-version' => 3
+			'framework-version' => $this->getFrameworkVersion()
 		]);
 		
 		self::$testModuleInstance = new BaseTestExternalModule();
+		ExternalModules::initializeFramework(self::$testModuleInstance);
 		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 		self::setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);
 		
 		self::cleanupSettings();
+	}
+
+	function getFrameworkVersion(){
+		return 3;
 	}
 
 	protected function tearDown()
@@ -69,9 +76,9 @@ abstract class BaseTest extends TestCase
 		$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
 		$lockName = ExternalModules::getLockName($moduleId, TEST_SETTING_PID);
 
-		$m->query("SELECT GET_LOCK('$lockName', 5)");
-		$m->query("delete from redcap_external_module_settings where external_module_id = $moduleId");
-		$m->query("SELECT RELEASE_LOCK('$lockName')");
+		$m->query("SELECT GET_LOCK(?, 5)", [$lockName]);
+		$m->query("delete from redcap_external_module_settings where external_module_id = ?", [$moduleId]);
+		$m->query("SELECT RELEASE_LOCK(?)", [$lockName]);
 
 		$_GET = [];
 		$_POST = [];
@@ -259,75 +266,25 @@ abstract class BaseTest extends TestCase
 	function assertIsInt($i){
 		$this->assertInternalType('int', $i);
 	}
-}
 
-class BaseTestExternalModule extends AbstractExternalModule {
-
-	public $testHookArguments;
-	private $settingKeyPrefix;
-
-	function __construct()
-	{
-		$this->PREFIX = TEST_MODULE_PREFIX;
-		$this->VERSION = TEST_MODULE_VERSION;
-
-		parent::__construct();
+	function ensureRecordExists($recordId, $pid = TEST_SETTING_PID){
+		REDCap::saveData($pid, 'json', json_encode([[
+			$this->getFramework()->getRecordIdField($pid) => $recordId,
+		]]));
 	}
 
-	function getModulePath()
-	{
-		return __DIR__;
-	}
+	function getFramework(){
+		$i = $this->getInstance();
 
-	function redcap_test_delay($delayTestFunction)
-	{
-		// Although it perhaps shouldn't be, it is sometimes possible for getModuleInstance() to
-		// be called while inside a hook (it sometimes happens in the email alerts module).
-		// The getModuleInstance() function used to set the active module prefix to null on every call,
-		// which is problematic since the delayModuleExecution() method relies on the active prefix.
-		// This used to cause 'You must specify a prefix!' exceptions.
-		// We call getModuleInstance() inside this delay test hook to make sure this bug never reoccurs.
-		ExternalModules::getModuleInstance(TEST_MODULE_PREFIX);
-
-		$delayTestFunction($this->delayModuleExecution());
-	}
-
-	function redcap_test()
-	{
-		$this->testHookArguments = func_get_args();
-	}
-
-	function redcap_test_call_function($function = null){
-		// We must check if the arg is callable b/c it could be cron attributes for a cron job.
-		if(!is_callable($function)){
-			$function = $this->function;
-		}
-
-		$function();
-	}
-	
-	function redcap_every_page_test()
-	{
-		call_user_func_array([$this, 'redcap_test'], func_get_args());
-	}
-
-	function redcap_save_record()
-	{
-		$this->recordIdFromGetRecordId = $this->getRecordId();
-	}
-
-	protected function getSettingKeyPrefix()
-	{
-		if($this->settingKeyPrefix){
-			return $this->settingKeyPrefix;
+		if(property_exists($i, 'framework')){
+			return $i->framework;
 		}
 		else{
-			return parent::getSettingKeyPrefix();
+			return $i;
 		}
 	}
 
-	function setSettingKeyPrefix($settingKeyPrefix)
-	{
-		$this->settingKeyPrefix = $settingKeyPrefix;
+	function __call($methodName, $args){
+		return call_user_func_array(array($this->getReflectionClass(), $methodName), $args);
 	}
 }
