@@ -4533,11 +4533,13 @@ class ExternalModules
 			$lastNotificationTime = self::getSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
 			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
 			if($notificationNeeded) {
-				// The '{0}' cron job is being skipped for the '{1}' module because a previous cron for this module did not complete. Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time. The previous process id was {2}. If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following URL:<br><br><a href='{3}'>{4}</a><br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='{4}'>{5}</a>.
+				$url = self::$BASE_URL."/manager/reset_cron.php?prefix=".$moduleDirectoryPrefix;
+				// The '{0}' cron job is being skipped for the '{1}' module because a previous cron for this module did not complete. Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time. The previous process id was {2}. If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following URL:<br><br><a href='{3}'>{4}</a><br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='{5}'>{6}</a>.
 				$emailMessage = self::tt("em_errors_101",
 					$cronName, $moduleDirectoryPrefix, $lockInfo['process-id'],
-					$url, self::tt("em_manage_91"),
-					self::$BASE_URL."/manager/crons.php?prefix=".urlencode($moduleDirectoryPrefix),
+					$url,
+					self::tt("em_manage_91"),
+					self::$BASE_URL."/manager/crons.php",
 					self::tt("em_manage_87")); //= Manager for Timed Crons
 				//= External Module Long-Running Cron
 				$emailSubject = self::tt("em_errors_100"); 
