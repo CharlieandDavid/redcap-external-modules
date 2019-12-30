@@ -347,7 +347,7 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
-		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS + ExternalModules::MINUTE_IN_SECONDS*5;
 
 		$assertLongRunningCronEmailSent(false, time() - ExternalModules::HOUR_IN_SECONDS*22);
 		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
