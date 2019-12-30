@@ -90,7 +90,7 @@ $pid = $_GET['pid'];
 <?php } elseif (isset($_GET['pid']) && !SUPER_USER) { ?>
 <p>
 	<!--= As a user with Project Setup/Design privileges in this project, you can modify the configuration (if applicable) of any enabled module. Note: Only REDCap administrators are able to enable or disable modules. -->
-	<?=ExternalModules::tt("em_manage_43")?>
+	<?=ExternalModules::tt("em_manage_91")?>
 </p>
 <?php } else { ?>
 <p>
