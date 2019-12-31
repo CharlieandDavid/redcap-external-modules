@@ -1670,10 +1670,6 @@ class AbstractExternalModule
 						$newField = 'redcap_user_information.username';
 					} else if(isset(self::$LOG_PARAMETERS_ON_MAIN_TABLE[$field])) {
 						$newField = "redcap_external_modules_log.$field";
-						if($addAs){
-							// The cast is required to make numeric return values for prepared statements behave like traditional queries.
-							$newField = "cast($newField as char) as $field";
-						}
 					} else {
 						$newField = "$field.value";
 

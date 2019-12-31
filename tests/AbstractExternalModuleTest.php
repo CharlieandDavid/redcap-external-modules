@@ -875,11 +875,10 @@ class AbstractExternalModuleTest extends BaseTest
 		$testValues = [
 			'timestamp' => date("Y-m-d H:i:s"),
 			'username' => $this->getRandomUsername(),
-			'project_id' => '1'
+			'project_id' => 1
 		];
 
 		foreach(AbstractExternalModule::$OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE as $name){
-
 			$value = $testValues[$name];
 			if(empty($value)){
 				$value = 'foo';
@@ -1001,6 +1000,23 @@ class AbstractExternalModuleTest extends BaseTest
 		$m->queryLogs("select 1 where a = 1 and (b = 2 or c = 3)");
 
 		$this->assertTrue(true); // Each test requires an assertion
+	}
+
+	function testQueryLogs_complexSelectClauses()
+	{
+		$m = $this->getInstance();
+
+		$logId = $m->log('test');
+		$whereClause = 'log_id = ?';
+
+		// Make sure a function and an "as" clause work.
+		$result = $m->queryLogs("select unix_timestamp(timestamp) as abc where $whereClause", $logId);
+		
+		$row = $result->fetch_assoc();
+		$aDayAgo = time() - ExternalModules::DAY_IN_SECONDS;
+		$this->assertTrue($row['abc'] > $aDayAgo);
+
+		$m->removeLogs($whereClause, $logId);
 	}
 
 	function testQueryLogs_multipleReferencesToSameColumn()
