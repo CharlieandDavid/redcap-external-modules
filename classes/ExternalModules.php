@@ -2169,6 +2169,12 @@ class ExternalModules
 				$result = db_query($sql);
 			}
 			else{
+				// The queryWithParameters() method does not currently implement duplicate query killing like db_query() does.
+				// In tests on Vanderbilt's production servers in late 2019, the query killing feature in db_query() only ever
+				// actually took effect for modules a handful of times a week, so this should not lead to significant issues.
+				// We may be able to implement query killing for prepared statements in the future, but it would have to work a little
+				// differently since the prepared SQL (with question marks) does not match the SQL with parameters inserted 
+				// that is returned by SHOW FULL PROCESSLIST.
 				$result = self::queryWithParameters($query);
 			}
 		
