@@ -38,8 +38,8 @@ $query->add('
     project_id = ?
 ', $project_id);
 
-if(!empty($event_ids)){
-  $query->addInClause('event_id', $event_ids);
+if(is_array($event_ids)){
+  $query->add('and')->addInClause('event_id', $event_ids);
 }
 
 if($record_id && $instance){
