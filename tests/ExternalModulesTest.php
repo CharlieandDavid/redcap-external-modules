@@ -359,20 +359,18 @@ class ExternalModulesTest extends BaseTest
 
 	function testResetCron() {
 		// initial: no long-running rows deleted
-		$result1 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 0);
+		$affectedRows1 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows1, 0);
 
 		// long-running tripped; one long-running row deleted
 		self::callPrivateMethod('lockCron', TEST_MODULE_PREFIX, null, ['time' => $initialLockTime]);
-		$result2 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 1);
+		$affectedRows2 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows2, 1);
 
 		// afterwards; no long-running rows deleted
-		$result3 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 0);
+		$affectedRows3 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows3, 0);
 	}
-
-
 
 	function testAddReservedSettings()
 	{

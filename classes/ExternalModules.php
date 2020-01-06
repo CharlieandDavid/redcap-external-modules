@@ -4674,9 +4674,13 @@ class ExternalModules
 		if ($modulePrefix) {
 			$moduleId = self::getIdForPrefix($modulePrefix);
 			if ($moduleId != null) {
-				$sql = "DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".ExternalModules::KEY_RESERVED_IS_CRON_RUNNING."'";
-				$result = self::query($sql, []);
-				return $result;
+				$sql = "DELETE FROM redcap_external_module_settings WHERE external_module_id = ? AND `key` = ?";
+				
+				$query = self::createQuery();
+				$query->add($sql, [$moduleId, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING]);
+				$query->execute();
+
+				return $query->getStatement()->affected_rows;
 			} else {
 				// "Could not find module ID for prefix '{0}'!"
 				throw new \Exception(self::tt("em_errors_118", $moduleDirectoryPrefix));
