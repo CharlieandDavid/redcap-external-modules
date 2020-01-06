@@ -69,6 +69,11 @@ class ExternalModules
 	 */
 	const CONFIG_TRANSLATABLE_PREFIX = "tt_";
 
+	/**
+	 * List of valid characters for a language key.
+	 */
+	const LANGUAGE_ALLOWED_KEY_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+
 	//endregion
 
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
@@ -620,56 +625,90 @@ class ExternalModules
 						if (typeof string !== 'string' || string.length == 0) {
 							return string
 						}
-						// Regular expression to find places where replacements need to be done.
-						// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
-						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
-						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
+						// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}), 
+						// which is ignored however. Hints must not contain any curly braces.
+						// To not replace a placeholder, the first curly can be escaped with a %-sign like so: '%{1}' (this will leave '{1}' in the text).
+						// To include '%' as a literal before a curly opening brace, a double-% ('%%') must be used, i.e. '%%{0}' with value x this will result in '%x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						try{
-							var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
-						}
-						catch(error){
-							console.error("Parameters in translated strings will NOT be interpolated due to limited regex support in your browser described by the following error:")
-							console.error(error)
-							return string
-						}
-
-						var m
-						var result = ''
-						var prevEnd = 0
-						while ((m = regex.exec(string)) !== null) {
-							// This is necessary to avoid infinite loops with zero-width matches.
-							if (m.index === regex.lastIndex) {
-								regex.lastIndex++
-							}
-							var start = m.index
-							var all = m['groups']['all']
-							var len = all.length
-							var key = m['groups']['index']
-							// Add text between previous end and the match and reset end.
-							result += string.substr(prevEnd, start - prevEnd)
-							prevEnd = start + len
-							// Escaped?
-							var nSlashes = m['groups']['escape'].length
-							if (nSlashes % 2 == 0) {
-								// Even number means they escaped themselves, so we add half of them and replace.
-								result += '\\'.repeat(nSlashes / 2)
-								if (typeof values[key] !== 'undefined') {
-									result += values[key]
+						// First, parse the string.
+						var allowed = '<?=self::LANGUAGE_ALLOWED_KEY_CHARS?>'
+						var matches = []
+						var mode = 'scan'
+						var escapes = 0
+						var start = 0
+						var key = ''
+						var hint = ''
+						for (var i = 0; i < string.length; i++) {
+							var c = string[i]
+							if (mode == 'scan' && c == '{') {
+								start = i
+								key = ''
+								hint = ''
+								if (escapes % 2 == 0) {
+									mode = 'key'
 								}
 								else {
-									// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
-									result += all.substr(all.indexOf('{'))
+									mode = 'store'
 								}
 							}
-							else {
-								// Uneven number - means to not replace.
-								result += '\\'.repeat((nSlashes - 1) / 2)
-								result += all.substr(all.indexOf('{'))
+							if (mode == 'scan' && c == '%') {
+								escapes++
+							}
+							else if (mode == 'scan') {
+								escapes = 0
+							}
+							if (mode == 'hint') {
+								if (c == '}') {
+									mode = 'store'
+								}
+								else {
+									hint += c
+								}
+							}
+							if (mode == 'key') {
+								if (allowed.includes(c)) {
+									key += c
+								}
+								else if (c == ':') {
+									mode = 'hint'
+								}
+								else if (c == '}') {
+									mode = 'store'
+								}
+							}
+							if (mode == 'store') {
+								var match = {
+									key: key,
+									hint: hint,
+									escapes: escapes,
+									start: start,
+									end: i
+								}
+								matches.push(match)
+								key = ''
+								hint = ''
+								escapes = 0
+								mode = 'scan'
 							}
 						}
-						// Add rest of original string.
-						result += String.prototype.substr.call(string, prevEnd)
+						// Then, build the result.
+						var result = ''
+						if (matches.length == 0) {
+							result = string
+						} else {
+							prevEnd = 0
+							for (var i = 0; i < matches.length; i++) {
+								var match = matches[i]
+								var len = match.start - prevEnd - (match.escapes > 0 ? Math.max(1, match.escapes - 1) : 0)
+								result += string.substr(prevEnd, len)
+								prevEnd = match.end 
+								if (match.key != '' && typeof values[match.key] !== 'undefined') {
+									result += values[match.key]
+									prevEnd++
+								}
+							}
+							result += string.substr(prevEnd)
+						}
 						return result
 					}
 				}
@@ -1040,52 +1079,92 @@ class ExternalModules
 	 */
 	public static function interpolateLanguageString($string, $values) {
 
-		// Do we need to do interpolation?
-		if (count($values)) {
-			// Regular expression to find places where replacements need to be done.
-			// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
-			// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
-			// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
-			// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-			$re = '/(?\'all\'((?\'escape\'\\\\*){|{)(?\'index\'[\d_A-Za-z]+)(:(?\'hint\'.*))?})/mU';
-			preg_match_all($re, $string, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE, 0);
-			// Build resulting string.
-			$prevEnd = 0;
-			if (count($matches)) {
-				$result = "";
-				foreach ($matches as $match) {
-					$start = $match["all"][1];
-					$all = $match["all"][0];
-					$len = strlen($all);
-					$key = $match["index"][0];
-					// Add text between previous end and the match and reset end.
-					$result .= substr($string, $prevEnd, $start - $prevEnd);
-					$prevEnd = $start + $len;
-					// Escaped?
-					$nSlashes = strlen($match["escape"][0]);
-					if ($nSlashes % 2 == 0) {
-						// Even number means they escaped themselves, so we add half of them and replace.
-						$result .= str_repeat("\\", $nSlashes / 2);
-						if (array_key_exists($key, $values)) {
-							$result .= $values[$key];
-						}
-						else {
-							// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
-							$result .= ltrim($all, "\\");
-						}
-					}
-					else {
-						// Uneven number - means to not replace.
-						$result .= str_repeat("\\", ($nSlashes - 1) / 2);
-						$result .= ltrim($all, "\\");
-					}
+		if (count($values) == 0) return $string;
+
+		// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}), 
+		// which is ignored however. Hints must not contain any curly braces.
+		// To not replace a placeholder, the first curly can be escaped with a %-sign like so: '%{1}' (this will leave '{1}' in the text).
+		// To include '%' as a literal before a curly opening brace, a double-% ('%%') must be used, i.e. '%%{0}' with value x this will result in '%x'.
+		// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
+		// First, parse the string.
+		$matches = array();
+		$mode = "scan";
+		$escapes = 0;
+		$start = 0;
+		$key = "";
+		$hint = "";
+		for ($i = 0; $i < strlen($string); $i++) {
+			$c = $string[$i];
+			if ($mode == "scan" && $c == "{") {
+				$start = $i;
+				$key = "";
+				$hint = "";
+				if ($escapes % 2 == 0) {
+					$mode = "key";
 				}
-				// Add rest of original.
-				$result .= substr($string, $prevEnd);
-				$string = $result;
+				else {
+					$mode = "store";
+				}
+			}
+			if ($mode == "scan" && $c == "%") {
+				$escapes++;
+			}
+			else if ($mode == "scan") {
+				$escapes = 0;
+			}
+			if ($mode == "hint") {
+				if ($c == "}") {
+					$mode = "store";
+				}
+				else {
+					$hint .= $c;
+				}
+			}
+			if ($mode == "key") {
+				if (strpos(self::LANGUAGE_ALLOWED_KEY_CHARS, $c)) {
+					$key .= $c;
+				}
+				else if ($c == ":") {
+					$mode = "hint";
+				}
+				else if ($c == "}") {
+					$mode = "store";
+				}
+			}
+			if ($mode == "store") {
+				$match = array(
+					"key" => $key,
+					"hint" => $hint,
+					"escapes" => $escapes,
+					"start" => $start,
+					"end" => $i
+				);
+				$matches[] = $match;
+				$key = "";
+				$hint = "";
+				$escapes = 0;
+				$mode = "scan";
 			}
 		}
-		return $string;
+		// Then, build the result.
+		$result = "";
+		if (count($matches) == 0) {
+			$result = $string;
+		} else {
+			$prevEnd = 0;
+			for ($i = 0; $i < count($matches); $i++) {
+				$match = $matches[$i];
+				$len = $match["start"] - $prevEnd - ($match["escapes"] > 0 ? max(1, $match["escapes"] - 1) : 0);
+				$result .= substr($string, $prevEnd, $len);
+				$prevEnd = $match["end"];
+				if ($match["key"] != "" && array_key_exists($match["key"], $values)) {
+					$result .= $values[$match["key"]];
+					$prevEnd++;
+				}
+			}
+			$result .= substr($string, $prevEnd);
+		}
+		return $result;
 	}
 
 	/**
