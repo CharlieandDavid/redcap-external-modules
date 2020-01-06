@@ -622,7 +622,8 @@ class ExternalModules
 							var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
 						}
 						catch(error){
-							console.log("Parameters in translated strings will NOT be interpolated due to limited regex support in your browser.")
+							console.error("Parameters in translated strings will NOT be interpolated due to limited regex support in your browser described by the following error:")
+							console.error(error)
 							return string
 						}
 
