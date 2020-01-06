@@ -4683,7 +4683,7 @@ class ExternalModules
 				return $query->getStatement()->affected_rows;
 			} else {
 				// "Could not find module ID for prefix '{0}'!"
-				throw new \Exception(self::tt("em_errors_118", $moduleDirectoryPrefix));
+				throw new \Exception(self::tt("em_errors_118", $modulePrefix));
 			}
 		} else {
 			throw new \Exception(self::tt("em_errors_119"));
