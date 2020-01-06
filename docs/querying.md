@@ -23,7 +23,7 @@ $result = $module->framework->query(
 ```
 In the uncommon case of queries that really should not have any parameters, an empty array must be specificed to show that the use of parameters was seriously considered:
 ```php
-$result = $module->query('select count(*) from redcap_user_information', []);
+$result = $module->framework->query('select count(*) from redcap_user_information', []);
 ```
 
 ### Query Objects
