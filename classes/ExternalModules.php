@@ -625,7 +625,15 @@ class ExternalModules
 						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
 						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
+						try{
+							var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
+						}
+						catch(error){
+							console.error("Parameters in translated strings will NOT be interpolated due to limited regex support in your browser described by the following error:")
+							console.error(error)
+							return string
+						}
+
 						var m
 						var result = ''
 						var prevEnd = 0
