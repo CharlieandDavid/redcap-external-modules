@@ -589,13 +589,7 @@ class AbstractExternalModule
 
 		$q = ExternalModules::query($sql, $projectId);
 
-		$row = db_fetch_assoc($q);
-
-		foreach($row as $key=>$value){
-			if($value !== null){
-				$row[$key] = (string) $value;
-			}
-		}
+		$row = ExternalModules::convertIntsToStrings(db_fetch_assoc($q));
 		
 		return $row;
 	}
@@ -866,7 +860,7 @@ class AbstractExternalModule
 		return $dictionary[$fieldName]['field_label'];
 	}
 
-	public function query($sql, $parameters = null){
+	public function query($sql, $parameters = []){
 		return ExternalModules::query($sql, $parameters);
 	}
 
@@ -897,7 +891,7 @@ class AbstractExternalModule
 		);
 
         while ($row = db_fetch_assoc($records)){
-            $record = db_escape($row['record']);
+            $record = $row['record'];
             $this->query("DELETE FROM redcap_data where project_id = ? and record = ?", [$pid, $record]);
 		}
 		
@@ -954,7 +948,6 @@ class AbstractExternalModule
 		);
 
 		foreach($values as $value){
-			$value = db_escape($value);
 			$this->query(
 				"INSERT INTO redcap_data (project_id, event_id, record, field_name, value) VALUES (?, ?, ?, ?, ?)",
 				[$pid, $eventId, $record, $fieldName, $value]
@@ -1123,7 +1116,7 @@ class AbstractExternalModule
 
     public function getPublicSurveyUrl(){
         $instrumentNames = \REDCap::getInstrumentNames();
-        $formName = db_real_escape_string(key($instrumentNames));
+        $formName = key($instrumentNames);
 
         $sql ="
 			select h.hash
@@ -1359,20 +1352,12 @@ class AbstractExternalModule
 			}
 		}
 
-		$timestamp = @$parameters['timestamp'];
-		if(empty($timestamp)){
-			$timestamp = 'now()';
-		}
-		else{
-			$timestamp = "'" . db_real_escape_string($timestamp) . "'";
-		}
-
 		$projectId = @$parameters['project_id'];
 		if (empty($projectId)) {
 			$projectId = $this->getProjectId();
 
 			if (empty($projectId)) {
-				$projectId = 'null';
+				$projectId = null;
 			}
 		}
 
@@ -1392,20 +1377,11 @@ class AbstractExternalModule
 		}
 
 		if (empty($recordId)) {
-			$recordId = 'null';
-		}
-		else{
-			$recordId = "'" . db_real_escape_string($recordId) . "'";
+			$recordId = null;
 		}
 
-		$logValues = [];
-		$logValues['timestamp'] = $timestamp;
-		$logValues['ui_id'] = "(select ui_id from redcap_user_information where username = '" . db_real_escape_string($username) . "')";
-		$logValues['ip'] = $this->getIPSQL(@$parameters['ip']);
-		$logValues['external_module_id'] = "(select external_module_id from redcap_external_modules where directory_prefix = '{$this->PREFIX}')";
-		$logValues['project_id'] = db_real_escape_string($projectId);
-		$logValues['record'] = $recordId;
-		$logValues['message'] = "'" . db_real_escape_string($message) . "'";
+		$timestamp = @$parameters['timestamp'];
+		$ip = $this->getIP(@$parameters['ip']);
 
 		// Remove parameter values that will be stored on the main log table,
 		// so they are not also stored in the parameter table
@@ -1413,16 +1389,44 @@ class AbstractExternalModule
 			unset($parameters[$paramName]);
 		}
 
-		$this->query("
+		$query = ExternalModules::createQuery();
+		$query->add("
 			insert into redcap_external_modules_log
 				(
-					" . implode(",\n", array_keys($logValues)) . "				
+					timestamp,
+					ui_id,
+					ip,
+					external_module_id,
+					project_id,
+					record,
+					message
 				)
 			values
-				(
-					" . implode(",\n", $logValues) . "
-				)
 		");
+
+		$query->add('(');
+
+		if(empty($timestamp)){
+			$query->add('now()');
+		}
+		else{
+			$query->add('?', $timestamp);
+		}
+
+
+		$query->add("
+			,
+			(select ui_id from redcap_user_information where username = ?),
+			?,
+			(select external_module_id from redcap_external_modules where directory_prefix = ?),
+			?,
+			?,
+			?
+		", [$username, $ip, $this->PREFIX, $projectId, $recordId, $message]);
+
+		$query->add(')');
+
+		$query->execute();
 
 		$logId = db_insert_id();
 		if (!empty($parameters)) {
@@ -1432,7 +1436,7 @@ class AbstractExternalModule
 		return $logId;
 	}
 
-	private function getIPSQL($ip)
+	private function getIP($ip)
 	{
 		$username = ExternalModules::getUsername();
 		
@@ -1447,10 +1451,7 @@ class AbstractExternalModule
 		}
 
 		if (empty($ip)) {
-			$ip = 'null';
-		}
-		else{
-			$ip = "'" . db_real_escape_string($ip) . "'";
+			$ip = null;
 		}
 
 		return $ip;
@@ -1458,19 +1459,30 @@ class AbstractExternalModule
 
 	private function insertLogParameters($logId, $parameters)
 	{
-		$valuesSql = '';
+		$query = ExternalModules::createQuery();
+
+		$query->add('insert into redcap_external_modules_log_parameters (log_id, name, value) VALUES');
+
+		$addComma = false;
 		foreach ($parameters as $name => $value) {
-			if (!empty($valuesSql)) {
-				$valuesSql .= ',';
+			if (!$addComma) {
+				$addComma = true;
+			}
+			else{
+				$query->add(',');
 			}
 
-			$name = db_real_escape_string($name);
-			$value = db_real_escape_string($value);
+			if(empty($name)){
+				throw new Exception(ExternalModules::tt('em_errors_116'));
+			}
 
-			$valuesSql .= "($logId, '$name', '$value')";
+			// Limit allowed characters to prevent SQL injection when logs are queried later.
+			ExternalModules::checkForInvalidLogParameterNameCharacters($name);
+
+			$query->add('(?, ?, ?)', [$logId, $name, $value]);
 		}
 
-		$this->query("insert into redcap_external_modules_log_parameters (log_id, name, value) VALUES $valuesSql");
+		$query->execute();
 	}
 
 	public function logAjax($data)
@@ -1518,12 +1530,12 @@ class AbstractExternalModule
 		return $this->log($data['message'], $parameters);
 	}
 
-	public function queryLogs($sql)
+	public function queryLogs($sql, $parameters = [])
 	{
-		return $this->query($this->getQueryLogsSql($sql));
+		return $this->query($this->getQueryLogsSql($sql), $parameters);
 	}
 
-	public function removeLogs($sql)
+	public function removeLogs($sql, $parameters = [])
 	{
 		if(empty($sql)){
 			throw new Exception('You must specify a where clause.');
@@ -1539,7 +1551,7 @@ class AbstractExternalModule
 			throw new Exception("Specifying an 'external_module_id' in the where clause for removeLogs() is not allowed to prevent modules from accidentally removing logs for other modules.");
 		}
 
-		return $this->query($sql);
+		return $this->query($sql, $parameters);
 	}
 
 	public function getQueryLogsSql($sql)
@@ -1606,15 +1618,21 @@ class AbstractExternalModule
 
 		$from = ' from redcap_external_modules_log';
 		foreach ($parameterFields as $field) {
+			// The invalid character check below should be enough, but lets escape too just to be safe.
+			$field = db_escape($field);
+
 			// Needed for field names with spaces.
 			$fieldString = str_replace("`", "", $field);
+			
+			// Prevent SQL injection.
+			ExternalModules::checkForInvalidLogParameterNameCharacters($fieldString);
 
 			$from .= "
 						left join redcap_external_modules_log_parameters $field on $field.name = '$fieldString'
 						and $field.log_id = redcap_external_modules_log.log_id
 					";
 		}
-
+		
 		if ($joinUsername) {
 			$from .= "
 						left join redcap_user_information on redcap_user_information.ui_id = redcap_external_modules_log.ui_id
@@ -1642,6 +1660,10 @@ class AbstractExternalModule
 				}
 				else{
 					$field = $item['base_expr'];
+					if($field === '?'){
+						continue;
+					}
+
 					$fields[] = $field;
 
 					if ($field === 'username') {

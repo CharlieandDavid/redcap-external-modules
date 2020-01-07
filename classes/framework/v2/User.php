@@ -5,7 +5,7 @@ class User
 {
 	function __construct($framework, $username){
 		$this->framework = $framework;
-		$this->username = db_real_escape_string($username);
+		$this->username = $username;
 	}
 
 	function getRights($project_ids = null){

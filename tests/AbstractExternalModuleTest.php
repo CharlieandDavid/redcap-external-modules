@@ -580,10 +580,10 @@ class AbstractExternalModuleTest extends BaseTest
 			$results = $m->queryLogs("
 				select log_id,timestamp,username,ip,external_module_id,record,message,$paramName1,$paramName2
 				where
-					message = '$message'
-					and timestamp > '2017-07-07'
+					message = ?
+					and timestamp > ?
 				order by log_id asc
-			");
+			", [$message, date('Y-m-d', time()-10)]);
 
 			$timestampThreshold = 5;
 
@@ -623,6 +623,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertEquals(2, count($rows));
 
 		$row = $rows[0];
+		$this->assertSame($message, $row['message']);
 		$this->assertNull($row['username']);
 		$this->assertNull($row['ip']);
 		$this->assertNull($row['record']);
@@ -647,15 +648,66 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->assertEquals(0, count($rows));
 	}
 
+	function testLogAndQueryLog_allowedCharacters()
+	{
+		$name = 'aA1 -_$';
+		$value = (string) rand();
+		
+		$logId = $this->log('foo', [
+			$name => $value,
+			'goo' => 'doo'
+		]);
+
+		$whereClause = 'log_id = ?';
+		$result = $this->queryLogs("select log_id, timestamp, goo, `$name` where $whereClause", $logId);
+		$row = $result->fetch_assoc();
+		$this->assertSame($value, $row[$name]);
+		$this->removeLogs($whereClause, $logId);
+	}
+
+	function testLogAndQueryLog_disallowedCharacters()
+	{
+		$invalidParamName = 'sql injection ; example';
+		
+		$assertThrowsException = function($action) use ($invalidParamName){
+			$this->assertThrowsException($action, ExternalModules::tt('em_errors_115', $invalidParamName));
+		};
+
+		$assertThrowsException(function() use ($invalidParamName){
+			$this->log('foo', [
+				$invalidParamName => rand()
+			]);
+		});
+		$this->removeLogs('log_id = ?', db_insert_id());
+
+		$assertThrowsException(function() use ($invalidParamName){
+			$this->queryLogs("select 1 where `$invalidParamName` is null");
+		});
+	}
+
+	function testLog_timestamp()
+	{
+		$m = $this->getInstance();
+
+		$timestamp = ExternalModules::makeTimestamp(time()-ExternalModules::HOUR_IN_SECONDS);
+		$logId = $m->log('test', [
+			'timestamp' => $timestamp
+		]);
+		
+		$this->assertLogValues($logId, [
+			'timestamp' => $timestamp
+		]);
+	}
+
 	function testLog_pid()
 	{
 		$m = $this->getInstance();
 		$message = 'test';
-		$whereClause = "message = '$message'";
+		$whereClause = "message = ?";
 		$expectedPid = rand();
 
 		$assertRowCount = function($expectedCount) use ($m, $message, $whereClause, $expectedPid){
-			$result = $m->queryLogs('select pid where ' . $whereClause);
+			$result = $m->queryLogs('select pid where ' . $whereClause, $message);
 			$rows = [];
 			while($row = db_fetch_assoc($result)){
 				$rows[] = $row;
@@ -682,14 +734,14 @@ class AbstractExternalModuleTest extends BaseTest
 
 		// Re-set the pid and attempt to remove only the pid row
 		$_GET['pid'] = $expectedPid;
-		$m->removeLogs($whereClause);
+		$m->removeLogs($whereClause, $message);
 
 		// Unset the pid and make sure only the row without the pid is returned
 		$_GET['pid'] = null;
 		$assertRowCount(1);
 
 		// Make sure removeLogs() now removes the row without the pid.
-		$m->removeLogs($whereClause);
+		$m->removeLogs($whereClause, $message);
 		$assertRowCount(0);
 	}
 
@@ -750,10 +802,10 @@ class AbstractExternalModuleTest extends BaseTest
 	private function assertLogValues($logId, $expectedValues = [])
 	{
 		$columnNamesSql = implode(',', array_keys($expectedValues));
-		$selectSql = "select $columnNamesSql where log_id = $logId";
+		$selectSql = "select $columnNamesSql where log_id = ?";
 
 		$m = $this->getInstance();
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, $logId);
 		$log = db_fetch_assoc($result);
 
 		foreach($expectedValues as $name=>$expectedValue){
@@ -771,7 +823,7 @@ class AbstractExternalModuleTest extends BaseTest
 		]);
 
 		$selectSql = 'select message, malicious_param order by timestamp desc limit 1';
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$row = db_fetch_assoc($result);
 		$this->assertSame($maliciousSql, $row['message']);
 		$this->assertSame($maliciousSql, $row['malicious_param']);
@@ -789,12 +841,12 @@ class AbstractExternalModuleTest extends BaseTest
 		]);
 
 		$selectSql = "select `$paramName` where `$paramName` is not null order by `$paramName`";
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$row = db_fetch_assoc($result);
 		$this->assertSame($paramValue, $row[$paramName]);
 
 		$m->removeLogs("`$paramName` is not null");
-		$result = $m->queryLogs($selectSql);
+		$result = $m->queryLogs($selectSql, []);
 		$this->assertNull(db_fetch_assoc($result));
 	}
 
@@ -823,11 +875,10 @@ class AbstractExternalModuleTest extends BaseTest
 		$testValues = [
 			'timestamp' => date("Y-m-d H:i:s"),
 			'username' => $this->getRandomUsername(),
-			'project_id' => '1'
+			'project_id' => 1
 		];
 
 		foreach(AbstractExternalModule::$OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE as $name){
-
 			$value = $testValues[$name];
 			if(empty($value)){
 				$value = 'foo';
@@ -847,26 +898,30 @@ class AbstractExternalModuleTest extends BaseTest
 		}
 	}
 
-	function testGetIPSQL()
+	function testLog_emptyParamNames()
+	{
+		$this->assertThrowsException(function(){
+			$this->log('foo', [
+				'' => rand()
+			]);
+		}, ExternalModules::tt('em_errors_116'));
+
+		$this->removeLogs('log_id = ?', db_insert_id());
+	}
+
+	function testGetIP()
 	{
 		$ip = '1.2.3.4';
 		$_SERVER['HTTP_CLIENT_IP'] = $ip;
 		$username = 'jdoe';
 		ExternalModules::setUsername($username);
 
-		$ipParameter = '2.3.4.5';
-		$this->assertSame("'$ipParameter'", $this->callPrivateMethod('getIPSQL', $ipParameter));
-
-		$assertIp = function($ip){
-			if(empty($ip)){
-				$ip = 'null';
-			}
-			else{
-				$ip = "'$ip'";
-			}
-
-			$this->assertSame($ip, $this->callPrivateMethod('getIPSQL', null));
+		$assertIp = function($expected, $param = null){
+			$this->assertSame($expected, $this->callPrivateMethod('getIP', $param));
 		};
+
+		$ipParameter = '2.3.4.5';
+		$assertIp($ipParameter, $ipParameter);
 
 		$assertIp($ip);
 
@@ -945,6 +1000,23 @@ class AbstractExternalModuleTest extends BaseTest
 		$m->queryLogs("select 1 where a = 1 and (b = 2 or c = 3)");
 
 		$this->assertTrue(true); // Each test requires an assertion
+	}
+
+	function testQueryLogs_complexSelectClauses()
+	{
+		$m = $this->getInstance();
+
+		$logId = $m->log('test');
+		$whereClause = 'log_id = ?';
+
+		// Make sure a function and an "as" clause work.
+		$result = $m->queryLogs("select unix_timestamp(timestamp) as abc where $whereClause", $logId);
+		
+		$row = $result->fetch_assoc();
+		$aDayAgo = time() - ExternalModules::DAY_IN_SECONDS;
+		$this->assertTrue($row['abc'] > $aDayAgo);
+
+		$m->removeLogs($whereClause, $logId);
 	}
 
 	function testQueryLogs_multipleReferencesToSameColumn()

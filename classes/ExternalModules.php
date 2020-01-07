@@ -1130,7 +1130,7 @@ class ExternalModules
 		$config["project-settings"] = $filter($projectSettings, "hidden", true);
 	}
 
-	private static function isSuperUser()
+	public static function isSuperUser()
 	{
 		return defined("SUPER_USER") && SUPER_USER == 1;
 	}
@@ -1690,7 +1690,7 @@ class ExternalModules
 
 	public static function getLockName($moduleId, $projectId)
 	{
-		return db_real_escape_string("external-module-setting-$moduleId-$projectId");
+		return "external-module-setting-$moduleId-$projectId";
 	}
 
 	# this is a helper method
@@ -1993,8 +1993,6 @@ class ExternalModules
 
 	static function getEnabledProjects($prefix)
 	{
-		$prefix = db_real_escape_string($prefix);
-
 		return self::query("SELECT s.project_id, p.app_title as name
 							FROM redcap_external_modules m
 							JOIN redcap_external_module_settings s
@@ -2127,8 +2125,6 @@ class ExternalModules
 
 	# translates a module_id number into a prefix string
 	public static function getPrefixForID($id){
-		$id = db_real_escape_string($id);
-
 		$result = self::query("SELECT directory_prefix FROM redcap_external_modules WHERE external_module_id = ?", [$id]);
 
 		$row = db_fetch_assoc($result);
@@ -2141,8 +2137,6 @@ class ExternalModules
 	
 	# gets the currently installed module's version based on the module prefix string
 	public static function getModuleVersionByPrefix($prefix){
-		$prefix = db_real_escape_string($prefix);
-		
 		$sql = "SELECT s.value FROM redcap_external_modules m, redcap_external_module_settings s 
 				WHERE m.external_module_id = s.external_module_id AND m.directory_prefix = ?
 				AND s.project_id IS NULL AND s.`key` = ? LIMIT 1";
@@ -2152,7 +2146,7 @@ class ExternalModules
 		return db_result($result, 0);
 	}
 
-	public static function query($sql, $parameters = [], $retriesLeft = 2)
+	public static function query($sql, $parameters = null, $retriesLeft = 2)
 	{
 		if($sql instanceof Query){
 			$query = $sql;
@@ -2160,12 +2154,18 @@ class ExternalModules
 			$parameters = $query->getParameters();
 		}
 		else{
+			if($parameters === null){
+				throw new Exception(ExternalModules::tt('em_errors_117'));
+			}
+
 			$query = self::createQuery();
 			$query->add($sql, $parameters);
 		}
 
 		try{
 			if(empty($parameters)){
+				// We attempted to switch queryies without parameters to use prepared statements as well for consistent behavior in commit 5ae46e4.
+				// We reverted those changes because some queries like "BEGIN" are not supported with prepared statements.
 				$result = db_query($sql);
 			}
 			else{
@@ -2232,27 +2232,6 @@ class ExternalModules
 
 	private static function queryWithParameters($query)
 	{
-		$parameters = $query->getParameters();
-
-		$parameterTypes = [];
-		foreach($parameters as $value){
-			$phpType = gettype($value);
-			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
-			
-			if(empty($mysqliType)){
-				//= The following query parameter type is not supported:
-				throw new Exception(self::tt('em_errors_109') . " $phpType");
-			}
-
-			$parameterTypes[] = $mysqliType;
-		}
-
-		$parameterReferences = [implode('', $parameterTypes)];
-		foreach($parameters as $i=>$value){
-			// bind_param and call_user_func_array require references
-			$parameterReferences[] = &$parameters[$i];
-		}
-		
 		global $rc_connection;
 		$statement = $rc_connection->prepare($query->getSQL());
 		if(!$statement){
@@ -2262,9 +2241,9 @@ class ExternalModules
 
 		$query->setStatement($statement);
 		
-		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
-			//= Binding query parameters failed
-			throw new Exception(self::tt('em_errors_110'));
+		$parameters = $query->getParameters();
+		if(!empty($parameters)){
+			self::bindParams($statement, $parameters);
 		}
 
 		if(!$statement->execute()){
@@ -2282,6 +2261,31 @@ class ExternalModules
 		return $result;
 	}
 
+	private static function bindParams($statement, $parameters){
+		$parameterReferences = [];
+		$parameterTypes = [];
+		foreach($parameters as $i=>$value){
+			$phpType = gettype($value);
+			$mysqliType = @self::$MYSQLI_TYPE_MAP[$phpType];
+			
+			if(empty($mysqliType)){
+				//= The following query parameter type is not supported:
+				throw new Exception(self::tt('em_errors_109') . " $phpType");
+			}
+
+			// bind_param and call_user_func_array require references
+			$parameterReferences[] = &$parameters[$i];
+			$parameterTypes[] = $mysqliType;
+		}
+
+		array_unshift($parameterReferences, implode('', $parameterTypes));
+		
+		if(!call_user_func_array([$statement, 'bind_param'], $parameterReferences)){
+			//= Binding query parameters failed
+			throw new Exception(self::tt('em_errors_110'));
+		}
+	}
+
 	private static function errorLog($message)
 	{
 		if(self::isTesting()){
@@ -2290,20 +2294,6 @@ class ExternalModules
 		}
 		else{
 			error_log($message);
-		}
-	}
-
-	# converts an equals clause into SQL
-	private static function getSQLEqualClause($columnName, $value)
-	{
-		$columnName = db_real_escape_string($columnName);
-		$value = db_real_escape_string($value);
-
-		if($value == 'NULL'){
-			return "$columnName IS NULL";
-		}
-		else{
-			return "$columnName = '$value'";
 		}
 	}
 
@@ -4518,8 +4508,12 @@ class ExternalModules
 		return $_SERVER["REQUEST_TIME_FLOAT"];
 	}
 
-	private static function makeTimestamp() {
-		return date("Y-m-d H:i:s");
+	public static function makeTimestamp($time = null) {
+		if($time === null){
+			$time = time();
+		}
+		
+		return date("Y-m-d H:i:s", $time);
 	}
 
 	public static function callTimedCronMethods() {
@@ -4645,12 +4639,13 @@ class ExternalModules
 			$lastNotificationTime = self::getSystemSetting($moduleDirectoryPrefix, self::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME);
 			$notificationNeeded = !$lastNotificationTime || $lastNotificationTime <= $notificationThreshold;
 			if($notificationNeeded) {
-				$moduleId = ExternalModules::getIdForPrefix($moduleDirectoryPrefix);
-				//= The '{0}' cron job is being skipped for the '{1}' module because a previous cron for this module did not complete. Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time. The previous process id was {2}. If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following SQL query:<br><br>DELETE FROM redcap_external_module_settings WHERE external_module_id = '{3}' AND `key` = '{4}'<br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href="{5}">{6}</a>.
-				$emailMessage = self::tt("em_errors_101", 
-					$cronName, $moduleDirectoryPrefix, $lockInfo['process-id'], 
-					$moduleId, self::KEY_RESERVED_IS_CRON_RUNNING,
-					APP_URL_EXTMOD."manager/crons.php",
+				$url = self::$BASE_URL."/manager/reset_cron.php?prefix=".$moduleDirectoryPrefix;
+				// The '{0}' cron job is being skipped for the '{1}' module because a previous cron for this module did not complete. Please make sure this module's configuration is correct for every project, and that it should not cause crons to run past their next start time. The previous process id was {2}. If that process is no longer running, it was likely killed, and can be manually marked as complete by running the following URL:<br><br><a href='{3}'>{4}</a><br><br>In addition, if several crons run at the same time, please consider rescheduling some of them via the <a href='{5}'>{6}</a>.
+				$emailMessage = self::tt("em_errors_101",
+					$cronName, $moduleDirectoryPrefix, $lockInfo['process-id'],
+					$url,
+					self::tt("em_manage_91"),
+					self::$BASE_URL."/manager/crons.php",
 					self::tt("em_manage_87")); //= Manager for Timed Crons
 				//= External Module Long-Running Cron
 				$emailSubject = self::tt("em_errors_100"); 
@@ -4659,6 +4654,25 @@ class ExternalModules
 			}
 		}
 	}
+
+	// should be SuperUser to run
+	public static function resetCron($modulePrefix) {
+		if ($modulePrefix) {
+			$moduleId = self::getIdForPrefix($modulePrefix);
+			if ($moduleId != null) {
+				$sql = "DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".ExternalModules::KEY_RESERVED_IS_CRON_RUNNING."'";
+				$result = self::query($sql, []);
+				return $result;
+			} else {
+				// "Could not find module ID for prefix '{0}'!"
+				throw new \Exception(self::tt("em_errors_118", $moduleDirectoryPrefix));
+			}
+		} else {
+			throw new \Exception(self::tt("em_errors_119"));
+		}
+	}
+
+
 
 	private static function getCronLockInfo($modulePrefix) {
 		return self::getSystemSetting($modulePrefix, self::KEY_RESERVED_IS_CRON_RUNNING);
@@ -4681,8 +4695,6 @@ class ExternalModules
 	// An exception is thrown if the $description occurs more than $maximumOccurrences within the past specified number of $seconds.
 	private function throttleEvent($description, $maximumOccurrences, $seconds)
 	{
-		$description = db_escape($description);
-
 		$ts = date('YmdHis', time()-$seconds);
 
 		$result = ExternalModules::query("
@@ -5017,9 +5029,7 @@ class ExternalModules
 			return '';
 		}
 
-		foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $columnName){
-			$row[$columnName] = (string) $row[$columnName];
-		}
+		$row = self::convertIntsToStrings($row);
 
 		$oldPid = $row['project_id'];
 		if($oldPid === $pid){
@@ -5334,5 +5344,21 @@ class ExternalModules
 		self::query($sql, [$participantId, $recordId, $firstSubmitDate, $returnCode]);
 		
 		return db_insert_id();
+	}
+
+	public static function checkForInvalidLogParameterNameCharacters($parameterName){
+		if(preg_match('/[^A-Za-z0-9 _\-$]/', $parameterName) !== 0){
+			throw new Exception(self::tt("em_errors_115", $parameterName));
+		}
+	}
+
+	public static function convertIntsToStrings($row){
+		foreach($row as $key=>$value){
+			if(gettype($value) === 'integer'){
+				$row[$key] = (string) $value;
+			}
+		}
+
+		return $row;
 	}
 }

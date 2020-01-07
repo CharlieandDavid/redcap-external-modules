@@ -347,7 +347,7 @@ class ExternalModulesTest extends BaseTest
 		};
 
 		// See the comment in checkForALongRunningCronJob() to understand why we test a little less than a day long period.
-		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS - ExternalModules::MINUTE_IN_SECONDS*5;
+		$aLittleLessThanADayAgo = time() - ExternalModules::DAY_IN_SECONDS + ExternalModules::MINUTE_IN_SECONDS*5;
 
 		$assertLongRunningCronEmailSent(false, time() - ExternalModules::HOUR_IN_SECONDS*22);
 		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
@@ -356,6 +356,23 @@ class ExternalModulesTest extends BaseTest
 		ExternalModules::setSystemSetting(TEST_MODULE_PREFIX, ExternalModules::KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME, $aLittleLessThanADayAgo);
 		$assertLongRunningCronEmailSent(true, $aLittleLessThanADayAgo);
 	}
+
+	function testResetCron() {
+		// initial: no long-running rows deleted
+		$result1 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame(db_affected_rows(), 0);
+
+		// long-running tripped; one long-running row deleted
+		self::callPrivateMethod('lockCron', TEST_MODULE_PREFIX, null, ['time' => $initialLockTime]);
+		$result2 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame(db_affected_rows(), 1);
+
+		// afterwards; no long-running rows deleted
+		$result3 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame(db_affected_rows(), 0);
+	}
+
+
 
 	function testAddReservedSettings()
 	{
@@ -1433,9 +1450,14 @@ class ExternalModulesTest extends BaseTest
 
 	function testQuery_noParameters(){
 		$value = (string)rand();
-		$result = ExternalModules::query("select ?", [$value]);
+		$result = ExternalModules::query("select $value", []);
 		$row = $result->fetch_row();
 		$this->assertSame($value, $row[0]);
+
+		$this->assertThrowsException(function(){
+			// Assert that passing a parameter array is required (even if it's empty).
+			ExternalModules::query("foo");
+		}, ExternalModules::tt('em_errors_117'));
 	}
 
 	function testQuery_invalidQuery(){
