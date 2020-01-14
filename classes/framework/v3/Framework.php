@@ -100,4 +100,10 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 	function convertIntsToStrings($row){
 		return ExternalModules::convertIntsToStrings($row);
 	}
+
+	function isPage($path){
+        $path = APP_PATH_WEBROOT . $path;
+        return strpos($_SERVER['REQUEST_URI'], $path) === 0;
+    }
+
 }
