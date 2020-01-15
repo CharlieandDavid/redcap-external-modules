@@ -20,6 +20,8 @@ if(!defined('APP_PATH_WEBROOT')){
 	require_once __DIR__ . '/../redcap_connect.php';
 }
 
+ExternalModules::limitDirectFileAccess();
+
 if (class_exists('ExternalModules\ExternalModules')) {
 	return;
 }
@@ -5457,5 +5459,17 @@ class ExternalModules
 		}
 
 		return $row;
+	}
+
+	public static function limitDirectFileAccess(){
+		$parts = explode('://', APP_URL_EXTMOD);
+		$templatesUrl = $parts[1] . 'manager/templates/';
+		$requestUrl = $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
+
+		if(strpos($requestUrl, $templatesUrl) === 0){
+			// As a security precaution, prevent direct access to any templates that attempt to load this file.
+			// We don't care so much about the templates that don't attempt to load this file, since they likely can't do anything significant on their own.
+			throw new Exception(self::tt('em_errors_121'));
+		}
 	}
 }

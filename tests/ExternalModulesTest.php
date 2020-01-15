@@ -1606,4 +1606,22 @@ class ExternalModulesTest extends BaseTest
 		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
 		$this->assertSame($row['value'], $version);
 	}
+
+	function testLimitDirectFileAccess(){
+		$originalHost = $_SERVER['HTTP_HOST'];
+		$originalSelf = $_SERVER['PHP_SELF'];
+
+		$_SERVER['HTTP_HOST'] = parse_url(APP_URL_EXTMOD, PHP_URL_HOST);
+		$_SERVER['PHP_SELF'] = parse_url(APP_URL_EXTMOD, PHP_URL_PATH) . 'manager/templates/some-template.php';
+
+		$this->assertThrowsException(function(){
+			ExternalModules::limitDirectFileAccess();
+		}, self::tt('em_errors_121'));
+		
+		$_SERVER['PHP_SELF'] = $originalSelf;
+		$_SERVER['HTTP_HOST'] = $originalHost;
+
+		// This method should not throw an exception any more.
+		ExternalModules::limitDirectFileAccess();
+	}
 }
