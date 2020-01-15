@@ -2559,7 +2559,7 @@ class ExternalModules
 		return $pid;
 	}
 
-	# calls a hooke via startHook
+	# calls a hook via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
 		if (isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')) {
