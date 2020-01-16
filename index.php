@@ -61,7 +61,11 @@ if($pid != null){
 }
 
 $pageExtension = strtolower(pathinfo($page, PATHINFO_EXTENSION));
-$pagePath = ExternalModules::getModuleDirectoryPath($prefix, $version) . "/$page" . ($pageExtension == '' ? ".php" : "");
+$pagePath = $page . ($pageExtension == '' ? ".php" : "");
+
+$modulePath = ExternalModules::getModuleDirectoryPath($prefix, $version);
+$pagePath = ExternalModules::getSafePath($pagePath, $modulePath);
+
 if(!file_exists($pagePath)){
 	throw new Exception("The specified page does not exist for this module. $pagePath");
 }
