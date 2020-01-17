@@ -6,7 +6,6 @@ require_once APP_PATH_DOCROOT.'Classes/Files.php';
 
 $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
-$version = $_GET['moduleDirectoryVersion'];
 
 if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
 	header('Content-type: application/json');
