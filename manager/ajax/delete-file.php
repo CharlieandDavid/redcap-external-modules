@@ -15,7 +15,6 @@ if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirec
 	));
 }
 
-$pid = @$_GET['pid'];
 $edoc = $_POST['edoc'];
 $key = $_POST['key'];
 $prefix = $_POST['moduleDirectoryPrefix'];
