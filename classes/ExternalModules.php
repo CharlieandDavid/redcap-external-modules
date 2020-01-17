@@ -3653,6 +3653,13 @@ class ExternalModules
 		return $rights[USERID]['design'] == 1;
 	}
 
+	private static function requireDesignRights(){
+		if(!self::hasDesignRights()){
+			// TODO - tt
+			throw new Exception("You must have design rights in order to perform this action!");
+		}
+	}
+
 	# returns boolean if current user explicitly has project-level user rights to configure a module 
 	# (assuming it requires explicit privileges based on system-level configuration of module)
 	static function hasModuleConfigurationUserRights($prefix=null)
@@ -5001,6 +5008,8 @@ class ExternalModules
 		// Temporarily override the pid so that hasProjectSettingSavePermission() works properly.
 		$originalPid = $_GET['pid'];
 		$_GET['pid'] = $pid;
+
+		ExternalModules::requireDesignRights();
 
 		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
 		self::recreateRichTextEDocs($pid, $richTextSettingsByPrefix);
