@@ -3637,24 +3637,53 @@ class ExternalModules
 		return null;
 	}
 
+	static function getUserRights($project_ids = null, $username = null){
+		if($project_ids === null){
+			$project_ids = self::requireProjectId();
+		}
+
+		if(!is_array($project_ids)){
+			$project_ids = [$project_ids];
+		}
+
+		if($username === null){
+			$username = USERID;
+		}
+
+		$rightsByPid = [];
+		foreach($project_ids as $project_id){
+			$rights = \UserRights::getPrivileges($project_id, $username);
+			$rightsByPid[$project_id] = $rights[$project_id][$username];
+		}
+
+		if(count($project_ids) === 1){
+			return $rightsByPid[$project_ids[0]];
+		}
+		else{
+			return $rightsByPid;
+		}
+	}
+
 	# returns boolean if design rights are given by REDCap for current user
-	static function hasDesignRights()
+	static function hasDesignRights($pid = null)
 	{
 		if(SUPER_USER){
 			return true;
 		}
 
-		if(!isset($_GET['pid'])){
-			// REDCap::getUserRights() will crash if no pid is set, so just return false.
-			return false;
+		if($pid === null){
+			$pid = @$_GET['pid'];
+			if($pid === null){
+				return false;
+			}
 		}
 
-		$rights = \REDCap::getUserRights();
-		return $rights[USERID]['design'] == 1;
+		$rights = self::getUserRights($pid);
+		return $rights['design'] == 1;
 	}
 
-	static function requireDesignRights(){
-		if(!self::hasDesignRights()){
+	static function requireDesignRights($pid = null){
+		if(!self::hasDesignRights($pid)){
 			// TODO - tt
 			throw new Exception("You must have design rights in order to perform this action!");
 		}
