@@ -3653,7 +3653,7 @@ class ExternalModules
 		return $rights[USERID]['design'] == 1;
 	}
 
-	private static function requireDesignRights(){
+	static function requireDesignRights(){
 		if(!self::hasDesignRights()){
 			// TODO - tt
 			throw new Exception("You must have design rights in order to perform this action!");

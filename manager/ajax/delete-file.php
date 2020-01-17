@@ -14,6 +14,8 @@ if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission()){
 	));
 }
 
+ExternalModules::requireDesignRights();
+
 $edoc = $_POST['edoc'];
 $key = $_POST['key'];
 $prefix = $_POST['moduleDirectoryPrefix'];
