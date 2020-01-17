@@ -3883,7 +3883,7 @@ class ExternalModules
 			}
 			else{
 				// The last download process likely failed.  Removed the folder and try again.
-				self::rrmdir($tempDir);
+				self::removeModuleDirectory($tempDir);
 			}
 		}
 
@@ -3968,7 +3968,7 @@ class ExternalModules
 			"</div></div>";
 		}
 		finally{
-			self::rrmdir($tempDir);
+			self::removeModuleDirectory($tempDir);
 		}
 	}
 
@@ -3997,7 +3997,7 @@ class ExternalModules
 		   return "1";
 		}
 		// Delete the directory
-		self::rrmdir($moduleFolderDir);
+		self::removeModuleDirectory($moduleFolderDir);
 		// Return error if not deleted
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
 		   return "0";
@@ -4064,6 +4064,12 @@ class ExternalModules
 		$sql = "select cast(module_id as char) as module_id from redcap_external_modules_downloads where module_name = ?";
 		$q = self::query($sql, [$moduleFolderName]);
 		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
+	}
+	
+	private static function removeModuleDirectory($path){
+		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
+		$path = self::getSafePath($path, $modulesDir);
+		self::rrmdir($path);
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
@@ -5421,7 +5427,13 @@ class ExternalModules
 
 		$root = realpath($root);
 
-		$fullPath = "$root/$path";
+		if(strpos($path, $root) === 0){
+			// The root is already included inthe path.
+			$fullPath = $path;
+		}
+		else{
+			$fullPath = "$root/$path";
+		}
 
 		if(file_exists($fullPath)){
 			$fullPath = realpath($fullPath);
