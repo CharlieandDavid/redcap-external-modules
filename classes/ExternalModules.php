@@ -2592,7 +2592,7 @@ class ExternalModules
 	
 			$name = str_replace('redcap_', '', $name);
 	
-			$templatePath = APP_PATH_EXTMOD . "manager/templates/hooks/$name.php";
+			$templatePath = self::getSafePath("$name.php", APP_PATH_EXTMOD . "manager/templates/hooks/");
 			if(file_exists($templatePath)){
 				self::safeRequire($templatePath, $arguments);
 			}
