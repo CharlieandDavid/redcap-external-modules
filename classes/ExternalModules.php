@@ -96,9 +96,6 @@ class ExternalModules
 
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
 
-	// The minimum required PHP version for External Modules to run
-	const MIN_PHP_VERSION = '5.4.0';
-
 	// Copy WordPress's time convenience constants
 	const MINUTE_IN_SECONDS = 60;
 	const HOUR_IN_SECONDS = 3600;

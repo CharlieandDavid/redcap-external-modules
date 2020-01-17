@@ -129,18 +129,6 @@ if (!isVanderbilt() && !isset($_GET['pid']) && defined("EXTMOD_EXTERNAL_INSTALL"
 	<?php 
 }
 
-// Ensure that server is running PHP 5.4.0+ since REDCap's minimum requirement is PHP 5.3.0
-if (version_compare(PHP_VERSION, ExternalModules::MIN_PHP_VERSION, '<')) {
-	?>
-	<div class="red">
-		<!--= PHP <?=ExternalModules::MIN_PHP_VERSION?> or higher is required for External Modules: Sorry, but unfortunately your REDCap web server must be running PHP <?=ExternalModules::MIN_PHP_VERSION?> or a later version to utilize the External Modules functionality. Your current version is PHP <?=PHP_VERSION?>. You should consider upgrading PHP. -->
-		<?=ExternalModules::tt("em_manage_47", ExternalModules::MIN_PHP_VERSION, PHP_VERSION)?>
-	</div>
-	<?php
-	require_once APP_PATH_DOCROOT . 'ControlCenter/footer.php';
-	exit;
-}
-
 $displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());
 $moduleDialogBtnText = SUPER_USER ? 
 	ExternalModules::tt("em_manage_48") : //= Enable a module
