@@ -2818,7 +2818,7 @@ class ExternalModules
 
 			$classNameWithNamespace = "\\$namespace\\$className";
 
-			$classFilePath = "$modulePath/$className.php";
+			$classFilePath = self::getSafePath("$className.php", $modulePath);
 
 			if(!file_exists($classFilePath)){
 				//= Could not find the module class file '{0}' for the module with prefix '{1}'.
