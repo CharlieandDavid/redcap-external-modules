@@ -4996,6 +4996,8 @@ class ExternalModules
 	// It is public because it is used by Carl's settings import/export module.
 	static function recreateAllEDocs($pid)
 	{
+		$pid = self::requireInteger($pid);
+
 		// Temporarily override the pid so that hasProjectSettingSavePermission() works properly.
 		$originalPid = $_GET['pid'];
 		$_GET['pid'] = $pid;

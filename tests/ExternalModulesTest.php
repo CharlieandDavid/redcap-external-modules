@@ -1624,4 +1624,17 @@ class ExternalModulesTest extends BaseTest
 		// This method should not throw an exception any more.
 		ExternalModules::limitDirectFileAccess();
 	}
+
+	function testRequireInteger(){
+		foreach([1, '1'] as $value){
+			$intValue = $this->requireInteger(1);
+			$this->assertEqual($value, $intValue);
+		}
+
+		foreach([1.1, '1.1'] as $value){
+			$this->assertThrowsException(function() use ($value){
+				$this->requireInteger($value);
+			}, self::tt("em_errors_60", $value));
+		}
+	}
 }
