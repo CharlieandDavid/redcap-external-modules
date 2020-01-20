@@ -14,7 +14,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/spin.js/2.3.2/spin.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.6/dist/loadingoverlay.min.js" integrity="sha384-L2MNADX6uJTVkbDNELTUeRjzdfJToVbpmubYJ2C74pwn8FHtJeXa+3RYkDRX43zQ" crossorigin="anonymous"></script>
 
-<div id="api-sync-module-wrapper">
+<div id="em-log-module-wrapper">
 	<?=$module->initializeJavascriptModuleObject()?>
 	<script>
 		ExternalModules.Vanderbilt.APISyncExternalModule.details = {}
@@ -28,7 +28,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 		}
 
 		ExternalModules.Vanderbilt.APISyncExternalModule.showSyncCancellationDetails = function(){
-			var div = $('#api-sync-module-cancellation-details').clone()
+			var div = $('#em-log-module-cancellation-details').clone()
 			div.show()
 
 			var pre = div.find('pre');
@@ -50,38 +50,38 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 	</script>
 
 	<style>
-		#api-sync-module-wrapper .top-button-container{
+		#em-log-module-wrapper .top-button-container{
 			margin-top: 20px;
 			margin-bottom: 50px;
 		}
 
-		#api-sync-module-wrapper .top-button-container button{
+		#em-log-module-wrapper .top-button-container button{
 			margin: 3px;
 			min-width: 160px;
 		}
 
-		#api-sync-module-wrapper th{
+		#em-log-module-wrapper th{
 			font-weight: bold;
 		}
 
-		#api-sync-module-wrapper .remote-project-title{
+		#em-log-module-wrapper .remote-project-title{
 			margin-top: 5px;
 			margin-left: 15px;
 			font-weight: bold;
 		}
 
-		#api-sync-module-wrapper td.message{
+		#em-log-module-wrapper td.message{
 			  max-width: 800px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
 
-		#api-sync-module-wrapper a{
+		#em-log-module-wrapper a{
 			/* This currently only exists for the output of the formatURLForLogs() method. */
 			text-decoration: underline;
 		}
 
-		.api-sync-module-spinner{
+		.em-log-module-spinner{
 			position: relative;
 			height: 60px;
 			margin-top: -10px;
@@ -96,28 +96,22 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 		  font-weight: 500;
 		}
 
-		#api-sync-module-log-entries_wrapper{
+		#em-log-module-log-entries_wrapper{
 			max-width: 900px;
 			margin-right: 18px;
 		}
 
-		#api-sync-module-log-entries{
+		#em-log-module-log-entries{
 			width: 100%;
 		}
 	</style>
 
 	<div style="color: #800000;font-size: 16px;font-weight: bold;"><?=$module->getModuleName()?></div>
 
-	<div class="top-button-container">
-		<button class="api-sync-export-queued-button">Export Queued Records</button> - Exports recently added/updated/deleted records now.
-		<br>
-		<button class="api-sync-export-all-button">Export All Records</button> - Exports all existing records now.  No records will be removed.
-	</div>
+	<h5><?= ExternalModules::tt("em_log_2") ?></h5>
+	<p><?= ExternalModules::tt("em_log_3") ?></p>
 
-	<h5>Recent Log Entries</h5>
-	<p>(refresh the page to see the latest)</p>
-
-	<table id="api-sync-module-log-entries" class="table table-striped table-bordered"></table>
+	<table id="em-log-module-log-entries" class="table table-striped table-bordered"></table>
 
 	<script>
 		Swal = Swal.mixin({
@@ -127,7 +121,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 
 		$(function(){
 			var ajaxRequest = function(args) {
-				var spinnerElement = $('<div class="api-sync-module-spinner"></div>')[0]
+				var spinnerElement = $('<div class="em-log-module-spinner"></div>')[0]
 				new Spinner().spin(spinnerElement)
 
 				Swal.fire({
@@ -150,34 +144,18 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 						}
 						else {
 							Swal.fire('', 'An error occurred.  Please see the browser console for details.')
-							console.log('API Sync AJAX Response:', response)
+							console.log('External Modules Log AJAX Response:', response)
 						}
 					}, delay)
 				})
 			}
-
-			$('.api-sync-export-queued-button').click(function(){
-				ajaxRequest({
-					url: 'export-now.php?prefix=<?= $_GET['prefix'] ?>',
-					loadingMessage: 'Marking queued records for export now...',
-					successMessage: 'Queued records have been marked for export now.'
-				})
-			})
-
-			$('.api-sync-export-all-button').click(function(){
-				ajaxRequest({
-					url: 'export-all-records-now.php?prefix=<?= $_GET['prefix'] ?>',
-					loadingMessage: 'Queuing all records for export...',
-					successMessage: 'All records have been queued for export.'
-				})
-			})
 		})
 
 		$(function(){
 			$.fn.dataTable.ext.errMode = 'throw';
 
 			var lastOverlayDisplayTime = 0
-			var table = $('#api-sync-module-log-entries').DataTable({
+			var table = $('#em-log-module-log-entries').DataTable({
 				"pageLength": 100,
 		        "processing": true,
 		        "serverSide": true,
@@ -190,22 +168,22 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 				"columns": [
 					{
 						data: 'timestamp',
-						title: 'Date/Time'
+						title: '<?= ExternalModules::tt("em_log_4") ?>'
 					},
 					{
 						data: 'message',
-						title: 'Message'
+						title: '<?= ExternalModules::tt("em_log_5") ?>'
 					},
 					{
 						data: 'details',
-						title: 'Details',
+						title: '<?= ExternalModules::tt("em_log_6") ?>',
 						render: function(data, type, row, meta){
 							if(!data){
 								return ''
 							}
 
 							ExternalModules.Vanderbilt.APISyncExternalModule.details[row.log_id] = data
-							return "<button onclick='ExternalModules.Vanderbilt.APISyncExternalModule.showDetails(" + row.log_id + ")'>Show Details</button>"
+							return "<button onclick='ExternalModules.Vanderbilt.APISyncExternalModule.showDetails(" + row.log_id + ")'><?= ExternalModules::tt("em_log_7") ?></button>"
 						}
 					},
 				],
