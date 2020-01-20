@@ -17,6 +17,8 @@ if(!empty($validationErrorMessage)){
 	die($validationErrorMessage);
 }
 
+// The saveSettings() method eventually calles setSystemSetting() & setProjectSetting() under the hood.
+// Both of those methods verify that the current user has appropriate permissions to save settings.
 $saveSqlByField = ExternalModules::saveSettings($moduleDirectoryPrefix, $pid, $rawSettings);
 
 if(!empty($saveSqlByField)){
