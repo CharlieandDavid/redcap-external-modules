@@ -8,12 +8,17 @@ $pid = @$_GET['pid'];
 $moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
 $version = $_GET['moduleDirectoryVersion'];
 
-if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
+$returnError = function($message){
 	header('Content-type: application/json');
 	echo json_encode(array(
-		//= You do not have permission to save system settings!
-		'status' => ExternalModules::tt("em_errors_80")
+		'status' => $message
 	));
+	exit();
+};
+
+if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
+	//= You do not have permission to save system settings!
+	$returnError(ExternalModules::tt("em_errors_80"));
 }
 
 $config = ExternalModules::getConfig($moduleDirectoryPrefix, $version, $pid);
@@ -62,17 +67,14 @@ $myfiles = array();
 foreach($_FILES as $key=>$value){
 	$myfiles[] = $key;
 	if (isExternalModuleFile($key, $files) && $value) {
+		if(!empty($pid) && !ExternalModules::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+			//= You do not have permission to save the following project setting: {0}.
+			$returnError(ExternalModules::tt("em_errors_87", $key));
+		}
+
 		# use REDCap's uploadFile
 		$edoc = \Files::uploadFile($_FILES[$key]);
 		if ($edoc) {
-			if(!empty($pid) && !ExternalModules::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-				header('Content-type: application/json');
-				echo json_encode(array(
-					//= You do not have permission to save the following project setting: {0}.
-					'status' => ExternalModules::tt("em_errors_87", $key)
-				));
-			}
-
             //For repeatable elements we change the key
             if (preg_match("/____/", $key)) {
                 $settings = array();
