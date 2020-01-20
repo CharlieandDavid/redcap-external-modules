@@ -171,6 +171,10 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 						title: '<?= ExternalModules::tt("em_log_4") ?>'
 					},
 					{
+						data: 'project_id',
+						title: '<?= ExternalModules::tt("em_log_8") ?>'
+					},
+					{
 						data: 'message',
 						title: '<?= ExternalModules::tt("em_log_5") ?>'
 					},

@@ -17,7 +17,7 @@ $row = db_fetch_assoc($result);
 $totalRowCount = $row[$columnName];
 
 $results = $module->queryLogs("
-	select log_id, timestamp, message, details
+	select project_id, log_id, timestamp, message, details
 	order by log_id desc
 	$limitClause
 ");
