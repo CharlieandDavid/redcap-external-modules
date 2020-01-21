@@ -2,6 +2,7 @@
 
 namespace ExternalModules;
 require_once __DIR__ . '/../../classes/ExternalModules.php';
+require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 
 $enabledModules = ExternalModules::getEnabledModules();
 if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
