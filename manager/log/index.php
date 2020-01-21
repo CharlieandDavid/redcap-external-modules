@@ -4,10 +4,10 @@ namespace ExternalModules;
 require_once __DIR__ . '/../../classes/ExternalModules.php';
 
 $enabledModules = ExternalModules::getEnabledModules();
-if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
+if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 	$module = ExternalModules::getModuleInstance($_GET['prefix']);
 } else {
-	throw new \Exception($_GET['prefix']." ".ExternalModules::tt("em_log_1");
+	throw new \Exception($_GET['prefix']." ".ExternalModules::tt("em_log_1"));
 }
 ?>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/8.11.8/sweetalert2.all.min.js"></script>
@@ -17,9 +17,9 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 <div id="em-log-module-wrapper">
 	<?=$module->initializeJavascriptModuleObject()?>
 	<script>
-		ExternalModules.Vanderbilt.APISyncExternalModule.details = {}
+		ExternalModules.LogView.details = {}
 
-		ExternalModules.Vanderbilt.APISyncExternalModule.showDetails = function(logId){
+		ExternalModules.LogView.showDetails = function(logId){
 			var width = window.innerWidth - 100;
 			var height = window.innerHeight - 200;
 			var content = '<pre style="max-height: ' + height + 'px">' + this.details[logId] + '</pre>'
@@ -27,7 +27,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 			simpleDialog(content, 'Details', null, width)
 		}
 
-		ExternalModules.Vanderbilt.APISyncExternalModule.showSyncCancellationDetails = function(){
+		ExternalModules.LogView.showSyncCancellationDetails = function(){
 			var div = $('#em-log-module-cancellation-details').clone()
 			div.show()
 
@@ -36,12 +36,12 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 			// Replace tabs with spaces for easy copy pasting into the mysql command line interface
 			pre.html(pre.html().replace(/\t/g, '    '))
 
-			ExternalModules.Vanderbilt.APISyncExternalModule.trimPreIndentation(pre[0])
+			ExternalModules.LogView.trimPreIndentation(pre[0])
 
 			simpleDialog(div, 'Sync Cancellation', null, 1000)
 		}
 
-		ExternalModules.Vanderbilt.APISyncExternalModule.trimPreIndentation = function(pre){
+		ExternalModules.LogView.trimPreIndentation = function(pre){
 			var content = pre.innerHTML
 			var firstNonWhitespaceIndex = content.search(/\S/)
 			var leadingWhitespace = content.substr(0, firstNonWhitespaceIndex)
@@ -186,8 +186,8 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix'])) {
 								return ''
 							}
 
-							ExternalModules.Vanderbilt.APISyncExternalModule.details[row.log_id] = data
-							return "<button onclick='ExternalModules.Vanderbilt.APISyncExternalModule.showDetails(" + row.log_id + ")'><?= ExternalModules::tt("em_log_7") ?></button>"
+							ExternalModules.LogView.details[row.log_id] = data
+							return "<button onclick='ExternalModules.LogView.showDetails(" + row.log_id + ")'><?= ExternalModules::tt("em_log_7") ?></button>"
 						}
 					},
 				],
