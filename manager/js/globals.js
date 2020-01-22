@@ -941,7 +941,7 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		file_picker_callback: function(callback, value, meta){
 			var prefix = settingsObject.getPrefix();
 			tinymce.activeEditor.windowManager.open({
-				url: ExternalModules.BASE_URL + '/manager/rich-text/get-uploaded-file-list.php?prefix=' + prefix + '&pid=' + pid,
+				url: ExternalModules.BASE_URL + 'manager/rich-text/get-uploaded-file-list.php?prefix=' + prefix + '&pid=' + pid,
 				width: 500,
 				height: 300,
 				title: 'Files',
@@ -1371,6 +1371,6 @@ $(function(){
 	$('.external-modules-log-button').click(function(){
 		var row = $(this).closest('tr')
 		var prefix = row.data('module')
-		window.location = ExternalModules.BASE_URL + "/manager/log/?prefix=" + prefix
+		window.location = ExternalModules.BASE_URL + "manager/log/?prefix=" + prefix
 	})
 });
