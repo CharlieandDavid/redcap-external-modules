@@ -1367,4 +1367,10 @@ $(function(){
 			modal.modal('show')
 		})
 	})
+
+	$('.external-modules-log-button').click(function(){
+		var row = $(this).closest('tr')
+		var prefix = row.data('module')
+		window.location = ExternalModules.BASE_URL + "/manager/log/?prefix=" + prefix
+	})
 });

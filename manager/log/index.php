@@ -4,6 +4,10 @@ namespace ExternalModules;
 require_once __DIR__ . '/../../classes/ExternalModules.php';
 require_once APP_PATH_DOCROOT . 'ControlCenter/header.php';
 
+if (!ExternalModules::isSuperUser()) {
+	throw new \Exception("You must be a super-user to use this page!");
+}
+
 $enabledModules = ExternalModules::getEnabledModules();
 if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 	$module = ExternalModules::getModuleInstance($_GET['prefix']);

@@ -284,7 +284,8 @@ $moduleDialogBtnImg = SUPER_USER ? "fas fa-plus-circle" : "fas fa-info-circle";
 						}
 
 						if(!isset($_GET['pid'])) {
-							?><button class='external-modules-usage-button'><!--= View Usage --><?=ExternalModules::tt("em_manage_56")?></button><?php
+							?><button class='external-modules-usage-button'><!--= View Usage --><?=ExternalModules::tt("em_manage_56")?></button>
+							<button class='external-modules-log-button'><!--= View Log --><?=ExternalModules::tt("em_log_9")?></button><?php
 						}
 						?>
 					</td>
