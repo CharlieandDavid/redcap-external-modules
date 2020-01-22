@@ -305,6 +305,33 @@ class ExternalModulesTest extends BaseTest
 
 	function testCallCronMethod_unlockOnException()
 	{
+		$this->runTestCronMethod(function(){
+			throw new Exception();
+		});
+
+		//= External Module Exception in Cron Job
+		$emailSubject = ExternalModules::tt("em_errors_56"); 
+		$this->assertSame($emailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
+
+		$secondCronRan = false;
+		$this->runTestCronMethod(function() use (&$secondCronRan){
+			$secondCronRan = true;
+		});
+		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
+	}
+
+	function testCallCronMethod_parameterSafety()
+	{
+		$this->runTestCronMethod(function(){
+			// Simulate a module setting the pid within a cron, so we can assert that it doesn't make a difference outside the cron method.
+			$_GET['pid'] = '123';
+		});
+
+		$this->assertFalse(isset($_GET['pid']));
+	}
+
+	private function runTestCronMethod($function)
+	{
 		$methodName = 'redcap_test_call_function';
 
 		$this->setConfig(['crons' => [[
@@ -313,27 +340,11 @@ class ExternalModulesTest extends BaseTest
 			'method' => $methodName,
 		]]]);
 
-		$callCronMethod = function($function) use ($methodName){
-			$m = $this->getInstance();
-			$m->function = $function;
+		$m = $this->getInstance();
+		$m->function = $function;
 
-			$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
-			ExternalModules::callCronMethod($moduleId, $methodName);
-		};
-
-
-		$callCronMethod(function(){
-			throw new Exception();
-		});
-		//= External Module Exception in Cron Job
-		$emailSubject = ExternalModules::tt("em_errors_56"); 
-		$this->assertSame($emailSubject, ExternalModulesTest::$lastSendAdminEmailArgs[0]);
-
-		$secondCronRan = false;
-		$callCronMethod(function() use (&$secondCronRan){
-			$secondCronRan = true;
-		});
-		$this->assertTrue($secondCronRan); // Make sure the second cron ran, meaning the cron was unlocked after the exception.
+		$moduleId = ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX);
+		ExternalModules::callCronMethod($moduleId, $methodName);
 	}
 
 	function testCheckForALongRunningCronJob()
