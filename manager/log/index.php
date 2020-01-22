@@ -18,6 +18,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 <div id="em-log-module-wrapper">
 	<?=$module->initializeJavascriptModuleObject()?>
 	<script>
+		ExternalModules.LogView = {}
 		ExternalModules.LogView.details = {}
 
 		ExternalModules.LogView.showDetails = function(logId){
@@ -121,7 +122,7 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 		})
 
 		$(function(){
-			var ajaxRequest = function(args) {
+			ajaxRequest = function(args) {
 				var spinnerElement = $('<div class="em-log-module-spinner"></div>')[0]
 				new Spinner().spin(spinnerElement)
 
@@ -158,14 +159,15 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 			var lastOverlayDisplayTime = 0
 			var table = $('#em-log-module-log-entries').DataTable({
 				"pageLength": 100,
-		        "processing": true,
-		        "serverSide": true,
-		        "ajax": {
+		        	"processing": true,
+		        	"serverSide": true,
+		        	"ajax": {
 					url: 'get-logs.php?prefix=<?= $_GET['prefix'] ?>'
 				},
 				"autoWidth": false,
 				"searching": false,
 				"order": [[ 0, "desc" ]],
+				"ordering": false,
 				"columns": [
 					{
 						data: 'timestamp',
@@ -221,17 +223,17 @@ if (isset($_GET['prefix']) && isset($enabledModules[$_GET['prefix']])) {
 					return false
 				})
 		    }).on( 'processing.dt', function(e, settings, processing){
-		    	if(processing){
+				if(processing){
 					$.LoadingOverlay('show')
 					lastOverlayDisplayTime = Date.now()
-		    	}
-		    	else{
-		    		var secondsSinceDisplay = Date.now() - lastOverlayDisplayTime
-		    		var delay = Math.max(300, secondsSinceDisplay)
-		    		setTimeout(function(){
+				}
+				else{
+					var secondsSinceDisplay = Date.now() - lastOverlayDisplayTime
+					var delay = Math.max(300, secondsSinceDisplay)
+					setTimeout(function(){
 						$.LoadingOverlay('hide')
-		    		}, delay)
-		    	}
+					}, delay)
+				}
 		    })
 
 			$.LoadingOverlaySetup({
