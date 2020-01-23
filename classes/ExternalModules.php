@@ -100,6 +100,13 @@ class ExternalModules
 	const MONTH_IN_SECONDS = 2592000;
 	const YEAR_IN_SECONDS = 31536000;
 
+	const COMPLETED_STATUS_WHERE_CLAUSE = "
+		WHERE project_id = ?
+		AND record = ?
+		AND event_id = ?
+		AND field_name = CONCAT(?, '_complete')
+	";
+
 	private static $SERVER_NAME;
 
 	# base URL for external modules
@@ -5405,4 +5412,65 @@ class ExternalModules
 
 		return $row;
 	}
+
+	public static function getRecordCompleteStatus($projectId, $recordId, $eventId, $surveyFormName){
+		$result = self::query(
+			"select value from redcap_data" . self::COMPLETED_STATUS_WHERE_CLAUSE,
+			[$projectId, $recordId, $eventId, $surveyFormName]
+		);
+
+		$row = $result->fetch_assoc();
+
+		return @$row['value'];
+	}
+
+	public static function setRecordCompleteStatus($projectId, $recordId, $eventId, $surveyFormName, $value){
+		// Set the response as incomplete in the data table
+		$sql = "UPDATE redcap_data SET value = ?" . self::COMPLETED_STATUS_WHERE_CLAUSE;
+
+		$q = ExternalModules::createQuery();
+		$q->add($sql, [$value, $projectId, $recordId, $eventId, $surveyFormName]);
+		$r = $q->execute();
+
+		return [$q, $r];
+	}
+
+	public static function getFormNames(){
+		$metadata = self::getMetadata(TEST_SETTING_PID);
+		
+		$formNames = [];
+		foreach($metadata as $fieldName => $details){
+			$formNames[$details['form_name']] = true;
+		}
+
+		return array_keys($formNames);
+	}
+
+	public static function getMetadata($projectId,$forms = NULL) {
+		return \REDCap::getDataDictionary($projectId,"array",TRUE,NULL,$forms);
+	}
+
+	public static function getEventId($projectId){
+		$eventId = @$_GET['event_id'];
+		if($eventId){
+			return $eventId;
+		}
+
+		$sql = '
+			select event_id
+			from redcap_events_arms a
+			join redcap_events_metadata m
+				on m.arm_id = a.arm_id
+			where project_id = ?
+		';
+
+		$result = self::query($sql, $projectId);
+		$row = $result->fetch_assoc();
+
+		if($result->fetch_assoc()){
+			throw new Exception("Multiple event IDs found from project $projectId");
+		}
+
+		return $row['event_id'];
+    }
 }

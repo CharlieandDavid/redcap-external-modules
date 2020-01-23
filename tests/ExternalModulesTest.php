@@ -1608,4 +1608,29 @@ class ExternalModulesTest extends BaseTest
 		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
 		$this->assertSame($row['value'], $version);
 	}
+
+	function testSetRecordCompleteStatus(){
+		$projectId = TEST_SETTING_PID;
+		$recordId = 1;
+		$eventId = $this->getEventId($projectId);
+		$formName = ExternalModules::getFormNames()[0];
+
+		$getValue = function() use ($projectId, $recordId, $eventId, $formName){
+			return ExternalModules::getRecordCompleteStatus($projectId, $recordId, $eventId, $formName);
+		};
+
+		if($getValue() === null){
+			$this->query(
+				"insert into redcap_data values (?,?,?,?,?,null)",
+				[$projectId, $eventId, $recordId, "{$formName}_complete", 1]
+			);
+		}
+		else{
+			ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $formName, 1);
+		}
+
+		$this->assertSame('1', $getValue());
+		ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $formName, 0);
+		$this->assertSame('0', $getValue());
+	}
 }

@@ -399,17 +399,7 @@ class AbstractExternalModule
 			$q->execute();
 		}
 
-		// Set the response as incomplete in the data table
-		$sql = "UPDATE redcap_data
-				SET value = '0'
-				WHERE project_id = ?
-					AND record = ?
-					AND event_id = ?
-					AND field_name = CONCAT(?, '_complete')";
-
-		$q = ExternalModules::createQuery();
-		$q->add($sql, [$projectId, $recordId, $eventId, $surveyFormName]);
-		$r = $q->execute();
+		list($q, $r) = ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $surveyFormName, 0);
 
 		// Log the event (if value changed)
 		if ($r && $q->getStatement()->affected_rows > 0) {
@@ -595,9 +585,7 @@ class AbstractExternalModule
 	}
 
 	public function getMetadata($projectId,$forms = NULL) {
-		$metadata = \REDCap::getDataDictionary($projectId,"array",TRUE,NULL,$forms);
-
-		return $metadata;
+		return ExternalModules::getMetadata($projectId, $forms);
 	}
 
 	public function getData($projectId,$recordId,$eventId="",$format="array") {
