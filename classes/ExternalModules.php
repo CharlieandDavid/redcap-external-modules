@@ -22,6 +22,11 @@ if(!defined('APP_PATH_WEBROOT')){
 
 ExternalModules::limitDirectFileAccess();
 
+if(ExternalModules::isTesting()){
+	ExternalModules::enableErrors();
+	require_once __DIR__ . '/../tests/ModuleBaseTest.php';
+}
+
 if (class_exists('ExternalModules\ExternalModules')) {
 	return;
 }
@@ -354,6 +359,12 @@ class ExternalModules
 		return array_keys($modules);
 	}
 
+	function enableErrors(){
+		ini_set('display_errors', 1);
+		ini_set('display_startup_errors', 1);
+		error_reporting(E_ALL);
+	}
+
 	# initializes the External Module apparatus
 	static function initialize()
 	{
@@ -371,10 +382,8 @@ class ExternalModules
 		}
 
 		if(self::isLocalhost()){
-			// Assume this is a developer's machine and enable errors.
-			ini_set('display_errors', 1);
-			ini_set('display_startup_errors', 1);
-			error_reporting(E_ALL);
+			// Assume this is a developer's machine
+			self::enableErrors();
 		}
 		
 		// Get module directories
@@ -2965,7 +2974,7 @@ class ExternalModules
 		return false;
 	}
 
-	private static function isTesting()
+	static function isTesting()
 	{
 		return PHP_SAPI == 'cli' && strpos($_SERVER['argv'][0], 'phpunit') !== FALSE;
 	}
