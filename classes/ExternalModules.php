@@ -104,7 +104,7 @@ class ExternalModules
 		WHERE project_id = ?
 		AND record = ?
 		AND event_id = ?
-		AND field_name = CONCAT(?, '_complete')
+		AND field_name = ?
 	";
 
 	private static $SERVER_NAME;
@@ -5416,7 +5416,7 @@ class ExternalModules
 	public static function getRecordCompleteStatus($projectId, $recordId, $eventId, $surveyFormName){
 		$result = self::query(
 			"select value from redcap_data" . self::COMPLETED_STATUS_WHERE_CLAUSE,
-			[$projectId, $recordId, $eventId, $surveyFormName]
+			[$projectId, $recordId, $eventId, "{$surveyFormName}_complete"]
 		);
 
 		$row = $result->fetch_assoc();
@@ -5429,7 +5429,7 @@ class ExternalModules
 		$sql = "UPDATE redcap_data SET value = ?" . self::COMPLETED_STATUS_WHERE_CLAUSE;
 
 		$q = ExternalModules::createQuery();
-		$q->add($sql, [$value, $projectId, $recordId, $eventId, $surveyFormName]);
+		$q->add($sql, [$value, $projectId, $recordId, $eventId, "{$surveyFormName}_complete"]);
 		$r = $q->execute();
 
 		return [$q, $r];
