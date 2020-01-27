@@ -3422,8 +3422,6 @@ class ExternalModules
 			}
 		}
 		else if($configRow['type'] == 'project-id') {
-			$escaped_pid = strtolower($pid);
-
 			// We only show projects to which the current user has design rights 
 			// since modules could make all kinds of changes to projects.
 			$sql ="SELECT CAST(p.project_id as char) as project_id, p.app_title
