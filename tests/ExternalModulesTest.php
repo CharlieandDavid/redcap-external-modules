@@ -1032,7 +1032,7 @@ class ExternalModulesTest extends BaseTest
 			limit ?
 		", [TEST_SETTING_PID, TEST_SETTING_PID_2, $minEdocs]);
 
-		while($row = db_fetch_assoc($result)){
+		while($row = $result->fetch_assoc()){
 			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
 			$edocIds[] = (string)$row['doc_id'];
 			$edocFilenames[] = $row['stored_name'];
@@ -1124,13 +1124,13 @@ class ExternalModulesTest extends BaseTest
 
 	private function getEdocPath($edocId)
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId]));
+		$row = ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId])->fetch_assoc();
 		return EDOC_PATH . $row['stored_name'];
 	}
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", []));
+		$row = ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", [])->fetch_assoc();
 		if(empty($row)){
 			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
@@ -1460,6 +1460,11 @@ class ExternalModulesTest extends BaseTest
 		}, ExternalModules::tt('em_errors_117'));
 	}
 
+	function testQuery_trueReturnForDatalessQueries(){
+		$r = $this->query('update redcap_ip_banned set time_of_ban=now() where ?=?', [1,2]);
+        $this->assertTrue($r);
+	}
+
 	function testQuery_invalidQuery(){
 		$this->assertThrowsException(function(){
 			ob_start();
@@ -1606,6 +1611,7 @@ class ExternalModulesTest extends BaseTest
 		", [ExternalModules::KEY_VERSION])->fetch_assoc();
 
 		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
+		
 		$this->assertSame($row['value'], $version);
 	}
 
@@ -1632,5 +1638,11 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame('1', $getValue());
 		ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $formName, 0);
 		$this->assertSame('0', $getValue());
+	}
+
+	function testGetRepoModuleId(){
+		$r = $this->query("select cast(module_id as char) as module_id, module_name from redcap_external_modules_downloads order by rand() limit ?", 1);
+		$row = $r->fetch_assoc();
+		$this->assertSame($row['module_id'], ExternalModules::getRepoModuleId($row['module_name']));
 	}
 }

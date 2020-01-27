@@ -8,6 +8,7 @@ use ExternalModules\FrameworkVersion2;
 
 require_once __DIR__ . "/AbstractExternalModule.php";
 require_once __DIR__ . "/Query.php";
+require_once __DIR__ . "/StatementResult.php";
 
 if(PHP_SAPI == 'cli'){
 	// This is required for redcap when running on the command line (including unit testing).
@@ -1575,7 +1576,7 @@ class ExternalModules
 				from redcap_crons
 				where cron_name = ? and external_module_id = ?";
 		$q = ExternalModules::query($sql, [$cron_name, $externalModuleId]);
-		return (db_num_rows($q) > 0) ? db_fetch_assoc($q) : array();
+		return ($q->num_rows > 0) ? $q->fetch_assoc() : array();
 	}
 
 	# prerequisite: is a valid tabled cron
@@ -1926,7 +1927,7 @@ class ExternalModules
 		$result = self::getSettings($moduleDirectoryPrefixes, $projectIds);
 
 		$settings = array();
-		while($row = self::validateSettingsRow(db_fetch_assoc($result))){
+		while($row = self::validateSettingsRow($result->fetch_assoc())){
 			$key = $row['key'];
 			$value = $row['value'];
 
@@ -2072,9 +2073,9 @@ class ExternalModules
 
 		$result = self::getSettings($moduleDirectoryPrefix, $projectId, $key);
 
-		$numRows = db_num_rows($result);
+		$numRows = $result->num_rows;
 		if($numRows == 1) {
-			$row = self::validateSettingsRow(db_fetch_assoc($result));
+			$row = self::validateSettingsRow($result->fetch_assoc());
 
 			return $row['value'];
 		}
@@ -2121,7 +2122,7 @@ class ExternalModules
 			$result = self::query("SELECT external_module_id, directory_prefix FROM redcap_external_modules", []);
 
 			$idsByPrefix = array();
-			while($row = db_fetch_assoc($result)){
+			while($row = $result->fetch_assoc()){
 				$idsByPrefix[$row['directory_prefix']] = $row['external_module_id'];
 			}
 
@@ -2142,7 +2143,7 @@ class ExternalModules
 	public static function getPrefixForID($id){
 		$result = self::query("SELECT directory_prefix FROM redcap_external_modules WHERE external_module_id = ?", [$id]);
 
-		$row = db_fetch_assoc($result);
+		$row = $result->fetch_assoc();
 		if($row){
 			return $row['directory_prefix'];
 		}
@@ -2158,7 +2159,7 @@ class ExternalModules
 		
 		$result = self::query($sql, [$prefix, self::KEY_VERSION]);
 
-		return db_result($result, 0);
+		return $result->fetch_row()[0];
 	}
 
 	public static function query($sql, $parameters = null, $retriesLeft = 2)
@@ -2266,14 +2267,15 @@ class ExternalModules
 			throw new Exception(self::tt('em_errors_111'));
 		}
 		
-		$result = $statement->get_result();
-		if(!$result && empty(db_error())){
-			// There was no error, this is just a query type that doesn't return a result (like an UPDATE or DELETE).
-			// Return true like the regular query method would in this case.
+		$metadata = $statement->result_metadata();
+		if(!$metadata && empty(db_error())){
+			// This is an INSERT, UPDATE, DELETE, or some other query type that does not return data.
+			// Copy mysqli_query()'s behavior in this case.
 			return true;
 		}
 
-		return $result;
+		// We can't use $statement->get_result() here because it's only present with the nd_mylsqi driver (see community question 77051).
+		return new StatementResult($statement, $metadata);
 	}
 
 	private static function bindParams($statement, $parameters){
@@ -2907,7 +2909,7 @@ class ExternalModules
 		// out which are enabled and how they are enabled
 		$result_versions = array();
 		$result_enabled = array();
-		while($row = self::validateSettingsRow(db_fetch_assoc($result))) {
+		while($row = self::validateSettingsRow($result->fetch_assoc())) {
 			$key = $row['key'];
 			if ($key == self::KEY_VERSION) {
 				$result_versions[] = $row;
@@ -3221,7 +3223,7 @@ class ExternalModules
 						ORDER BY role_id";
 				$result = self::query($sql, [$pid]);
 
-				while ($row = db_fetch_assoc($result)) {
+				while ($row = $result->fetch_assoc()) {
 						$choices[] = ['value' => $row['role_id'], 'name' => strip_tags(nl2br($row['role_name']))];
 				}
 
@@ -3237,7 +3239,7 @@ class ExternalModules
 						ORDER BY ui.ui_id";
 				$result = self::query($sql, [$pid]);
 
-				while ($row = db_fetch_assoc($result)) {
+				while ($row = $result->fetch_assoc()) {
 						$choices[] = ['value' => strtolower($row['username']), 'name' => $row['user_firstname'] . ' ' . $row['user_lastname']];
 				}
 
@@ -3252,7 +3254,7 @@ class ExternalModules
 						ORDER BY group_id";
 				$result = self::query($sql, [$pid]);
 
-				while ($row = db_fetch_assoc($result)) {
+				while ($row = $result->fetch_assoc()) {
 						$choices[] = ['value' => $row['group_id'], 'name' => strip_tags(nl2br($row['group_name']))];
 				}
 
@@ -3267,7 +3269,7 @@ class ExternalModules
 					ORDER BY field_order";
 			$result = self::query($sql, [$pid]);
 
-			while ($row = db_fetch_assoc($result)) {
+			while ($row = $result->fetch_assoc()) {
 				$row['element_label'] = strip_tags(nl2br($row['element_label']));
 				if (strlen($row['element_label']) > 30) {
 					$row['element_label'] = substr($row['element_label'], 0, 20) . "... " . substr($row['element_label'], -8);
@@ -3286,7 +3288,7 @@ class ExternalModules
 					ORDER BY field_order";
 			$result = self::query($sql, [$pid]);
 
-			while ($row = db_fetch_assoc($result)) {
+			while ($row = $result->fetch_assoc()) {
 				$choices[] = ['value' => $row['form_name'], 'name' => strip_tags(nl2br($row['form_name']))];
 			}
 
@@ -3301,7 +3303,7 @@ class ExternalModules
 					ORDER BY a.arm_id";
 			$result = self::query($sql, [$pid]);
 
-			while ($row = db_fetch_assoc($result)) {
+			while ($row = $result->fetch_assoc()) {
 				$choices[] = ['value' => $row['arm_id'], 'name' => $row['arm_name']];
 			}
 
@@ -3317,7 +3319,7 @@ class ExternalModules
 					ORDER BY e.event_id";
 			$result = self::query($sql, [$pid]);
 
-			while ($row = db_fetch_assoc($result)) {
+			while ($row = $result->fetch_assoc()) {
 				$choices[] = ['value' => $row['event_id'], 'name' => "Arm: ".strip_tags(nl2br($row['arm_name']))." - Event: ".strip_tags(nl2br($row['descrip']))];
 			}
 
@@ -3356,7 +3358,7 @@ class ExternalModules
 				]
 			];
 
-			while($row = db_fetch_assoc($result)) {
+			while($row = $result->fetch_assoc()) {
 				$projectName = utf8_encode($row["app_title"]);
 
 				// Required to display things like single quotes correctly
@@ -3942,7 +3944,7 @@ class ExternalModules
 		$sql = "select 1 from redcap_external_modules_downloads 
 				where module_name = ? and time_deleted is null";
 		$q = ExternalModules::query($sql, [$moduleFolderName]);
-		return (db_num_rows($q) > 0);
+		return ($q->num_rows > 0);
 	}
 
 	# Was this module, which was downloaded from the central repository of ext mods, deleted via the UI?
@@ -3974,7 +3976,7 @@ class ExternalModules
 					where time_deleted is not null";
 			$q = self::query($sql, []);
 			self::$deletedModules = array();
-			while ($row = db_fetch_assoc($q)) {
+			while ($row = $q->fetch_assoc()) {
 				self::$deletedModules[$row['module_name']] = strtotime($row['time_deleted']);
 			}
 		}
@@ -3986,7 +3988,7 @@ class ExternalModules
 	public static function getRepoModuleId($moduleFolderName=null){
 		$sql = "select cast(module_id as char) as module_id from redcap_external_modules_downloads where module_name = ?";
 		$q = self::query($sql, [$moduleFolderName]);
-		return (db_num_rows($q) > 0 ? db_result($q, 0) : false);
+		return ($q->num_rows > 0 ? $q->fetch_row()[0] : false);
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
@@ -4017,7 +4019,7 @@ class ExternalModules
                 and m.external_module_id = x.external_module_id and x.project_id is null
 				and x.`key` = ?";
 		$q = ExternalModules::query($sql, [self::KEY_DISCOVERABLE, self::KEY_VERSION]);
-		while ($row = db_fetch_assoc($q)) {
+		while ($row = $q->fetch_assoc()) {
 			$modules[$row['directory_prefix']] = $row['value'];
 		}
 		return $modules;
@@ -4046,7 +4048,7 @@ class ExternalModules
 		$query->add('AND')->addInClause('directory_prefix', $prefixes);
 
 		$q = $query->execute();
-		while ($row = db_fetch_assoc($q)) {
+		while ($row = $q->fetch_assoc()) {
 			$modules[] = $row['directory_prefix'];
 		}
 		return $modules;
@@ -4951,7 +4953,7 @@ class ExternalModules
 		", [$pid]);
 
 		$richTextSettingsByPrefix = [];
-		while($row = db_fetch_assoc($result)){
+		while($row = $result->fetch_assoc()){
 			$prefix = self::getPrefixForID($row['external_module_id']);
 			$key = $row['key'];
 
@@ -4985,7 +4987,7 @@ class ExternalModules
 			from redcap_external_module_settings where `key` = ? and project_id = ?
 		", [ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST, $pid]);
 		
-		while($row = db_fetch_assoc($results)){
+		while($row = $results->fetch_assoc()){
 			$prefix = ExternalModules::getPrefixForID($row['external_module_id']);
 			$files = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::RICH_TEXT_UPLOADED_FILE_LIST);
 			$settings = &$richTextSettingsByPrefix[$prefix];
@@ -5042,7 +5044,7 @@ class ExternalModules
 
 		$sql = "select * from redcap_edocs_metadata where doc_id = ? and date_deleted_server is null";
 		$result = self::query($sql, [$edocId]);
-		$row = db_fetch_assoc($result);
+		$row = $result->fetch_assoc();
 		if(!$row){
 			return '';
 		}
@@ -5208,7 +5210,7 @@ class ExternalModules
 		}
 
 		$result = $query->execute();
-		while($row = db_fetch_assoc($result)){
+		while($row = $result->fetch_assoc()){
 			foreach(['external_module_id', 'project_id'] as $fieldName){
 				$row[$fieldName] = (string) $row[$fieldName];
 			}
@@ -5231,7 +5233,7 @@ class ExternalModules
 		$query->addInClause('doc_id', array_keys($edocs));
 		$result = $query->execute();
 		$sourceProjectsByEdocId = [];
-		while($row = db_fetch_assoc($result)){
+		while($row = $result->fetch_assoc()){
 			foreach(['doc_id', 'doc_size', 'gzipped', 'project_id'] as $fieldName){
 				$row[$fieldName] = (string) $row[$fieldName];
 			}

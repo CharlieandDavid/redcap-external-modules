@@ -347,12 +347,12 @@ class AbstractExternalModule
 
 			$q = self::query($sql, [$surveyId, $recordId, $eventId]);
 			$rows = [];
-			while($row = db_fetch_assoc($q)) {
+			while($row = $q->fetch_assoc()) {
 				$rows[] = $row;
 			}
 
 			## If more than one exists, delete any that are responses to public survey links
-			if(db_num_rows($q) > 1) {
+			if($q->num_rows > 1) {
 				foreach($rows as $thisRow) {
 					if($thisRow["participant_email"] == "NULL" && $thisRow["response_id"] != "") {
 						self::query("DELETE FROM redcap_surveys_response
@@ -424,7 +424,7 @@ class AbstractExternalModule
 						WHERE p.hash = ?";
 
 			$result = self::query($sql, $hash);
-			$hashExists = (db_num_rows($result) > 0);
+			$hashExists = ($result->num_rows > 0);
 		} while($hashExists);
 
 		return $hash;
@@ -444,7 +444,7 @@ class AbstractExternalModule
 
 		$q = self::query($sql, [$surveyHash, $returnCode]);
 
-		$row = db_fetch_assoc($q);
+		$row = $q->fetch_assoc();
 
 		if($row) {
 			return $row;
@@ -490,7 +490,7 @@ class AbstractExternalModule
 
 			$q = ExternalModules::query($sql, [$projectId]);
 
-			if($row = db_fetch_assoc($q)) {
+			if($row = $q->fetch_assoc()) {
 				return $row['event_id'];
 			}
 		}
@@ -506,7 +506,7 @@ class AbstractExternalModule
 
 			$q = ExternalModules::query($sql, [$projectId, $formName]);
 
-			if($row = db_fetch_assoc($q)) {
+			if($row = $q->fetch_assoc()) {
 				return $row['event_id'];
 			}
 		}
@@ -540,10 +540,11 @@ class AbstractExternalModule
 			LIMIT 1
 		");
 
-		$q = $query->execute();
+		$r = $query->execute();
+		$row = $r->fetch_assoc();
 
-		$surveyId = db_result($q, 0, 'survey_id');
-		$surveyFormName = db_result($q, 0, 'form_name');
+		$surveyId = $row['survey_id'];
+		$surveyFormName = $row['form_name'];
 
 		return [$surveyId,$surveyFormName];
 	}
@@ -564,10 +565,11 @@ class AbstractExternalModule
 			$query->add(" AND p.event_id = ?", $eventId);
 		}
 
-		$q = $query->execute();
+		$result = $query->execute();
+		$row = $result->fetch_assoc();
 
-		$participantId = db_result($q, 0, 'participant_id');
-		$responseId = db_result($q, 0, 'response_id');
+		$participantId = $row['participant_id'];
+		$responseId = $row['response_id'];
 
 		return [$participantId,$responseId];
 	}
@@ -579,7 +581,7 @@ class AbstractExternalModule
 
 		$q = ExternalModules::query($sql, $projectId);
 
-		$row = ExternalModules::convertIntsToStrings(db_fetch_assoc($q));
+		$row = ExternalModules::convertIntsToStrings($q->fetch_assoc());
 		
 		return $row;
 	}
@@ -811,7 +813,7 @@ class AbstractExternalModule
                     die($metadata[$fieldName]['select_choices_or_calculations'] . ': ' . $error);
                 }
 
-                while ($row = db_fetch_assoc($q)) {
+                while ($row = $q->fetch_assoc()) {
                     if ($row['record'] == $params['value']) {
                         $label = $row['value'];
                         break;
@@ -878,7 +880,7 @@ class AbstractExternalModule
 			[$pid, $dagId]
 		);
 
-        while ($row = db_fetch_assoc($records)){
+        while ($row = $records->fetch_assoc()){
             $record = $row['record'];
             $this->query("DELETE FROM redcap_data where project_id = ? and record = ?", [$pid, $record]);
 		}
@@ -989,7 +991,7 @@ class AbstractExternalModule
 		
 		// Add record to the record list cache table
 		if (method_exists('Records', 'addRecordToRecordListCache')) {
-			$arm = db_result($this->query("select CAST(arm_num as CHAR) as arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = ?", [$eventId]), 0);
+			$arm = $this->query("select CAST(arm_num as CHAR) as arm_num from redcap_events_arms a, redcap_events_metadata e where a.arm_id = e.arm_id and e.event_id = ?", [$eventId])->fetch_row()[0];
 			\Records::addRecordToRecordListCache($pid, $recordId, $arm);
 		}
 
@@ -1033,7 +1035,7 @@ class AbstractExternalModule
 			order by event_id
 		", [$pid]);
 
-		$row = db_fetch_assoc($results);
+		$row = $results->fetch_assoc();
 		return $row['event_id'];
 	}
 
@@ -1122,7 +1124,7 @@ class AbstractExternalModule
 		";
 		
         $result = $this->query($sql, [$this->getProjectId(), $formName]);
-        $row = db_fetch_assoc($result);
+        $row = $result->fetch_assoc();
         $hash = @$row['hash'];
 
         return APP_PATH_SURVEY_FULL . "?s=$hash";
@@ -1507,7 +1509,7 @@ class AbstractExternalModule
 			$responseId = \decryptResponseHash($responseHash, $participant_id);
 
 			$result = $this->query("select record from redcap_surveys_response where response_id = ?", [$responseId]);
-			$row = db_fetch_assoc($result);
+			$row = $result->fetch_assoc();
 			$recordId = $row['record'];
 		}
 
