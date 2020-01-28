@@ -1722,4 +1722,59 @@ class AbstractExternalModule
 		self::$RESERVED_LOG_PARAMETER_NAMES_FLIPPED = array_flip(self::$RESERVED_LOG_PARAMETER_NAMES);
 		self::$LOG_PARAMETERS_ON_MAIN_TABLE = array_flip(array_merge(self::$RESERVED_LOG_PARAMETER_NAMES, self::$OVERRIDABLE_LOG_PARAMETERS_ON_MAIN_TABLE));
 	}
+
+    public function createProject($title, $purpose, $project_note){
+        $userInfo = \User::getUserInfo(USERID);
+        if (!$userInfo['allow_create_db']) exit("ERROR: You do not have Create Project privileges!");
+
+        if ($title == "" || $title == null) exit("ERROR: Titlte can't be null or blank!");
+        $title = \Project::cleanTitle($title);
+        $new_app_name = \Project::getValidProjectName($title);
+
+        $userid = USERID;
+
+        if ($purpose == "" || $purpose == null) $purpose = 0;
+        $auto_inc_set = 1;
+
+        $GLOBALS['__SALT__'] = substr(sha1(rand()), 0, 10);
+
+        $sql = "insert into redcap_projects (project_name, purpose, app_title, creation_time, created_by, auto_inc_set, project_note,auth_meth,__SALT__) values
+                ('$new_app_name', '$purpose','".db_escape($title)."', '".NOW."', (select ui_id from redcap_user_information where username = '$userid' limit 1),
+                 $auto_inc_set,".checkNull(trim($project_note)).",'none','".$GLOBALS['__SALT__']."')";
+        $q = db_query($sql);
+        if (!$q || db_affected_rows() != 1) {
+            print db_error();
+            queryFail($sql);
+        }
+        // Get this new project's project_id
+        $pid = db_insert_id();
+
+        define("PROJECT_ID", $pid);
+        \ProjectFolders::addNewProjectFolders(\User::getUserInfo($userid), $pid, $_POST);
+
+        // Get default values for redcap_projects table columns
+        $redcap_projects_defaults = getTableColumns('redcap_projects');
+
+        // Insert project defaults into redcap_projects
+        \Project::setDefaults($pid);
+
+        $logDescrip = "Create project";
+        \Logging::logEvent("","redcap_projects","MANAGE",$pid,"project_id = $pid",$logDescrip);
+
+        // Give this new project an arm and an event (default)
+        \Project::insertDefaultArmAndEvent($pid);
+        // Now add the new project's metadata
+        $form_names = createMetadata($pid, 0);
+        ## USER RIGHTS
+        if (isset($userid))
+        {
+            // Insert user rights for this new project for user REQUESTING the project
+            \Project::insertUserRightsProjectCreator($pid, $userid, 0, 0, $form_names);
+
+            // Commit to db
+            db_query("COMMIT");db_query("SET AUTOCOMMIT=1");
+        }
+
+        return $pid;
+    }
 }
