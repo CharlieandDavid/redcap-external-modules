@@ -27,9 +27,11 @@ class StatementResult // extends \mysqli_result
         }
 
         $this->row = [];
+        $refs = [];
         for($i=0; $i<count($fields); $i++){
             // Set up the array of references required for bind_result().
-            $this->row[$i] = &$this->row[$i];
+            $refs[$i] = null;
+            $this->row[$i] = &$refs[$i];
         }
         
         if(!call_user_func_array([$s, 'bind_result'], $this->row)){
