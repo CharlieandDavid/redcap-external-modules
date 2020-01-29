@@ -77,4 +77,45 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
         return strpos($_SERVER['REQUEST_URI'], $path) === 0;
     }
 
+    function createProject($title, $purpose, $project_note=null){
+        $userInfo = \User::getUserInfo(USERID);
+        if (!$userInfo['allow_create_db']) throw new Exception("ERROR: You do not have Create Project privileges!");
+
+        if ($title == "" || $title == null) throw new Exception("ERROR: Title can't be null or blank!");
+        $title = \Project::cleanTitle($title);
+        $new_app_name = \Project::getValidProjectName($title);
+
+        $userid = USERID;
+
+        if(!is_numeric($purpose) || $purpose < 0 || $purpose > 4) throw new Exception("ERROR: The purpose has to be numeric and it's value between 0 and 4.");
+
+        $auto_inc_set = 1;
+
+        $GLOBALS['__SALT__'] = substr(sha1(rand()), 0, 10);
+
+        $user_id_result = ExternalModules::query("select ui_id from redcap_user_information where username = ? limit 1",[$userid]);
+        $ui_id = db_fetch_assoc($user_id_result)['ui_id'];
+
+        ExternalModules::query("insert into redcap_projects (project_name, purpose, app_title, creation_time, created_by, auto_inc_set, project_note,auth_meth,__SALT__) values(?,?,?,?,?,?,?,?,?)",
+            [$new_app_name,$purpose,db_escape($title),NOW,$ui_id,$auto_inc_set,trim($project_note),'none',$GLOBALS['__SALT__']]);
+
+        // Get this new project's project_id
+        $pid = db_insert_id();
+
+        // Insert project defaults into redcap_projects
+        \Project::setDefaults($pid);
+
+        $logDescrip = "Create project";
+        \Logging::logEvent("","redcap_projects","MANAGE",$pid,"project_id = $pid",$logDescrip);
+
+        // Give this new project an arm and an event (default)
+        \Project::insertDefaultArmAndEvent($pid);
+        // Now add the new project's metadata
+        $form_names = createMetadata($pid, 0);
+        ## USER RIGHTS
+        // Insert user rights for this new project for user REQUESTING the project
+        \Project::insertUserRightsProjectCreator($pid, $userid, 0, 0, $form_names);
+
+        return $pid;
+    }
 }
