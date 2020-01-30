@@ -120,12 +120,12 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
     }
 
     function importDataDictionary($project_id,$path){
-        $dictionary_array = $this->excel_to_array($this->module->getModulePath().$path);
+        $dictionary_array = $this->excelToArray($this->module->getModulePath().$path);
 
         //Return warnings and errors from file (and fix any correctable errors)
         list ($errors_array, $warnings_array, $dictionary_array) = \MetaData::error_checking($dictionary_array);
         // Save data dictionary in metadata table
-        $sql_errors = $this->save_metadata($dictionary_array,$project_id);
+        $sql_errors = $this->saveMetadata($dictionary_array,$project_id);
 
         // Display any failed queries to Super Users, but only give minimal info of error to regular users
         if (count($sql_errors) > 0) {
@@ -133,7 +133,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
         }
     }
 
-    function excel_to_array($excelfilepath)
+    function excelToArray($excelfilepath)
     {
 
         // Set up array to switch out Excel column letters
@@ -235,7 +235,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
     }
 
     // Save metadata when in DD array format
-    function save_metadata($dictionary_array, $project_id, $appendFields=false, $preventLogging=false)
+    function saveMetadata($dictionary_array, $project_id, $appendFields=false, $preventLogging=false)
     {
         $status = 0;
         $Proj = new \Project($project_id);
