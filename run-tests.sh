@@ -3,7 +3,7 @@
 set -e
 
 if hash composer 2>/dev/null; then
-    composer install
+    composer install -q
 fi
 
 echo Running tests...
