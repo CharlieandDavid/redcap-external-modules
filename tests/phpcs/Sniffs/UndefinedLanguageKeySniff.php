@@ -4,7 +4,7 @@ use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 use ExternalModules\ExternalModules;
 
-final class FindTTUsageSniff implements Sniff
+final class UndefinedLanguageKeySniff implements Sniff
 {
     private $languageKeyCount = 0;
 
