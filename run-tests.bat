@@ -1,5 +1,1 @@
-@echo Running tests...
-vendor/bin/phpunit.bat
-
-@echo Ensuring PHP version compatibility...
-vendor/bin/phpcs.bat -p --runtime-set testVersion 5.5- --standard=vendor/phpcompatibility/php-compatibility/PHPCompatibility --extensions=php --ignore=/vendor .
+@echo On Windows, please run tests from cygwin or Windows Subsystem for Linux.  They're not all compatible with the windows command prompt.

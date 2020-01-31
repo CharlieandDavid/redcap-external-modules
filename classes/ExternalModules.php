@@ -2985,7 +2985,10 @@ class ExternalModules
 
 	static function isTesting()
 	{
-		return PHP_SAPI == 'cli' && strpos($_SERVER['argv'][0], 'phpunit') !== FALSE;
+		$parts = explode('/', $_SERVER['argv'][0]);
+		$command = end($parts);
+		
+		return PHP_SAPI == 'cli' && in_array($command, ['phpunit', 'phpcs']);
 	}
 
 	# calling this method stores a local cache of all relevant data from the database
