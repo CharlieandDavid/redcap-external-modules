@@ -76,4 +76,17 @@ class FrameworkV3Test extends FrameworkBaseTest
         $assert(['1', 'b', null], [1, 'b', null]);
         $assert(['a' => '1', 'b'=>'b', 'c' => null], ['a' => 1, 'b'=>'b', 'c' => null]);
     }
+
+    function testIsPage(){
+        $originalRequestURI = $_SERVER['REQUEST_URI'];
+        
+        $path = 'foo/goo.php';
+
+        $this->assertFalse($this->isPage($path));
+        
+        $_SERVER['REQUEST_URI'] = APP_PATH_WEBROOT . $path;
+        $this->assertTrue($this->isPage($path));
+
+        $_SERVER['REQUEST_URI'] = $originalRequestURI;
+    }
 }

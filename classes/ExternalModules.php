@@ -21,6 +21,13 @@ if(!defined('APP_PATH_WEBROOT')){
 	require_once __DIR__ . '/../redcap_connect.php';
 }
 
+ExternalModules::limitDirectFileAccess();
+
+if(ExternalModules::isTesting()){
+	ExternalModules::enableErrors();
+	require_once __DIR__ . '/../tests/ModuleBaseTest.php';
+}
+
 if (class_exists('ExternalModules\ExternalModules')) {
 	return;
 }
@@ -70,6 +77,11 @@ class ExternalModules
 	 */
 	const CONFIG_TRANSLATABLE_PREFIX = "tt_";
 
+	/**
+	 * List of valid characters for a language key.
+	 */
+	const LANGUAGE_ALLOWED_KEY_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
+
 	//endregion
 
 	const KEY_RESERVED_IS_CRON_RUNNING = 'reserved-is-cron-running';
@@ -89,9 +101,6 @@ class ExternalModules
 	const SETTING_SIZE_LIMIT = 16777215;
 
 	const EXTERNAL_MODULES_TEMPORARY_RECORD_ID = 'external-modules-temporary-record-id';
-
-	// The minimum required PHP version for External Modules to run
-	const MIN_PHP_VERSION = '5.4.0';
 
 	// Copy WordPress's time convenience constants
 	const MINUTE_IN_SECONDS = 60;
@@ -358,6 +367,12 @@ class ExternalModules
 		return array_keys($modules);
 	}
 
+	function enableErrors(){
+		ini_set('display_errors', 1);
+		ini_set('display_startup_errors', 1);
+		error_reporting(E_ALL);
+	}
+
 	# initializes the External Module apparatus
 	static function initialize()
 	{
@@ -375,10 +390,8 @@ class ExternalModules
 		}
 
 		if(self::isLocalhost()){
-			// Assume this is a developer's machine and enable errors.
-			ini_set('display_errors', 1);
-			ini_set('display_startup_errors', 1);
-			error_reporting(E_ALL);
+			// Assume this is a developer's machine
+			self::enableErrors();
 		}
 		
 		// Get module directories
@@ -628,56 +641,90 @@ class ExternalModules
 						if (typeof string !== 'string' || string.length == 0) {
 							return string
 						}
-						// Regular expression to find places where replacements need to be done.
-						// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
-						// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
-						// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
+						// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}), 
+						// which is ignored however. Hints must not contain any curly braces.
+						// To not replace a placeholder, the first curly can be escaped with a %-sign like so: '%{1}' (this will leave '{1}' in the text).
+						// To include '%' as a literal before a curly opening brace, a double-% ('%%') must be used, i.e. '%%{0}' with value x this will result in '%x'.
 						// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-						try{
-							var regex = new RegExp('(?<all>((?<escape>\\\\*){|{)(?<index>[\\d_A-Za-z]+)(:(?<hint>.*))?})', 'gm')
-						}
-						catch(error){
-							console.error("Parameters in translated strings will NOT be interpolated due to limited regex support in your browser described by the following error:")
-							console.error(error)
-							return string
-						}
-
-						var m
-						var result = ''
-						var prevEnd = 0
-						while ((m = regex.exec(string)) !== null) {
-							// This is necessary to avoid infinite loops with zero-width matches.
-							if (m.index === regex.lastIndex) {
-								regex.lastIndex++
-							}
-							var start = m.index
-							var all = m['groups']['all']
-							var len = all.length
-							var key = m['groups']['index']
-							// Add text between previous end and the match and reset end.
-							result += string.substr(prevEnd, start - prevEnd)
-							prevEnd = start + len
-							// Escaped?
-							var nSlashes = m['groups']['escape'].length
-							if (nSlashes % 2 == 0) {
-								// Even number means they escaped themselves, so we add half of them and replace.
-								result += '\\'.repeat(nSlashes / 2)
-								if (typeof values[key] !== 'undefined') {
-									result += values[key]
+						// First, parse the string.
+						var allowed = '<?=self::LANGUAGE_ALLOWED_KEY_CHARS?>'
+						var matches = []
+						var mode = 'scan'
+						var escapes = 0
+						var start = 0
+						var key = ''
+						var hint = ''
+						for (var i = 0; i < string.length; i++) {
+							var c = string[i]
+							if (mode == 'scan' && c == '{') {
+								start = i
+								key = ''
+								hint = ''
+								if (escapes % 2 == 0) {
+									mode = 'key'
 								}
 								else {
-									// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
-									result += all.substr(all.indexOf('{'))
+									mode = 'store'
 								}
 							}
-							else {
-								// Uneven number - means to not replace.
-								result += '\\'.repeat((nSlashes - 1) / 2)
-								result += all.substr(all.indexOf('{'))
+							if (mode == 'scan' && c == '%') {
+								escapes++
+							}
+							else if (mode == 'scan') {
+								escapes = 0
+							}
+							if (mode == 'hint') {
+								if (c == '}') {
+									mode = 'store'
+								}
+								else {
+									hint += c
+								}
+							}
+							if (mode == 'key') {
+								if (allowed.includes(c)) {
+									key += c
+								}
+								else if (c == ':') {
+									mode = 'hint'
+								}
+								else if (c == '}') {
+									mode = 'store'
+								}
+							}
+							if (mode == 'store') {
+								var match = {
+									key: key,
+									hint: hint,
+									escapes: escapes,
+									start: start,
+									end: i
+								}
+								matches.push(match)
+								key = ''
+								hint = ''
+								escapes = 0
+								mode = 'scan'
 							}
 						}
-						// Add rest of original string.
-						result += String.prototype.substr.call(string, prevEnd)
+						// Then, build the result.
+						var result = ''
+						if (matches.length == 0) {
+							result = string
+						} else {
+							prevEnd = 0
+							for (var i = 0; i < matches.length; i++) {
+								var match = matches[i]
+								var len = match.start - prevEnd - (match.escapes > 0 ? Math.max(1, match.escapes - 1) : 0)
+								result += string.substr(prevEnd, len)
+								prevEnd = match.end 
+								if (match.key != '' && typeof values[match.key] !== 'undefined') {
+									result += values[match.key]
+									prevEnd++
+								}
+							}
+							result += string.substr(prevEnd)
+						}
 						return result
 					}
 				}
@@ -1048,52 +1095,92 @@ class ExternalModules
 	 */
 	public static function interpolateLanguageString($string, $values) {
 
-		// Do we need to do interpolation?
-		if (count($values)) {
-			// Regular expression to find places where replacements need to be done.
-			// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}) which is ignored however.
-			// To not replace a placeholder, the first curly can be escaped with a backslash like so: '\{1}' (this will leave '{1}' in the text).
-			// When the an even number of backslashes is before the curly, e.g. '\\{0}' with value x this will result in '\x'.
-			// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
-			$re = '/(?\'all\'((?\'escape\'\\\\*){|{)(?\'index\'[\d_A-Za-z]+)(:(?\'hint\'.*))?})/mU';
-			preg_match_all($re, $string, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE, 0);
-			// Build resulting string.
-			$prevEnd = 0;
-			if (count($matches)) {
-				$result = "";
-				foreach ($matches as $match) {
-					$start = $match["all"][1];
-					$all = $match["all"][0];
-					$len = strlen($all);
-					$key = $match["index"][0];
-					// Add text between previous end and the match and reset end.
-					$result .= substr($string, $prevEnd, $start - $prevEnd);
-					$prevEnd = $start + $len;
-					// Escaped?
-					$nSlashes = strlen($match["escape"][0]);
-					if ($nSlashes % 2 == 0) {
-						// Even number means they escaped themselves, so we add half of them and replace.
-						$result .= str_repeat("\\", $nSlashes / 2);
-						if (array_key_exists($key, $values)) {
-							$result .= $values[$key];
-						}
-						else {
-							// When the key doesn't exist, just leave it unchanged (but remove the backslashes).
-							$result .= ltrim($all, "\\");
-						}
-					}
-					else {
-						// Uneven number - means to not replace.
-						$result .= str_repeat("\\", ($nSlashes - 1) / 2);
-						$result .= ltrim($all, "\\");
-					}
+		if (count($values) == 0) return $string;
+
+		// Placeholers are in curly braces, e.g. {0}. Optionally, a type hint can be present after a colon (e.g. {0:Date}), 
+		// which is ignored however. Hints must not contain any curly braces.
+		// To not replace a placeholder, the first curly can be escaped with a %-sign like so: '%{1}' (this will leave '{1}' in the text).
+		// To include '%' as a literal before a curly opening brace, a double-% ('%%') must be used, i.e. '%%{0}' with value x this will result in '%x'.
+		// Placeholder names can be strings (a-Z0-9_), too (need associative array then). 
+		// First, parse the string.
+		$matches = array();
+		$mode = "scan";
+		$escapes = 0;
+		$start = 0;
+		$key = "";
+		$hint = "";
+		for ($i = 0; $i < strlen($string); $i++) {
+			$c = $string[$i];
+			if ($mode == "scan" && $c == "{") {
+				$start = $i;
+				$key = "";
+				$hint = "";
+				if ($escapes % 2 == 0) {
+					$mode = "key";
 				}
-				// Add rest of original.
-				$result .= substr($string, $prevEnd);
-				$string = $result;
+				else {
+					$mode = "store";
+				}
+			}
+			if ($mode == "scan" && $c == "%") {
+				$escapes++;
+			}
+			else if ($mode == "scan") {
+				$escapes = 0;
+			}
+			if ($mode == "hint") {
+				if ($c == "}") {
+					$mode = "store";
+				}
+				else {
+					$hint .= $c;
+				}
+			}
+			if ($mode == "key") {
+				if (strpos(self::LANGUAGE_ALLOWED_KEY_CHARS, $c)) {
+					$key .= $c;
+				}
+				else if ($c == ":") {
+					$mode = "hint";
+				}
+				else if ($c == "}") {
+					$mode = "store";
+				}
+			}
+			if ($mode == "store") {
+				$match = array(
+					"key" => $key,
+					"hint" => $hint,
+					"escapes" => $escapes,
+					"start" => $start,
+					"end" => $i
+				);
+				$matches[] = $match;
+				$key = "";
+				$hint = "";
+				$escapes = 0;
+				$mode = "scan";
 			}
 		}
-		return $string;
+		// Then, build the result.
+		$result = "";
+		if (count($matches) == 0) {
+			$result = $string;
+		} else {
+			$prevEnd = 0;
+			for ($i = 0; $i < count($matches); $i++) {
+				$match = $matches[$i];
+				$len = $match["start"] - $prevEnd - ($match["escapes"] > 0 ? max(1, $match["escapes"] - 1) : 0);
+				$result .= substr($string, $prevEnd, $len);
+				$prevEnd = $match["end"];
+				if ($match["key"] != "" && array_key_exists($match["key"], $values)) {
+					$result .= $values[$match["key"]];
+					$prevEnd++;
+				}
+			}
+			$result .= substr($string, $prevEnd);
+		}
+		return $result;
 	}
 
 	/**
@@ -2185,6 +2272,12 @@ class ExternalModules
 				$result = db_query($sql);
 			}
 			else{
+				// The queryWithParameters() method does not currently implement duplicate query killing like db_query() does.
+				// In tests on Vanderbilt's production servers in late 2019, the query killing feature in db_query() only ever
+				// actually took effect for modules a handful of times a week, so this should not lead to significant issues.
+				// We may be able to implement query killing for prepared statements in the future, but it would have to work a little
+				// differently since the prepared SQL (with question marks) does not match the SQL with parameters inserted 
+				// that is returned by SHOW FULL PROCESSLIST.
 				$result = self::queryWithParameters($query);
 			}
 		
@@ -2483,7 +2576,7 @@ class ExternalModules
 		return $pid;
 	}
 
-	# calls a hooke via startHook
+	# calls a hook via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
 		if (isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')) {
@@ -2517,7 +2610,7 @@ class ExternalModules
 	
 			$name = str_replace('redcap_', '', $name);
 	
-			$templatePath = APP_PATH_EXTMOD . "manager/templates/hooks/$name.php";
+			$templatePath = self::getSafePath("$name.php", APP_PATH_EXTMOD . "manager/templates/hooks/");
 			if(file_exists($templatePath)){
 				self::safeRequire($templatePath, $arguments);
 			}
@@ -2743,7 +2836,7 @@ class ExternalModules
 
 			$classNameWithNamespace = "\\$namespace\\$className";
 
-			$classFilePath = "$modulePath/$className.php";
+			$classFilePath = self::getSafePath("$className.php", $modulePath);
 
 			if(!file_exists($classFilePath)){
 				//= Could not find the module class file '{0}' for the module with prefix '{1}'.
@@ -2890,7 +2983,7 @@ class ExternalModules
 		return false;
 	}
 
-	private static function isTesting()
+	static function isTesting()
 	{
 		return PHP_SAPI == 'cli' && strpos($_SERVER['argv'][0], 'phpunit') !== FALSE;
 	}
@@ -3338,8 +3431,6 @@ class ExternalModules
 			}
 		}
 		else if($configRow['type'] == 'project-id') {
-			$escaped_pid = strtolower($pid);
-
 			// We only show projects to which the current user has design rights 
 			// since modules could make all kinds of changes to projects.
 			$sql ="SELECT CAST(p.project_id as char) as project_id, p.app_title
@@ -3565,20 +3656,56 @@ class ExternalModules
 		return null;
 	}
 
+	static function getUserRights($project_ids = null, $username = null){
+		if($project_ids === null){
+			$project_ids = self::requireProjectId();
+		}
+
+		if(!is_array($project_ids)){
+			$project_ids = [$project_ids];
+		}
+
+		if($username === null){
+			$username = USERID;
+		}
+
+		$rightsByPid = [];
+		foreach($project_ids as $project_id){
+			$rights = \UserRights::getPrivileges($project_id, $username);
+			$rightsByPid[$project_id] = $rights[$project_id][$username];
+		}
+
+		if(count($project_ids) === 1){
+			return $rightsByPid[$project_ids[0]];
+		}
+		else{
+			return $rightsByPid;
+		}
+	}
+
 	# returns boolean if design rights are given by REDCap for current user
-	static function hasDesignRights()
+	static function hasDesignRights($pid = null)
 	{
 		if(SUPER_USER){
 			return true;
 		}
 
-		if(!isset($_GET['pid'])){
-			// REDCap::getUserRights() will crash if no pid is set, so just return false.
-			return false;
+		if($pid === null){
+			$pid = @$_GET['pid'];
+			if($pid === null){
+				return false;
+			}
 		}
 
-		$rights = \REDCap::getUserRights();
-		return $rights[USERID]['design'] == 1;
+		$rights = self::getUserRights($pid);
+		return $rights['design'] == 1;
+	}
+
+	static function requireDesignRights($pid = null){
+		if(!self::hasDesignRights($pid)){
+			// TODO - tt
+			throw new Exception("You must have design rights in order to perform this action!");
+		}
 	}
 
 	# returns boolean if current user explicitly has project-level user rights to configure a module 
@@ -3808,7 +3935,7 @@ class ExternalModules
 			}
 			else{
 				// The last download process likely failed.  Removed the folder and try again.
-				self::rrmdir($tempDir);
+				self::removeModuleDirectory($tempDir);
 			}
 		}
 
@@ -3893,7 +4020,7 @@ class ExternalModules
 			"</div></div>";
 		}
 		finally{
-			self::rrmdir($tempDir);
+			self::removeModuleDirectory($tempDir);
 		}
 	}
 
@@ -3922,7 +4049,7 @@ class ExternalModules
 		   return "1";
 		}
 		// Delete the directory
-		self::rrmdir($moduleFolderDir);
+		self::removeModuleDirectory($moduleFolderDir);
 		// Return error if not deleted
 		if (file_exists($moduleFolderDir) && is_dir($moduleFolderDir)) {
 		   return "0";
@@ -3989,6 +4116,12 @@ class ExternalModules
 		$sql = "select cast(module_id as char) as module_id from redcap_external_modules_downloads where module_name = ?";
 		$q = self::query($sql, [$moduleFolderName]);
 		return ($q->num_rows > 0 ? $q->fetch_row()[0] : false);
+	}
+	
+	private static function removeModuleDirectory($path){
+		$modulesDir = dirname(APP_PATH_DOCROOT).DS.'modules'.DS;
+		$path = self::getSafePath($path, $modulesDir);
+		self::rrmdir($path);
 	}
 	
 	# general method to delete a directory by first deleting all files inside it
@@ -4680,12 +4813,16 @@ class ExternalModules
 		if ($modulePrefix) {
 			$moduleId = self::getIdForPrefix($modulePrefix);
 			if ($moduleId != null) {
-				$sql = "DELETE FROM redcap_external_module_settings WHERE external_module_id = '$moduleId' AND `key` = '".ExternalModules::KEY_RESERVED_IS_CRON_RUNNING."'";
-				$result = self::query($sql, []);
-				return $result;
+				$sql = "DELETE FROM redcap_external_module_settings WHERE external_module_id = ? AND `key` = ?";
+				
+				$query = self::createQuery();
+				$query->add($sql, [$moduleId, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING]);
+				$query->execute();
+
+				return $query->getStatement()->affected_rows;
 			} else {
 				// "Could not find module ID for prefix '{0}'!"
-				throw new \Exception(self::tt("em_errors_118", $moduleDirectoryPrefix));
+				throw new \Exception(self::tt("em_errors_118", $modulePrefix));
 			}
 		} else {
 			throw new \Exception(self::tt("em_errors_119"));
@@ -4914,9 +5051,13 @@ class ExternalModules
 	// It is public because it is used by Carl's settings import/export module.
 	static function recreateAllEDocs($pid)
 	{
+		$pid = self::requireInteger($pid);
+
 		// Temporarily override the pid so that hasProjectSettingSavePermission() works properly.
 		$originalPid = $_GET['pid'];
 		$_GET['pid'] = $pid;
+
+		ExternalModules::requireDesignRights();
 
 		$richTextSettingsByPrefix = self::recreateEDocSettings($pid);
 		self::recreateRichTextEDocs($pid, $richTextSettingsByPrefix);
@@ -5342,7 +5483,13 @@ class ExternalModules
 
 		$root = realpath($root);
 
-		$fullPath = "$root/$path";
+		if(strpos($path, $root) === 0){
+			// The root is already included inthe path.
+			$fullPath = $path;
+		}
+		else{
+			$fullPath = "$root/$path";
+		}
 
 		if(file_exists($fullPath)){
 			$fullPath = realpath($fullPath);
@@ -5474,5 +5621,17 @@ class ExternalModules
 		}
 
 		return $row['event_id'];
-    }
+	}
+	
+	public static function limitDirectFileAccess(){
+		$parts = explode('://', APP_URL_EXTMOD);
+		$templatesUrl = $parts[1] . 'manager/templates/';
+		$requestUrl = $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
+
+		if(strpos($requestUrl, $templatesUrl) === 0){
+			// As a security precaution, prevent direct access to any templates that attempt to load this file.
+			// We don't care so much about the templates that don't attempt to load this file, since they likely can't do anything significant on their own.
+			throw new Exception(self::tt('em_errors_121'));
+		}
+	}
 }

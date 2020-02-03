@@ -5,10 +5,8 @@ require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php
 require_once APP_PATH_DOCROOT.'Classes/Files.php';
 
 $pid = @$_GET['pid'];
-$moduleDirectoryPrefix = $_GET['moduleDirectoryPrefix'];
-$version = $_GET['moduleDirectoryVersion'];
 
-if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirectoryPrefix)){
+if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission()){
 	header('Content-type: application/json');
 	echo json_encode(array(
 		//= You do not have permission to save system settings!
@@ -16,7 +14,8 @@ if(empty($pid) && !ExternalModules::hasSystemSettingsSavePermission($moduleDirec
 	));
 }
 
-$pid = @$_GET['pid'];
+ExternalModules::requireDesignRights();
+
 $edoc = $_POST['edoc'];
 $key = $_POST['key'];
 $prefix = $_POST['moduleDirectoryPrefix'];

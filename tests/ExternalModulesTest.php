@@ -359,20 +359,18 @@ class ExternalModulesTest extends BaseTest
 
 	function testResetCron() {
 		// initial: no long-running rows deleted
-		$result1 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 0);
+		$affectedRows1 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows1, 0);
 
 		// long-running tripped; one long-running row deleted
 		self::callPrivateMethod('lockCron', TEST_MODULE_PREFIX, null, ['time' => $initialLockTime]);
-		$result2 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 1);
+		$affectedRows2 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows2, 1);
 
 		// afterwards; no long-running rows deleted
-		$result3 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
-		$this->assertSame(db_affected_rows(), 0);
+		$affectedRows3 = ExternalModules::resetCron(TEST_MODULE_PREFIX);
+		$this->assertSame($affectedRows3, 0);
 	}
-
-
 
 	function testAddReservedSettings()
 	{
@@ -1644,5 +1642,36 @@ class ExternalModulesTest extends BaseTest
 		$r = $this->query("select cast(module_id as char) as module_id, module_name from redcap_external_modules_downloads order by rand() limit ?", 1);
 		$row = $r->fetch_assoc();
 		$this->assertSame($row['module_id'], ExternalModules::getRepoModuleId($row['module_name']));
+	}
+	
+	function testLimitDirectFileAccess(){
+		$originalHost = $_SERVER['HTTP_HOST'];
+		$originalSelf = $_SERVER['PHP_SELF'];
+
+		$_SERVER['HTTP_HOST'] = parse_url(APP_URL_EXTMOD, PHP_URL_HOST);
+		$_SERVER['PHP_SELF'] = parse_url(APP_URL_EXTMOD, PHP_URL_PATH) . 'manager/templates/some-template.php';
+
+		$this->assertThrowsException(function(){
+			ExternalModules::limitDirectFileAccess();
+		}, self::tt('em_errors_121'));
+		
+		$_SERVER['PHP_SELF'] = $originalSelf;
+		$_SERVER['HTTP_HOST'] = $originalHost;
+
+		// This method should not throw an exception any more.
+		ExternalModules::limitDirectFileAccess();
+	}
+
+	function testRequireInteger(){
+		foreach([1, '1'] as $value){
+			$intValue = $this->requireInteger(1);
+			$this->assertEqual($value, $intValue);
+		}
+
+		foreach([1.1, '1.1'] as $value){
+			$this->assertThrowsException(function() use ($value){
+				$this->requireInteger($value);
+			}, self::tt("em_errors_60", $value));
+		}
 	}
 }

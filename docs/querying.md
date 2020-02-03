@@ -23,7 +23,7 @@ $result = $module->framework->query(
 ```
 In the uncommon case of queries that really should not have any parameters, an empty array must be specificed to show that the use of parameters was seriously considered:
 ```php
-$result = $module->query('select count(*) from redcap_user_information', []);
+$result = $module->framework->query('select count(*) from redcap_user_information', []);
 ```
 
 ### Query Objects
@@ -38,8 +38,8 @@ $query->add('
     project_id = ?
 ', $project_id);
 
-if(!empty($event_ids)){
-  $query->addInClause('event_id', $event_ids);
+if(is_array($event_ids)){
+  $query->add('and')->addInClause('event_id', $event_ids);
 }
 
 if($record_id && $instance){
@@ -63,7 +63,7 @@ Method | Description
 -- | --
 add($sql[, $parameters]) | Adds any SQL to the query with an optional array of parameters
 addInClause($column_name, $parameters) | Adds a SQL `IN` clause for the specified column and list of parameters.  An `OR IS NULL` clause is also added if any parameter in the list is `null`.  This is simply a convenience method to cover the most common use cases.  More complex `IN` clauses can still be built manually using `add()`.
-execute() | Executes and returns the query result for the SQL and parameters that have been added.
+execute() | Executes the SQL and parameters that have been added, and returns the standard [mysqli_result](https://www.php.net/manual/en/class.mysqli-result.php) object.
 getStatement() | Returns the statement object used to allow access to `affected_rows` and other advanced functionality.
 
 ### Differences With & Without Parameters

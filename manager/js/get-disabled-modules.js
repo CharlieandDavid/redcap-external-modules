@@ -75,7 +75,7 @@ $(function(){
 		var enableModule = function(){
 			var url = 'ajax/enable-module.php'
 			if (classArray.includes('module-request')) {
-				url = 'ajax/send-email.php';
+				url = 'ajax/send-enable-module-request.php';
 			}
 			if (pid) {
 				url += '?pid=' + pid

@@ -166,4 +166,17 @@ class FrameworkV2Test extends FrameworkBaseTest
 		$user = $this->getUser($username);
 		$this->assertTrue($user->isSuperUser());
 	}
+
+	function testUser_getRights(){
+		$result = ExternalModules::query('select * from redcap_user_rights order by rand() limit 1', []);
+		$row = $result->fetch_assoc();
+		$projectId = $row['project_id'];
+		$username = $row['username'];
+		$expectedRights = \UserRights::getPrivileges($projectId, $username)[$projectId][$username];
+
+		$user = $this->getUser($username);
+		$actualRights = $user->getRights($projectId, $username);
+
+		$this->assertSame($expectedRights, $actualRights);
+	}
 }

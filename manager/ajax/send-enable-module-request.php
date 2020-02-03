@@ -4,6 +4,8 @@ use Exception;
 
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
+// It's OK for any authenticated user to be able to reach this point and trigger this request.
+
 $return_data['message'] = "success";
 
 if (!isset($_POST) || empty($_POST) || empty($_POST['prefix']) || $_POST['prefix'] == "" || empty($_POST['version']) || $_POST['version'] == "" || !is_numeric($_GET['pid'])) {

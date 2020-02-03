@@ -2,13 +2,17 @@
 namespace ExternalModules;
 require_once dirname(dirname(dirname(__FILE__))) . '/classes/ExternalModules.php';
 
+$pid = @$_POST['pid'];
+
 header('Content-type: application/json');
-if (isset($_POST['pid']) && $_POST['pid']) {
+if (!empty($pid)) {
+	ExternalModules::requireDesignRights($pid);
+	
 	echo json_encode(array(
 		'status' => 'success',
-		'settings' => ExternalModules::getProjectSettingsAsArray($_POST['moduleDirectoryPrefix'], @$_POST['pid'], false)
+		'settings' => ExternalModules::getProjectSettingsAsArray($_POST['moduleDirectoryPrefix'], $pid, false)
 	));
-} else {
+} else if (ExternalModules::isSuperUser()){
 	echo json_encode(array(
 		'status' => 'success',
 		'settings' => ExternalModules::getSystemSettingsAsArray($_POST['moduleDirectoryPrefix'])
