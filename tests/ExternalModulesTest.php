@@ -1041,7 +1041,7 @@ class ExternalModulesTest extends BaseTest
 			limit ?
 		", [TEST_SETTING_PID, TEST_SETTING_PID_2, $minEdocs]);
 
-		while($row = db_fetch_assoc($result)){
+		while($row = $result->fetch_assoc()){
 			// We must cast to a string because there is an issue on js handling side for file fields stored as integers.
 			$edocIds[] = (string)$row['doc_id'];
 			$edocFilenames[] = $row['stored_name'];
@@ -1133,13 +1133,13 @@ class ExternalModulesTest extends BaseTest
 
 	private function getEdocPath($edocId)
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId]));
+		$row = ExternalModules::query("select * from redcap_edocs_metadata where doc_id = ?", [$edocId])->fetch_assoc();
 		return EDOC_PATH . $row['stored_name'];
 	}
 
 	function testRecreateAllEDocs_richText()
 	{
-		$row = db_fetch_assoc(ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", []));
+		$row = ExternalModules::query("select * from redcap_edocs_metadata where date_deleted_server is null limit 1", [])->fetch_assoc();
 		if(empty($row)){
 			throw new Exception("Please upload at least one edoc to allow this unit test to run.");
 		}
@@ -1378,64 +1378,6 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame(ExternalModules::getLanguageKeyNotDefinedMessage($key2, null), ExternalModules::tt($key2));
 	}
 
-	function testTt_allUsage()
-	{
-		$languageKeyCount = 0;
-
-		$this->processSniff('FindTTUsage.php', function($path, $warning) use (&$languageKeyCount){
-			$message = $warning['message'];
-
-			if(strpos($warning['source'], ExternalModules::LANGUAGE_KEY_FOUND) === false){
-				$warning['path'] = $path;
-				var_dump($warning);
-				throw new Exception($message);
-			}
-
-			$languageKey = $message;
-
-			if(strpos($languageKey, 'em_') !== 0){
-				throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
-			}
-			
-			$expected = $GLOBALS['lang'][$languageKey];
-			$this->assertNotEmpty($expected, "Language key '$languageKey' was used but is not defined.");
-			$this->assertSame($expected, ExternalModules::tt($languageKey));
-
-			$languageKeyCount++;
-		});
-
-		$this->assertGreaterThan(150, $languageKeyCount);
-	}
-
-	private function processSniff($sniffFilename, $warningAction)
-	{
-		foreach($this->findAllPhpFiles() as $path){
-			// The following method of running PHPCS within a unit test was found here:
-			// https://payton.codes/2017/12/15/creating-sniffs-for-a-phpcs-standard/#writing-tests
-			
-			// The "Sniffs" dir must be named "Sniffs" or PHPCS will not register any sniffs inside it.
-			$sniffFiles = [__DIR__ . "/Sniffs/$sniffFilename"];
-			
-			$config = new \PHP_CodeSniffer\Config([
-				'standards' => [] // override the default standards so we don't try to sniff anything else
-			]);
-
-			$ruleset = new \PHP_CodeSniffer\Ruleset($config);
-			$ruleset->registerSniffs($sniffFiles, [], []);
-			$ruleset->populateTokenListeners();
-			$phpcsFile = new \PHP_CodeSniffer\Files\LocalFile($path, $ruleset, $config);
-			$phpcsFile->process();
-
-			foreach($phpcsFile->getWarnings() as $lineWarnings){
-				foreach($lineWarnings as $characterWarnings){
-					foreach($characterWarnings as $warning){
-						$warningAction($path, $warning);
-					}
-				}
-			}
-		}
-	}
-
 	private function findAllPhpFiles()
 	{
 		$rootPath = __DIR__ . '/..';
@@ -1467,6 +1409,11 @@ class ExternalModulesTest extends BaseTest
 			// Assert that passing a parameter array is required (even if it's empty).
 			ExternalModules::query("foo");
 		}, ExternalModules::tt('em_errors_117'));
+	}
+
+	function testQuery_trueReturnForDatalessQueries(){
+		$r = $this->query('update redcap_ip_banned set time_of_ban=now() where ?=?', [1,2]);
+        $this->assertTrue($r);
 	}
 
 	function testQuery_invalidQuery(){
@@ -1615,6 +1562,7 @@ class ExternalModulesTest extends BaseTest
 		", [ExternalModules::KEY_VERSION])->fetch_assoc();
 
 		$version = ExternalModules::getModuleVersionByPrefix($row['directory_prefix']);
+		
 		$this->assertSame($row['value'], $version);
 	}
 
@@ -1647,5 +1595,36 @@ class ExternalModulesTest extends BaseTest
 				$this->requireInteger($value);
 			}, self::tt("em_errors_60", $value));
 		}
+	}
+	
+	function testSetRecordCompleteStatus(){
+		$projectId = TEST_SETTING_PID;
+		$recordId = 1;
+		$eventId = $this->getEventId($projectId);
+		$formName = ExternalModules::getFormNames()[0];
+
+		$getValue = function() use ($projectId, $recordId, $eventId, $formName){
+			return ExternalModules::getRecordCompleteStatus($projectId, $recordId, $eventId, $formName);
+		};
+
+		if($getValue() === null){
+			$this->query(
+				"insert into redcap_data values (?,?,?,?,?,null)",
+				[$projectId, $eventId, $recordId, "{$formName}_complete", 1]
+			);
+		}
+		else{
+			ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $formName, 1);
+		}
+
+		$this->assertSame('1', $getValue());
+		ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $formName, 0);
+		$this->assertSame('0', $getValue());
+	}
+
+	function testGetRepoModuleId(){
+		$r = $this->query("select cast(module_id as char) as module_id, module_name from redcap_external_modules_downloads order by rand() limit ?", 1);
+		$row = $r->fetch_assoc();
+		$this->assertSame($row['module_id'], ExternalModules::getRepoModuleId($row['module_name']));
 	}
 }

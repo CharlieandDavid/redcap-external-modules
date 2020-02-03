@@ -11,10 +11,6 @@ if(!defined('PAGE')){
 require_once __DIR__ . '/../classes/ExternalModules.php';
 require_once __DIR__ . '/BaseTestExternalModule.php';
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 use PHPUnit\Framework\TestCase;
 use \Exception;
 use REDCap;
@@ -41,6 +37,7 @@ abstract class BaseTest extends TestCase
 		$m = new BaseTestExternalModule();
 		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
 		if(empty($surveyId)){
+			// TODO - tt
 			throw new Exception('Please add a survey to project ' . TEST_SETTING_PID . ' to allow all tests to run.');
 		}
 	}
