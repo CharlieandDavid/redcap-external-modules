@@ -1017,6 +1017,10 @@ class ExternalModulesTest extends BaseTest
 
 	function testRecreateAllEDocs_fileSettings()
 	{
+		if(!is_dir(EDOC_PATH)){
+			throw new Exception('The EDOC_PATH (' . EDOC_PATH . ') is not valid!  If you\'re switching between environments (ex: Windows & Cygwin) you may want to remove the "edoc_path" value in the "redcap_config" table so it can be automatically detected.');
+		}
+
 		$edocIds = [];
 		$edocFilenames = [];
 
