@@ -168,7 +168,12 @@ class FrameworkV2Test extends FrameworkBaseTest
 	}
 
 	function testUser_getRights(){
-		$result = ExternalModules::query('select * from redcap_user_rights order by rand() limit 1', []);
+		$result = ExternalModules::query("
+			select * from redcap_user_rights
+			where username != ''
+			order by rand() limit 1
+		", []);
+
 		$row = $result->fetch_assoc();
 		$projectId = $row['project_id'];
 		$username = $row['username'];
