@@ -471,7 +471,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
     /*
  ** Give null value if equals "" (used inside queries)
  */
-    function checkNull($value, $replaceMSchars=true) {
+    private function checkNull($value) {
         if ($value === "" || $value === null || $value === false) {
             return NULL;
         }
