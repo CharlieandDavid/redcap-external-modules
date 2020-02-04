@@ -74,7 +74,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
         $GLOBALS['__SALT__'] = substr(sha1(rand()), 0, 10);
 
         $user_id_result = ExternalModules::query("select ui_id from redcap_user_information where username = ? limit 1",[$userid]);
-        $ui_id = db_fetch_assoc($user_id_result)['ui_id'];
+        $ui_id = $user_id_result->fetch_assoc()['ui_id'];
 
         ExternalModules::query("insert into redcap_projects (project_name, purpose, app_title, creation_time, created_by, auto_inc_set, project_note,auth_meth,__SALT__) values(?,?,?,?,?,?,?,?,?)",
             [$new_app_name,$purpose,db_escape($title),NOW,$ui_id,$auto_inc_set,trim($project_note),'none',$GLOBALS['__SALT__']]);
@@ -230,7 +230,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
             $existing_form_names = array();
             if (!$appendFields) {
                 $results = $this->query("select distinct form_name from ".$metadata_table." where project_id = ?",[$project_id]);
-                while ($row = db_fetch_assoc($results)) {
+                while ($row = $results->fetch_assoc()) {
                     $existing_form_names[] = $row['form_name'];
                 }
             }
@@ -286,7 +286,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
         // Build array of existing form names and their menu names to try and preserve any existing menu names
         $q = $this->query("select form_name, form_menu_description from $metadata_table where project_id = ? and form_menu_description is not null",[$project_id]);
         $existing_form_menus = array();
-        while ($row = db_fetch_assoc($q)) {
+        while ($row = $q->fetch_assoc()) {
             $existing_form_menus[$row['form_name']] = $row['form_menu_description'];
         }
 
@@ -295,7 +295,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
 				from $metadata_table where project_id = ?
 				and (edoc_id is not null or stop_actions is not null or field_units is not null or video_url is not null)",[$project_id]);
         $extra_values = array();
-        while ($row = db_fetch_assoc($q))
+        while ($row = $q->fetch_assoc())
         {
             if (!empty($row['edoc_id'])) {
                 // Preserve edoc values
@@ -481,7 +481,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
     function getSelectElementEnumLabel($project_id,$field_name){
         $q = $this->query("SELECT element_enum,element_type FROM `redcap_metadata` WHERE project_id=? and field_name=?",[$project_id,$field_name]);
 
-        $data = db_fetch_assoc($q);
+        $data = $q->fetch_assoc();
         if($data['element_type'] != 'select') throw new Exception("This function can be called only if the field is a select type");
 
         $element_enum = explode('\n',$data['element_enum']);
