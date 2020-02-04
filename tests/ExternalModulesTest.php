@@ -1591,7 +1591,7 @@ class ExternalModulesTest extends BaseTest
 	function testRequireInteger(){
 		foreach([1, '1'] as $value){
 			$intValue = $this->requireInteger(1);
-			$this->assertEqual($value, $intValue);
+			$this->assertEquals($value, $intValue);
 		}
 
 		foreach([1.1, '1.1'] as $value){
