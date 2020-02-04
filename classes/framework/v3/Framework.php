@@ -100,7 +100,7 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
     }
 
     function importDataDictionary($project_id,$path){
-        $dictionary_array = $this->excelToArray($this->module->getModulePath().$path);
+        $dictionary_array = $this->excelToArray($path);
 
         //Return warnings and errors from file (and fix any correctable errors)
         list ($errors_array, $warnings_array, $dictionary_array) = \MetaData::error_checking($dictionary_array);
