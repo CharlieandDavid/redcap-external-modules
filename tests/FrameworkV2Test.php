@@ -120,7 +120,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 	}
 
 	function testProject_getUsers(){
-		$result = $this->query("
+		$result = $this->getFramework()->query("
 			select user_email
 			from redcap_user_rights r
 			join redcap_user_information i
