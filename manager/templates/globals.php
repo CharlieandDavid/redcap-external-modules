@@ -37,8 +37,6 @@ ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'async.min
 //ExternalModules::addResource(ExternalModules::getManagerJSDirectory().'jquery.js');
 ?>
 <script src="<?php echo APP_PATH_JS ?>tinymce/tinymce.min.js"></script>
-<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>-->
-<script src="<?php echo APP_PATH_JS ?>tinymce/jquery.tinymce.min.js"></script>
 <link rel="stylesheet" type="text/css" href="<?php echo APP_PATH_CSS ?>select2.css">
 <script type="text/javascript" src="<?php echo APP_PATH_JS ?>select2.js"></script>
 
