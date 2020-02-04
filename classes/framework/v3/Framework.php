@@ -477,19 +477,4 @@ class Framework extends \ExternalModules\FrameworkVersion2\Framework
         }
         return $value;
     }
-
-    function getSelectElementEnumLabel($project_id,$field_name){
-        $q = $this->query("SELECT element_enum,element_type FROM `redcap_metadata` WHERE project_id=? and field_name=?",[$project_id,$field_name]);
-
-        $data = $q->fetch_assoc();
-        if($data['element_type'] != 'select') throw new Exception("This function can be called only if the field is a select type");
-
-        $element_enum = explode('\n',$data['element_enum']);
-        $dataFormat = array();
-        foreach ($element_enum as $el){
-            $el_data = explode(',',$el);
-            $dataFormat[trim($el_data[0])] = trim($el_data[1]);
-        }
-        return $dataFormat;
-    }
 }
