@@ -165,7 +165,8 @@ class ExternalModules
 
 	private static $configs = array();
 
-	
+	// Holds module prefixes for which language strings have already been added to $lang.
+	private static $localizationInitialized = array();
 
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
@@ -957,6 +958,9 @@ class ExternalModules
 	 */
 	public static function initializeLocalizationSupport($prefix, $version) {
 
+		// Have the module's language strings already been loaded?
+		if (in_array($prefix, self::$localizationInitialized)) return;
+
 		global $lang;
 
 		// Get project id if available.
@@ -978,6 +982,9 @@ class ExternalModules
 				$lang[$lang_key] = $val;
 			}
 		}
+
+		// Mark module as initialized.
+		array_push(self::$localizationInitialized, $prefix);
 	}
 
 	/**
@@ -3297,7 +3304,10 @@ class ExternalModules
 		// Add in language settings if available.
 		$config = self::addLanguageSetting($config, $prefix, $version, $pid);
 		// Apply translations to config.
-		if ($translate) $config = self::translateConfig($config, $prefix);
+		if ($translate) {
+			self::initializeLocalizationSupport($prefix, $version);
+			$config = self::translateConfig($config, $prefix);
+		}
 		// Remove hidden config items.
 		self::applyHidden($config);
 
