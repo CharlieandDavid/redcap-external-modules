@@ -4732,6 +4732,9 @@ class ExternalModules
 	// This method is called both internally and by the REDCap Core code.
 	public static function callCronMethod($moduleId, $cronName)
 	{
+		$originalGet = $_GET;
+		$originalPost = $_POST;
+
 		$moduleDirectoryPrefix = self::getPrefixForID($moduleId);
 
 		if($moduleDirectoryPrefix === ExternalModules::TEST_MODULE_PREFIX && !self::isTesting()){
@@ -4774,6 +4777,13 @@ class ExternalModules
 
 		self::setActiveModulePrefix(null);
 		self::$hookBeingExecuted = "";
+
+		// Restore GET & POST parameters to what they were prior to the module cron running.
+		// The is especially important to prevent scenarios like a module setting $_GET['pid']
+		// to make use of REDCap functionality that requires it, but not unsetting it when they're done
+		// (which could affect other module crons in unexpected ways).
+		$_GET = $originalGet;
+		$_POST = $originalPost;
 		
 		return $returnMessage;
 	}
