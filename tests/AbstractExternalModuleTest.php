@@ -1126,7 +1126,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testGetSubSettings()
 	{
-		$pid = 1;
+		$pid = TEST_SETTING_PID;
 		$_GET['pid'] = $pid;
 		$m = $this->getInstance();
 

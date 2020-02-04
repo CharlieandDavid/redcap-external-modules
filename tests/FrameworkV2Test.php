@@ -6,7 +6,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 	function testGetSubSettings_complexNesting()
 	{
 		$m = $this->getInstance();
-		$_GET['pid'] = 1;
+		$_GET['pid'] = TEST_SETTING_PID;
 
 		// This json file can be copied into a module for hands on testing/modification via the settings dialog.
 		$this->setConfig(json_decode(file_get_contents(__DIR__ . '/complex-nested-settings.json'), true));
@@ -69,7 +69,7 @@ class FrameworkV2Test extends FrameworkBaseTest
 
 	function testGetSubSettings_plainOldRepeatableInsideSubSettings(){
 		$m = $this->getInstance();
-		$_GET['pid'] = 1;
+		$_GET['pid'] = TEST_SETTING_PID;
 
 		$this->setConfig('
 			{
