@@ -588,7 +588,7 @@ class AbstractExternalModuleTest extends BaseTest
 			$timestampThreshold = 5;
 
 			$rows = [];
-			while ($row = db_fetch_assoc($results)) {
+			while ($row = $results->fetch_assoc()) {
 				$currentUTCTime = $date_utc = new \DateTime("now", new \DateTimeZone("UTC"));
 				$timeSinceLog = $currentUTCTime - strtotime($row['timestamp']);
 
@@ -621,7 +621,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$rows = $query();
 		$this->assertEquals(2, count($rows));
-
+		
 		$row = $rows[0];
 		$this->assertSame($message, $row['message']);
 		$this->assertNull($row['username']);
@@ -709,7 +709,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$assertRowCount = function($expectedCount) use ($m, $message, $whereClause, $expectedPid){
 			$result = $m->queryLogs('select pid where ' . $whereClause, $message);
 			$rows = [];
-			while($row = db_fetch_assoc($result)){
+			while($row = $result->fetch_assoc()){
 				$rows[] = $row;
 
 				$pid = @$_GET['pid'];
@@ -806,7 +806,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$m = $this->getInstance();
 		$result = $m->queryLogs($selectSql, $logId);
-		$log = db_fetch_assoc($result);
+		$log = $result->fetch_assoc();
 
 		foreach($expectedValues as $name=>$expectedValue){
 			$actualValue = $log[$name];
@@ -824,7 +824,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$selectSql = 'select message, malicious_param order by timestamp desc limit 1';
 		$result = $m->queryLogs($selectSql, []);
-		$row = db_fetch_assoc($result);
+		$row = $result->fetch_assoc();
 		$this->assertSame($maliciousSql, $row['message']);
 		$this->assertSame($maliciousSql, $row['malicious_param']);
 	}
@@ -842,12 +842,12 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$selectSql = "select `$paramName` where `$paramName` is not null order by `$paramName`";
 		$result = $m->queryLogs($selectSql, []);
-		$row = db_fetch_assoc($result);
+		$row = $result->fetch_assoc();
 		$this->assertSame($paramValue, $row[$paramName]);
 
 		$m->removeLogs("`$paramName` is not null");
 		$result = $m->queryLogs($selectSql, []);
-		$this->assertNull(db_fetch_assoc($result));
+		$this->assertNull($result->fetch_assoc());
 	}
 
 	function testLog_unsupportedTypes()
@@ -863,7 +863,7 @@ class AbstractExternalModuleTest extends BaseTest
 	function getRandomUsername()
 	{
 		$result = ExternalModules::query('select username from redcap_user_information order by rand() limit 1', []);
-		$username =  db_fetch_assoc($result)['username'];
+		$username =  $result->fetch_assoc()['username'];
 
 		return $username;
 	}
@@ -1126,7 +1126,7 @@ class AbstractExternalModuleTest extends BaseTest
 
 	function testGetSubSettings()
 	{
-		$pid = 1;
+		$pid = TEST_SETTING_PID;
 		$_GET['pid'] = $pid;
 		$m = $this->getInstance();
 
@@ -1402,5 +1402,91 @@ class AbstractExternalModuleTest extends BaseTest
 
 		$updateRecordCount();
 		$this->assertSame($getActualRecordCount(), $getCachedRecordCount());
+	}
+
+	function testResetSurveyAndGetCodes_partial(){
+		// Just make sure it runs without exception for now.  We can expand this test in the future.
+		$this->resetSurveyAndGetCodes(TEST_SETTING_PID, 1);
+	}
+
+	function testGenerateUniqueRandomSurveyHash(){
+		$hash = $this->generateUniqueRandomSurveyHash();
+		$this->assertSame(10, strlen($hash));
+	}
+
+	function testGetValidFormEventId(){
+		$pid = TEST_SETTING_PID;
+		$formName = ExternalModules::getFormNames()[0];
+		$expected = $this->getValidFormEventId($formName, $pid);
+		$actual = (string) ExternalModules::getEventId($pid);
+
+		$this->assertSame($expected, $actual);
+	}
+
+	function testGetSurveyId(){
+		list($surveyId, $formName) = $this->getSurveyId(TEST_SETTING_PID);
+		$this->assertTrue(ctype_digit($surveyId));
+		$this->assertTrue($surveyId > 0);
+		$this->assertSame(ExternalModules::getFormNames()[0], $formName);
+	}
+
+	function testGetParticipantAndResponseId(){
+		list($surveyId, $formName) = $this->getSurveyId(TEST_SETTING_PID);
+		$ids = $this->getParticipantAndResponseId($surveyId, 1);
+
+		foreach($ids as $id){
+			$this->assertTrue(ctype_digit($id));
+			$this->assertTrue($id > 0);
+		}
+	}
+
+	function testGetChoiceLabel_sql(){
+		list($field, $choices) = $this->findWorkingSQLField();
+		$choice = $choices[0];
+	
+		$actualLabel = $this->getChoiceLabel($field['field_name'], $choice[0], $field['project_id']);
+		
+		$this->assertSame($choice[1], $actualLabel, "Failed on field: " . json_encode($field));
+	}
+
+	private function findWorkingSQLField(){
+		$fields = $this->query("
+			select * from redcap_metadata
+			where
+				element_type = 'sql'
+				and element_enum != ''
+			order by rand()
+		");
+
+		while($field = $fields->fetch_assoc()){
+			try{
+				$result = $this->query($field['element_enum']);
+			}
+			catch(Exception $e){
+				// The SQL must not have been valid.
+				// Simply continue to the next field.
+				continue;
+			}
+
+			$choices = $result->fetch_all(MYSQLI_BOTH);
+
+			if(
+				!empty($choices)
+				
+				// We require 'record' and 'value' columns simply because the methods that use this method require it (for now).
+				&& isset($choices[0]['record'])
+				&& isset($choices[0]['value'])
+			){
+				return [$field, $choices];
+			}
+		}
+
+		throw new Exception("You must add at least one SQL field that returns at least one row with 'record' and 'value' columns to your database in order to run this test.");
+	}
+
+	function testGetFirstEventId(){
+		$_GET['pid'] = TEST_SETTING_PID;
+		$eventId = $this->framework->getEventId(TEST_SETTING_PID);
+		$this->assertSame($eventId, $this->getFirstEventId());
 	}
 }
