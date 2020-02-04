@@ -367,7 +367,7 @@ class ExternalModules
 		return array_keys($modules);
 	}
 
-	function enableErrors(){
+	static function enableErrors(){
 		ini_set('display_errors', 1);
 		ini_set('display_startup_errors', 1);
 		error_reporting(E_ALL);
