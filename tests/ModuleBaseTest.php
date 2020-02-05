@@ -1,5 +1,7 @@
 <?php namespace ExternalModules;
 
+use Exception;
+
 // This class can be used by modules themselves to write their own tests.
 abstract class ModuleBaseTest extends \PHPUnit\Framework\TestCase{
     public function setUp(){
