@@ -184,12 +184,25 @@ class FrameworkV2Test extends FrameworkBaseTest
 
 		$this->assertSame($expectedRights, $actualRights);
 	}
+	
+	function testGetEventId(){
+		$this->assertThrowsException(function(){
+			$this->getEventId();
+		}, ExternalModules::tt('em_errors_65', 'pid'));
 
-	function testGetEventId_urlParam(){
-        $_GET['pid'] = (string) TEST_SETTING_PID;
-        $_GET['event_id'] = rand();
-        $this->assertSame($_GET['event_id'], $this->getEventId());
-    }
+		$_GET['pid'] = (string) TEST_SETTING_PID;
+		$project1EventId = $this->getEventId();
+		$this->assertIsInt($project1EventId);
+
+		$urlEventId = rand();
+		$_GET['event_id'] = $urlEventId;
+		$this->assertEquals($urlEventId,  $this->getEventId());
+
+		$project2EventId =  $this->getEventId(TEST_SETTING_PID_2);
+		$this->assertIsInt($project2EventId);
+		$this->assertNotSame($project1EventId, $project2EventId);
+		$this->assertNotSame($urlEventId, $project2EventId);
+	}
 
     function testGetSafePath(){
         $test = function($path, $root=null){

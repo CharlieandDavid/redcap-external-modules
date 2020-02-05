@@ -228,9 +228,14 @@ class Framework
 	}
 
 	function getEventId($projectId = null){
-		if(!$projectId){
-			$projectId = $this->module->getProjectId();
-		}
+        if(!$projectId){
+            $eventId = @$_GET['event_id'];
+            if($eventId){
+                return $eventId;
+            }
+        }
+        
+        $projectId = $this->requireProjectId($projectId);
 
 		return ExternalModules::getEventId($projectId);
     }

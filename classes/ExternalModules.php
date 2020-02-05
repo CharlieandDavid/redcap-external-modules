@@ -5635,11 +5635,6 @@ class ExternalModules
 	}
 
 	public static function getEventId($projectId){
-		$eventId = @$_GET['event_id'];
-		if($eventId){
-			return $eventId;
-		}
-
 		$sql = '
 			select event_id
 			from redcap_events_arms a
