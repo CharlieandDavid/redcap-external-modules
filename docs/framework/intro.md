@@ -1,6 +1,6 @@
 ## External Module Methods & Framework Versioning
 
-### Introduction to Modules Framework Versioning
+#### Introduction to Module Framework Versioning
 
 The versioning feature of the **External Module Framework** allows for backward compatibility while the framework changes over time.  New modules should specify the `framework-version` in `config.json` as follows:
  
@@ -17,7 +17,7 @@ To allow existing modules to remain backward compatible, a new framework version
  
 <br/>
 
-### Framework Versions vs REDCap Versions
+#### Framework Versions vs REDCap Versions
 
 Specifying a module framework version has implications for the minimum REDCap version. A module's config.json should specify a `redcap-version-min` at least as high as that needed to get the framework code it requires.
 
