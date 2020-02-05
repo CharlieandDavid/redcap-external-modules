@@ -43,12 +43,8 @@ abstract class BaseTest extends TestCase
 	}
 
 	protected function setUp(){
-		$this->setConfig([
-			'framework-version' => $this->getFrameworkVersion()
-		]);
-		
 		self::$testModuleInstance = new BaseTestExternalModule();
-		ExternalModules::initializeFramework(self::$testModuleInstance);
+		
 		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 		self::setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);
 		
@@ -66,7 +62,10 @@ abstract class BaseTest extends TestCase
 
 	private function cleanupSettings()
 	{
-		$this->setConfig([]);
+		$this->setConfig([
+			'framework-version' => $this->getFrameworkVersion()
+		]);
+
 		$this->getInstance()->testHookArguments = null;
 
 		$m = self::getInstance();
@@ -118,7 +117,6 @@ abstract class BaseTest extends TestCase
 
 	protected function setConfig($config)
 	{
-
 		if(gettype($config) === 'string'){
 			$config = json_decode($config, true);
 			if($config === null){
@@ -127,6 +125,9 @@ abstract class BaseTest extends TestCase
 		}
 
 		$this->setExternalModulesProperty('configs', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => $config]]);
+
+		// Re-initialize the framework in case the version changed.
+		ExternalModules::initializeFramework(self::$testModuleInstance);
 	}
 
 	private function setExternalModulesProperty($name, $value)
