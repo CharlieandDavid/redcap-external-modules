@@ -122,7 +122,7 @@ isSuperUser() | `?.?.?`<br>`2` | Returns true if the user is a super user.
 A JavaScript version of any module object can be initialized by including the JavaScript code block returned by the PHP module object's `initializeJavascriptModuleObject()` method at any point in any hook. The name of the _JavaScript Module Object_ is returned by the framework method `getJavascriptModuleObjectName()`. Here is a basic example of how to initialize and use the _JavaScript Module Object_ from any PHP hook:
 
 ```php
-<?=$this->initializeJavascriptModuleObject()?>
+<?=$this->framework->initializeJavascriptModuleObject()?>
 
 <script>
 	$(function(){
