@@ -929,7 +929,7 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
 		language: tinyLang, 
-		height: 200,
+		height: 400,
 		menubar: false,
 		branding: false,
 		elementpath: false, // Hide this, since it oddly renders below the textarea.
