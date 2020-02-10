@@ -1367,64 +1367,6 @@ class ExternalModulesTest extends BaseTest
 		$this->assertSame(ExternalModules::getLanguageKeyNotDefinedMessage($key2, null), ExternalModules::tt($key2));
 	}
 
-	function testTt_allUsage()
-	{
-		$languageKeyCount = 0;
-
-		$this->processSniff('FindTTUsage.php', function($path, $warning) use (&$languageKeyCount){
-			$message = $warning['message'];
-
-			if(strpos($warning['source'], ExternalModules::LANGUAGE_KEY_FOUND) === false){
-				$warning['path'] = $path;
-				var_dump($warning);
-				throw new Exception($message);
-			}
-
-			$languageKey = $message;
-
-			if(strpos($languageKey, 'em_') !== 0){
-				throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
-			}
-			
-			$expected = $GLOBALS['lang'][$languageKey];
-			$this->assertNotEmpty($expected, "Language key '$languageKey' was used but is not defined.");
-			$this->assertSame($expected, ExternalModules::tt($languageKey));
-
-			$languageKeyCount++;
-		});
-
-		$this->assertGreaterThan(150, $languageKeyCount);
-	}
-
-	private function processSniff($sniffFilename, $warningAction)
-	{
-		foreach($this->findAllPhpFiles() as $path){
-			// The following method of running PHPCS within a unit test was found here:
-			// https://payton.codes/2017/12/15/creating-sniffs-for-a-phpcs-standard/#writing-tests
-			
-			// The "Sniffs" dir must be named "Sniffs" or PHPCS will not register any sniffs inside it.
-			$sniffFiles = [__DIR__ . "/Sniffs/$sniffFilename"];
-			
-			$config = new \PHP_CodeSniffer\Config([
-				'standards' => [] // override the default standards so we don't try to sniff anything else
-			]);
-
-			$ruleset = new \PHP_CodeSniffer\Ruleset($config);
-			$ruleset->registerSniffs($sniffFiles, [], []);
-			$ruleset->populateTokenListeners();
-			$phpcsFile = new \PHP_CodeSniffer\Files\LocalFile($path, $ruleset, $config);
-			$phpcsFile->process();
-
-			foreach($phpcsFile->getWarnings() as $lineWarnings){
-				foreach($lineWarnings as $characterWarnings){
-					foreach($characterWarnings as $warning){
-						$warningAction($path, $warning);
-					}
-				}
-			}
-		}
-	}
-
 	private function findAllPhpFiles()
 	{
 		$rootPath = __DIR__ . '/..';

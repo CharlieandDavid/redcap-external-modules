@@ -2,9 +2,12 @@
 
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
+use ExternalModules\ExternalModules;
 
-final class TestSniff implements Sniff
+final class UndefinedLanguageKeySniff implements Sniff
 {
+    private $languageKeyCount = 0;
+
     public function register()
     {
         return [T_DOUBLE_COLON];
@@ -37,7 +40,20 @@ final class TestSniff implements Sniff
         }
 
         $languageKey = $this->stripQuotes($firstArg['content']);
-        $file->addFixableWarning($languageKey, $position, \ExternalModules\ExternalModules::LANGUAGE_KEY_FOUND);
+        if(strpos($languageKey, 'em_') !== 0){
+            throw new Exception("The following language key did not have the expected 'em_' prefix: $languageKey");
+        }
+       
+        $languageValue = @$GLOBALS['lang'][$languageKey];
+
+        if(empty($languageValue)){
+            $file->addError("Language key '$languageKey' was used but is not defined.", $position, self::class);
+        }
+        else if($languageValue !== ExternalModules::tt($languageKey)){
+            $file->addError("Language key '$languageKey' did not return the expected language value.", $position, self::class);
+        }
+
+        $this->languageKeyCount++;
     }
 
      /**
@@ -54,5 +70,12 @@ final class TestSniff implements Sniff
     public function stripQuotes($string)
     {
         return preg_replace('`^([\'"])(.*)\1$`Ds', '$2', $string);
+    }
+
+    public function __destruct()
+    {
+        if($this->languageKeyCount < 175){
+            throw new Exception("The language key sniffer is not working properly.");
+        }
     }
 }

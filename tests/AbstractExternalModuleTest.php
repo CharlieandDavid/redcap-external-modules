@@ -1459,7 +1459,15 @@ class AbstractExternalModuleTest extends BaseTest
 		");
 
 		while($field = $fields->fetch_assoc()){
-			$result = $this->query($field['element_enum']);
+			try{
+				$result = $this->query($field['element_enum']);
+			}
+			catch(Exception $e){
+				// The SQL must not have been valid.
+				// Simply continue to the next field.
+				continue;
+			}
+
 			$choices = $result->fetch_all(MYSQLI_BOTH);
 
 			if(
