@@ -75,6 +75,10 @@ class StatementResult // extends \mysqli_result
         return $dereferencedRow;
     }
 
+    function fetch_fields(){
+        return $this->fields;
+    }
+
     private function throwNotImplementedException($message){
         throw new Exception('Not yet implemented: ' . $message);
     }

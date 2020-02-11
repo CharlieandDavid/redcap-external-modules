@@ -50,4 +50,22 @@ class StatementResultTest extends BaseTest
         $r = $this->query('select ? from redcap_data where 2=3', [1]);
         $this->assertNull($r->fetch_array());
     }
+
+    function test_fetch_fields(){
+        $fetchFields = function($sql, $params){
+            $result = $this->query($sql, $params);
+            $fields = $result->fetch_fields();
+
+            foreach($fields as $field){
+                // These values are different when using a prepared statement.
+                unset($field->length);
+                unset($field->max_length);
+            }
+        };
+
+        $expected = $fetchFields('select 1 as a', []);
+        $actual = $fetchFields('select ? as a', [1]);
+
+        $this->assertSame($expected, $actual);
+    }
 }
