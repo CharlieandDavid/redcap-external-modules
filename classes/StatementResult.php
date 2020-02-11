@@ -79,6 +79,10 @@ class StatementResult // extends \mysqli_result
         return $this->fields;
     }
 
+    function free_result(){
+        $this->statement->free_result();
+    }
+
     private function throwNotImplementedException($message){
         throw new Exception('Not yet implemented: ' . $message);
     }

@@ -68,4 +68,11 @@ class StatementResultTest extends BaseTest
 
         $this->assertSame($expected, $actual);
     }
+
+    function test_free_result(){
+        $result = $this->query('select ?', 1);
+
+        // Just make sure it runs without exception.
+        $result->free_result();
+    }
 }
