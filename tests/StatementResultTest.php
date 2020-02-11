@@ -112,6 +112,13 @@ class StatementResultTest extends BaseTest
         $this->assertEquals($expected, $actual);
     }
 
+    function test_data_seek(){
+        $r = $this->query('select ? as a', [1]);
+        $this->assertSame([0=>1], $r->fetch_row());
+        $r->data_seek(0);
+        $this->assertSame([0=>1], $r->fetch_row());
+    }
+
     private function normalizeField(&$field){
         // These values are different when using a prepared statement.
         unset($field->length);

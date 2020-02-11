@@ -110,6 +110,10 @@ class StatementResult // extends \mysqli_result
         return $field;
     }
 
+    function data_seek($i){
+        $this->i = $i;
+    }
+
     private function throwNotImplementedException($message){
         throw new Exception('Not yet implemented: ' . $message);
     }
