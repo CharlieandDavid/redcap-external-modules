@@ -119,6 +119,34 @@ class StatementResultTest extends BaseTest
         $this->assertSame([0=>1], $r->fetch_row());
     }
 
+    function test_fetch_object(){
+        $r = $this->query("select 'a' as b", []);
+        $expected = $r->fetch_object();
+        
+        $r = $this->query('select ? as b', ['a']);
+        $actual = $r->fetch_object();
+
+        $this->assertEquals($expected, $actual);
+    }
+
+    function test_fetch_object_constructor_args(){
+        $class = new class  {
+            function __construct(){
+                $this->constructorArgs = func_get_args();
+            }
+        };
+
+        $constructorArgs = [rand(), rand(), rand()];
+
+        $r = $this->query("select 'a' as b", []);
+        $expected = $r->fetch_object(get_class($class), $constructorArgs);
+        
+        $r = $this->query('select ? as b', ['a']);
+        $actual = $r->fetch_object($class, $constructorArgs);
+        
+        $this->assertEquals($expected, $actual);
+    }
+
     private function normalizeField(&$field){
         // These values are different when using a prepared statement.
         unset($field->length);

@@ -53,6 +53,18 @@ class StatementResult // extends \mysqli_result
         return $this->fetch_array(MYSQLI_NUM);
     }
 
+    function fetch_object($class_name = 'stdClass', $params = []){
+        $reflector = new \ReflectionClass($class_name);
+        $object = $reflector->newInstanceArgs($params);
+        
+        $row = $this->fetch_assoc();
+        foreach($row as $key=>$value){
+            $object->$key = $value;
+        }
+
+        return $object;
+    }
+
     function fetch_array($resultType = MYSQLI_BOTH){
         $s = $this->statement;
 
