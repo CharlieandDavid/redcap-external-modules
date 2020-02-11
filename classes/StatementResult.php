@@ -4,6 +4,7 @@ use Exception;
 
 class StatementResult // extends \mysqli_result
 {    
+    public $current_field = 0;
     public $num_rows;
 
     private $statement;
@@ -93,6 +94,14 @@ class StatementResult // extends \mysqli_result
 
     function free_result(){
         $this->statement->free_result();
+    }
+
+    function fetch_field(){
+        $field = $this->fields[$this->current_field];
+        
+        $this->current_field++;
+
+        return $field;
     }
 
     private function throwNotImplementedException($message){

@@ -16,6 +16,16 @@ class StatementResultTest extends BaseTest
         $this->assertSame(0, $r->num_rows);
     }
 
+    function test_current_field(){
+        $result = $this->query('select ?,?', [1,2]);
+        
+        $this->assertSame(0, $result->current_field);
+        $result->fetch_field();
+        $this->assertSame(1, $result->current_field);
+        $result->fetch_field();
+        $this->assertSame(2, $result->current_field);
+    }
+
     function test_fetch_assoc(){
         $r = $this->query('select ? as foo union select ?', [1, 2]);
         $this->assertSame(['foo'=>1], $r->fetch_assoc());
