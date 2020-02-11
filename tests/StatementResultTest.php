@@ -51,22 +51,46 @@ class StatementResultTest extends BaseTest
         $this->assertNull($r->fetch_array());
     }
 
+    function test_db_fetch_field_direct(){
+        $fetchField = function($sql, $params){
+            $result = $this->query($sql, $params);
+            $field = $result->fetch_field_direct(0);
+
+            $this->normalizeField($field);
+
+            return $field;
+        };
+
+        $expected = $fetchField('select 1 as a', []);
+        $actual = $fetchField('select ? as a', [1]);
+
+        $this->assertSame('a', $actual->name);
+        $this->assertEquals($expected, $actual);
+    }
+
     function test_fetch_fields(){
         $fetchFields = function($sql, $params){
             $result = $this->query($sql, $params);
             $fields = $result->fetch_fields();
 
             foreach($fields as $field){
-                // These values are different when using a prepared statement.
-                unset($field->length);
-                unset($field->max_length);
+                $this->normalizeField($field);
             }
+
+            return $fields;
         };
 
         $expected = $fetchFields('select 1 as a', []);
         $actual = $fetchFields('select ? as a', [1]);
 
-        $this->assertSame($expected, $actual);
+        $this->assertSame('a', $actual[0]->name);
+        $this->assertEquals($expected, $actual);
+    }
+
+    private function normalizeField(&$field){
+        // These values are different when using a prepared statement.
+        unset($field->length);
+        unset($field->max_length);
     }
 
     function test_free_result(){

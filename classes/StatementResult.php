@@ -75,6 +75,10 @@ class StatementResult // extends \mysqli_result
         return $dereferencedRow;
     }
 
+    function fetch_field_direct($fieldnr){
+        return $this->fields[$fieldnr];
+    }
+
     function fetch_fields(){
         return $this->fields;
     }
