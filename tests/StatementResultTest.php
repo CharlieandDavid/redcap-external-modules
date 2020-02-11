@@ -96,7 +96,9 @@ class StatementResultTest extends BaseTest
     function test_free_result(){
         $result = $this->query('select ?', 1);
 
-        // Just make sure it runs without exception.
+        // Just make sure they run without exception.
+        $result->free();
+        $result->close();
         $result->free_result();
     }
 }

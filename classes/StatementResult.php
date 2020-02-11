@@ -83,6 +83,14 @@ class StatementResult // extends \mysqli_result
         return $this->fields;
     }
 
+    function free(){
+        $this->free_result();
+    }
+
+    function close(){
+        $this->free_result();
+    }
+
     function free_result(){
         $this->statement->free_result();
     }
