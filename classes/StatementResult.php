@@ -5,6 +5,8 @@ use Exception;
 class StatementResult // extends \mysqli_result
 {    
     public $current_field = 0;
+    public $field_count;
+    public $lengths;
     public $num_rows;
 
     private $statement;
@@ -26,6 +28,8 @@ class StatementResult // extends \mysqli_result
             // TODO - tt
             throw new Exception("The mysqli_stmt metadata fetch_fields() method failed.");
         }
+
+        $this->field_count = count($fields);
 
         $this->row = [];
         $refs = [];
@@ -63,6 +67,8 @@ class StatementResult // extends \mysqli_result
 
         $dereferencedRow = [];
         foreach($this->row as $index=>$value){
+            $this->lengths[$index] = strlen($value);
+
             if($resultType !== MYSQLI_ASSOC){
                 $dereferencedRow[$index] = $value;
             }

@@ -26,6 +26,21 @@ class StatementResultTest extends BaseTest
         $this->assertSame(2, $result->current_field);
     }
 
+    function test_field_count(){
+        $result = $this->query('select ?,?,?,?,?', [1,2,3,4,5]);
+        $this->assertSame(5, $result->field_count);
+    }
+
+    function test_lengths(){
+        $result = $this->query("select ?,? union select ?,?", [1, 1.1, 'aa', null]);
+        
+        $result->fetch_row();
+        $this->assertSame([1,3], $result->lengths);
+
+        $result->fetch_row();
+        $this->assertSame([2,0], $result->lengths);
+    }
+
     function test_fetch_assoc(){
         $r = $this->query('select ? as foo union select ?', [1, 2]);
         $this->assertSame(['foo'=>1], $r->fetch_assoc());
