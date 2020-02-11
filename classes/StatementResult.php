@@ -41,14 +41,14 @@ class StatementResult // extends \mysqli_result
     }
 
     function fetch_assoc(){
-        return $this->fetch_internal(true);
+        return $this->fetch_array(MYSQLI_ASSOC);
     }
 
     function fetch_row(){
-        return $this->fetch_internal(false);
+        return $this->fetch_array(MYSQLI_NUM);
     }
 
-    private function fetch_internal($assoc){
+    function fetch_array($resultType = MYSQLI_BOTH){
         $s = $this->statement;
 
         if($this->i === $this->num_rows){
@@ -61,12 +61,15 @@ class StatementResult // extends \mysqli_result
         $s->fetch();        
 
         $dereferencedRow = [];
-        foreach($this->row as $key=>$value){
-            if($assoc){
-                $key = $this->fields[$key]->name;
+        foreach($this->row as $index=>$value){
+            if($resultType !== MYSQLI_ASSOC){
+                $dereferencedRow[$index] = $value;
             }
 
-            $dereferencedRow[$key] = $value;
+            if($resultType !== MYSQLI_NUM){
+                $columnName = $this->fields[$index]->name;
+                $dereferencedRow[$columnName] = $value;
+            }
         }
 
         return $dereferencedRow;

@@ -37,4 +37,17 @@ class StatementResultTest extends BaseTest
         $r = $this->query('select ? from redcap_data where 2=3', [1]);
         $this->assertNull($r->fetch_row());
     }
+
+    function test_fetch_array(){
+        $r = $this->query('select ? union select ? union select ? union select ?', [1, 2, 3, 4]);
+        $this->assertSame([0=>1, '?'=>1], $r->fetch_array());
+        $this->assertSame([0=>2, '?'=>2], $r->fetch_array(MYSQLI_BOTH));
+        $this->assertSame([0=>3], $r->fetch_array(MYSQLI_NUM));
+        $this->assertSame(['?'=>4], $r->fetch_array(MYSQLI_ASSOC));
+        $this->assertNull($r->fetch_row());
+
+        // empty result set
+        $r = $this->query('select ? from redcap_data where 2=3', [1]);
+        $this->assertNull($r->fetch_array());
+    }
 }
