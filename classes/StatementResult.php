@@ -13,6 +13,7 @@ class StatementResult // extends \mysqli_result
     private $fields;
     private $row = [];
     private $i = 0;
+    private $closed = false;
 
     function __construct($s, $metadata){
         $this->statement = $s;
@@ -66,6 +67,10 @@ class StatementResult // extends \mysqli_result
     }
 
     function fetch_array($resultType = MYSQLI_BOTH){
+        if($this->closed){
+            return false;
+        }
+
         $s = $this->statement;
 
         if($this->i === $this->num_rows){
@@ -111,6 +116,7 @@ class StatementResult // extends \mysqli_result
     }
 
     function free_result(){
+        $this->closed = true;
         $this->statement->free_result();
     }
 
