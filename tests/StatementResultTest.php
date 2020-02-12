@@ -130,16 +130,11 @@ class StatementResultTest extends BaseTest
     }
 
     function test_fetch_object_constructor_args(){
-        $class = new class  {
-            function __construct(){
-                $this->constructorArgs = func_get_args();
-            }
-        };
-
+        $class = FetchObject::class;
         $constructorArgs = [rand(), rand(), rand()];
 
         $r = $this->query("select 'a' as b", []);
-        $expected = $r->fetch_object(get_class($class), $constructorArgs);
+        $expected = $r->fetch_object($class, $constructorArgs);
         
         $r = $this->query('select ? as b', ['a']);
         $actual = $r->fetch_object($class, $constructorArgs);
@@ -160,5 +155,11 @@ class StatementResultTest extends BaseTest
         $result->free();
         $result->close();
         $result->free_result();
+    }
+}
+
+class FetchObject{
+    function __construct(){
+        $this->constructorArgs = func_get_args();
     }
 }
