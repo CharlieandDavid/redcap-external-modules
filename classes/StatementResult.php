@@ -118,6 +118,8 @@ class StatementResult // extends \mysqli_result
     function free_result(){
         $this->closed = true;
         $this->statement->free_result();
+
+        return false;
     }
 
     function fetch_field(){
