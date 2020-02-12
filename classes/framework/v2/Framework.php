@@ -262,6 +262,7 @@ class Framework
     }
 
     function createProject($title, $purpose, $project_note=null){
+	    global $auth_meth_global;
         $userInfo = \User::getUserInfo(USERID);
         if (!$userInfo['allow_create_db']) throw new Exception("ERROR: You do not have Create Project privileges!");
 
@@ -281,7 +282,7 @@ class Framework
         $ui_id = $user_id_result->fetch_assoc()['ui_id'];
 
         ExternalModules::query("insert into redcap_projects (project_name, purpose, app_title, creation_time, created_by, auto_inc_set, project_note,auth_meth,__SALT__) values(?,?,?,?,?,?,?,?,?)",
-            [$new_app_name,$purpose,db_escape($title),NOW,$ui_id,$auto_inc_set,trim($project_note),'none',$GLOBALS['__SALT__']]);
+            [$new_app_name,$purpose,db_escape($title),NOW,$ui_id,$auto_inc_set,trim($project_note),$auth_meth_global,$GLOBALS['__SALT__']]);
 
         // Get this new project's project_id
         $pid = db_insert_id();
