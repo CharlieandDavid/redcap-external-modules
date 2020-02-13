@@ -55,10 +55,14 @@ class StatementResult // extends \mysqli_result
     }
 
     function fetch_object($class_name = 'stdClass', $params = []){
+        $row = $this->fetch_assoc();
+        if(!$row){
+            return $row;
+        }
+
         $reflector = new \ReflectionClass($class_name);
         $object = $reflector->newInstanceArgs($params);
         
-        $row = $this->fetch_assoc();
         foreach($row as $key=>$value){
             $object->$key = $value;
         }

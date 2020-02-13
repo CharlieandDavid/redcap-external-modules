@@ -134,6 +134,7 @@ class StatementResultTest extends BaseTest
         $actual = $r->fetch_object();
 
         $this->assertEquals($expected, $actual);
+        $this->assertNull($r->fetch_object());
     }
 
     function test_fetch_object_constructor_args(){
