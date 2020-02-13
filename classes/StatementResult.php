@@ -104,6 +104,10 @@ class StatementResult // extends \mysqli_result
     }
 
     function fetch_fields(){
+        if($this->closed){
+            return false;
+        }
+
         return $this->fields;
     }
 
