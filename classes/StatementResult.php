@@ -124,8 +124,14 @@ class StatementResult // extends \mysqli_result
     }
 
     function free_result(){
-        $this->closed = true;
         $this->statement->free_result();
+        
+        $this->closed = true;
+        
+        $this->current_field = false;
+        $this->field_count = false;
+        $this->lengths = false;
+        $this->num_rows = false;
 
         return false;
     }
