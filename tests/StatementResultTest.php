@@ -69,7 +69,7 @@ class StatementResultTest extends BaseTest
         $this->assertSame([0=>2, '?'=>2], $r->fetch_array(MYSQLI_BOTH));
         $this->assertSame([0=>3], $r->fetch_array(MYSQLI_NUM));
         $this->assertSame(['?'=>4], $r->fetch_array(MYSQLI_ASSOC));
-        $this->assertNull($r->fetch_row());
+        $this->assertNull($r->fetch_array());
 
         // empty result set
         $r = $this->query('select ? from redcap_data where 2=3', [1]);
