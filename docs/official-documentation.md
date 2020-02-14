@@ -351,7 +351,7 @@ The External Modules framework provides objects representing a module, both in *
 
 The publicly supported methods that module creators may utilize depend on the framework version they opt into via the configuration file and are documented [here](https://github.com/vanderbilt/redcap-external-modules/blob/testing/docs/framework/intro.md).
 
-**Attention!** Do _not_ reference any other methods or files (like the *ExternalModules* class) as they could change at any time. If a method you believe should be supported by these module objects is missing, please feel free to request it via an [issue](https://github.com/vanderbilt/redcap-external-modules/issues) or [pull request](https://github.com/vanderbilt/redcap-external-modules/pulls) on the framework's GitHub page.
+**Attention!** Modules should _not_ reference any other methods or files that exist in the External Modules framework (like the *ExternalModules* class) as they could change at any time. If a method you believe should be supported by these module objects is missing, please feel free to request it via an [issue](https://github.com/vanderbilt/redcap-external-modules/issues) or [pull request](https://github.com/vanderbilt/redcap-external-modules/pulls) on the framework's GitHub page.
 
 ### Utilizing Cron Jobs for Modules
 
