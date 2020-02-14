@@ -2653,13 +2653,10 @@ class ExternalModules
 						"result" => $result
 					);
 				}
-				return $result;
 			};
 
 			foreach($versionsByPrefix as $prefix=>$version){
-				$result = $startHook($prefix, $version);
-				if ($name == "email" && $result === false) 
-					break;
+				$startHook($prefix, $version);
 			}
 
 			$callDelayedHooks = function($lastRun) use ($startHook){
