@@ -221,6 +221,9 @@ class HideHomePageEmails extends \ExternalModules\AbstractExternalModule
 
 Remember that each hook function has different method parameters that get passed to it (e.g., $project_id), so be sure to include the correct parameters as seen in the hook documentation for the particular hook function you are defining in your module class.
 
+##### Special note regarding the `redcap_email` hook
+When used in an External Module, this hook **must** return an actual boolean value (either `true` or `false`). Do not return 0, 1, or other truthy/falsy values. The results of multiple modules using this hook will be combined with logical AND, i.e. as long as one implementation returns `false`, the email will not be sent by REDCap.
+
 ##### Every Page Hooks
 By default, every page hooks will only execute on project specific pages (and only on projects with the module enabled).  However, you can allow them to execute on all system pages as well by setting the following flag in config.json:
 
