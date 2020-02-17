@@ -2644,10 +2644,9 @@ class ExternalModules
 			$startHook = function($prefix, $version) use ($arguments, &$resultsByPrefix){
 				$result = self::startHook($prefix, $version, $arguments);
 
-				// The following check assumes hook return values will always be arrays.
-				// That's totally fine for now since our only hook that returns a value does return an array.
-				// There may come a day when we'd want to support other types as well.
-				if (!empty($result) && is_array($result)) {
+				// The following check assumes hook return values will either be arrays or of type boolean.
+				// The email hook returns boolean as return type.
+				if (is_bool($result) || (!empty($result) && is_array($result))) {
 					// Lets preserve order of execution by order entered into the results array
 					$resultsByPrefix[] = array(
 						"prefix" => $prefix,
@@ -2716,6 +2715,15 @@ class ExternalModules
      */
 	private static function filterHookResults($results, $hookName) {
         if (empty($results)) return null;
+
+		// The email hook needs special attention. The final result of multiple calls to the email hook should be all 
+		// individual results and'ed together.
+		if ($hookName == "email") {
+			$cumulative_result = array_reduce($results, function($carry, $item) {
+				return $carry && $item["result"];
+			}, true);
+			return $cumulative_result;
+		}
 
         // Take the last result
         end($results);
