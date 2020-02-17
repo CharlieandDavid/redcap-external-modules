@@ -65,6 +65,10 @@
 	overflow-y: scroll;
 }
 
+#external-modules-configure-modal .modal-body > table > tbody > tr > td:first-child {
+	max-width: 500px;
+}
+
 #external-modules-configure-modal .modal-footer {
 	border-top-color: lightgray;
 	box-shadow: -8px -5px 15px -12px #b9b9b9;
