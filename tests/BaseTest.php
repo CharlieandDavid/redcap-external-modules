@@ -283,7 +283,10 @@ abstract class BaseTest extends TestCase
 	}
 
 	function __call($methodName, $args){
-		if(!method_exists($this->getReflectionClass(), $methodName) && $methodName !== 'log'){
+		if(
+			!method_exists($this->getReflectionClass(), $methodName) &&
+			!in_array($methodName, ['query', 'log'])
+		){
 			throw new Exception("Method does not exist: $methodName");
 		}
 

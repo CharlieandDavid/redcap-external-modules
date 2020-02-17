@@ -3,6 +3,79 @@ namespace ExternalModules;
 
 class FrameworkV2Test extends FrameworkBaseTest
 {
+	function testQuery_noParameters(){
+		$value = (string)rand();
+		$result = $this->query("select $value");
+		$row = $result->fetch_row();
+		$this->assertSame($value, $row[0]);
+		
+		$value = (string)rand();
+		$result = $this->query("select $value", []);
+		$row = $result->fetch_row();
+		$this->assertSame($value, $row[0]);
+	}
+
+	function testQuery_trueReturnForDatalessQueries(){
+		$r = $this->query('update redcap_ip_banned set time_of_ban=now() where ?=?', [1,2]);
+        $this->assertTrue($r);
+	}
+
+	function testQuery_invalidQuery(){
+		$this->assertThrowsException(function(){
+			ob_start();
+			$this->query("select * from ??", ['some_table_that_doesnt_exist']);
+		}, ExternalModules::tt("em_errors_29"));
+
+		ob_end_clean();
+	}
+
+	function testQuery_paramTypes(){
+		$values = [
+			true,
+			2,
+			3.3,
+			'four',
+			null
+		];
+
+		$row = $this->query('select ?, ?, ?, ?, ?', $values)->fetch_row();
+
+		$values[0] = 1; // The boolean 'true' will get converted to the integer '1'.  This is excepted.
+
+		$this->assertSame($values, $row);
+	}
+
+	function testQuery_invalidParamType(){
+		$this->assertThrowsException(function(){
+			ob_start();
+			$invalidParam = new \stdClass();
+			$this->query("select ?", [$invalidParam]);
+		}, ExternalModules::tt('em_errors_109'));
+
+		ob_end_clean();
+	}
+	
+	function testQuery_singleParam(){
+		$value = rand();
+		$row = $this->query('select ?', $value)->fetch_row();
+		$this->assertSame($value, $row[0]);
+	}
+
+	function testQuery_preparedStatementAffectedRows(){
+		$this->setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY, 1);
+
+		$q = $this->createQuery();
+		$q->add('update redcap_external_module_settings');
+		$q->add('set value = ?', 2);
+		$q->add('where external_module_id = ?', ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX));
+		$q->add('and project_id = ?', TEST_SETTING_PID);
+		$q->add('and `key` = ?', TEST_SETTING_KEY);
+		
+		$q->execute();
+
+		$this->assertSame(1, $q->getStatement()->affected_rows);
+	}
+
 	function testGetSubSettings_complexNesting()
 	{
 		$m = $this->getInstance();
