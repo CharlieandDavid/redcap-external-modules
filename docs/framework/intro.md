@@ -31,7 +31,7 @@ The frameworks were released in these REDCap versions:
 |[Version 1](v1.md)|8.0.0 |8.1.2|
 
 #### Methods Provided by the Framework
-The following methods are available via the `framework` object (e.g. `$module->framework->getModuleName()` or `$module->framework->records->lock()`).  Older methods are also accessible directly on the module class, but accessing them this way when using framework versions other than [Version 1](v1.md) is **deprecated** since implementation specifics may have changed to fix issues in certain edge cases.
+The following methods are available via the `framework` object (e.g. `$module->framework->getModuleName()` or `$module->framework->records->lock()`).  Older methods are also accessible directly on the module class, but accessing them this way when using framework versions other than [Version 1](v1.md) is **deprecated** since implementation specifics may have changed to fix issues in certain edge cases.  Unless otherwise stated, module methods throw standard PHP exceptions if any errors occur.  Any uncaught exception triggers an email to the REDCap admin address, avoiding the need for any error checking boilerplate in the large majority of cases.
 
 We are working on an automated way to fill in the REDCap version numbers below.  It's not as easy as it sounds because the framework changes could be committed weeks before they make it into a REDCap release.
 
