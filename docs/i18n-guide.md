@@ -4,7 +4,7 @@
 
 EMs are incredibly useful. Some of their great benefits over e.g. hooks and plugins, are ease of use (installation), maintainability (both for admins and developers), and reusability by / tranferability to others ([EM Repo](https://redcap.vanderbilt.edu/consortium/modules/index.php)). This last point, however, is massively hampered when EMs provide a rich user interface for _end users_ (non-admins, non-developers) who may not understand English well enough or at all. Thus, module authors in non-English-speaking countries will often have no choice but to implement their modules in their respective language. Even if they would deem them general enough to benefit others (and hence the modules would be a candidates for the EM Repo), they may opt to not release them because they cannot maintain a separate version in English. Even if they released a non-English version of their module to e.g. GitHub and maybe even the Repo, other REDCap admins might not use it, despite it potentially being a perfect match for their needs _functionally_, because they aren't able to (or can't or won't) make the necessary translations directly in the module's code so it would qualify for their audiences.
 
-In order to address these issues, support for internationalization (_i18n_) has been built into REDCap's External Module [Framework Version 3](framework/v3.md).
+In order to address these issues, support for internationalization (_i18n_) has been built into REDCap's External Module [Framework Version 2](framework/intro.md) and is supported by REDCap starting with version 9.5.0.
 
 External Module support for i18n is transparent. This means that existing modules will not have to be changed and will continue to work as they are. For a module to support i18n, module developers will have to opt-in to the i18n features provided by the EM framework.
 
@@ -39,7 +39,7 @@ my_awsome_module_v1.0
 ```ini
 ; This is a comment.
 key_1 = "Use keys consisting of [a-z0-9_] only."
-key_2 = "Enclose strings in double quotes. Having "quotes" inside strings is ok. No special escaping needed."
+key_2 = "Enclose strings in double quotes. You may have to escape \"internal\" quotes inside strings."
 key_3 = "Strings can even
 span accross multiple lines."
 key_4 = "Strings can include placeholders, e.g. key_5 is a greeting with a placeholder for a name."
@@ -62,6 +62,7 @@ Here is an example of a config file supporting internationalization:
     "tt_name": "module_name",
     "description": "It does awsome stuff.",
     "tt_description": "module_desc",
+    "framework-version": 2,
     "system-settings": [
         {
             "key": "some_key",
@@ -153,7 +154,7 @@ Argument | Description
 
 ### 5. Using strings from language files in JavaScript
 
-To facilitate translatability of strings used in JavaScript files, the EM framework provides utility functions to shuttle language strings from PHP to JavaScript. These strings can then be accessed in JavaScript code through a `tt()` function exposed in the module's _**JavaScript Module Object**_. This function behaves exactly the same as it's PHP counterpart. Please see the [Framework Version 3 documentation](framework/v3.md) for more details on how to create and use the _JavaScript Module Object_.
+To facilitate translatability of strings used in JavaScript files, the EM framework provides utility functions to shuttle language strings from PHP to JavaScript. These strings can then be accessed in JavaScript code through a `tt()` function exposed in the module's _**JavaScript Module Object**_. This function behaves exactly the same as it's PHP counterpart. Please see the [Framework documentation](framework/intro.md) for more details on how to create and use the _JavaScript Module Object_.
 
 To transfer (optionally interpolated) strings to JavaScript, module authors first need to initialize the _JavaScript Module Object_. Two methods assist in the transfer of language strings to JavaScript:
 
@@ -172,36 +173,36 @@ These methods support the following scenarios:
 
 ```php
 // Need to initialize the JavaScript Module Object first!
-$module->initializeJavascriptModuleObject();
+$module->framework->initializeJavascriptModuleObject();
 
 // Example 1 - Single
-$module->tt_transferToJavascriptModuleObject("a_key");
+$module->framework->tt_transferToJavascriptModuleObject("a_key");
 
 // Example 2 - Single w/interpolation
-$module->tt_transferToJavascriptModuleObject("greeting", $user['name']);
+$module->framework->tt_transferToJavascriptModuleObject("greeting", $user['name']);
 
 // Example 3 - Several keys
 $keys = array ("a_key", "another_key", "third_key");
-$module->tt_transferToJavascriptModuleObject($keys);
+$module->framework->tt_transferToJavascriptModuleObject($keys);
 
 // Example 4 - All
-$module->tt_transferToJavascriptModuleObject();
+$module->framework->tt_transferToJavascriptModuleObject();
 
 // Example 5 - New (not from language file)
-$module->tt_addToJavascriptModuleObject("new_number", 5);
-$module->tt_addToJavascriptModuleObject("new_text", "Just a plain old string");
-$module->tt_addToJavascriptModuleObject("new_boolean", false);
+$module->framework->tt_addToJavascriptModuleObject("new_number", 5);
+$module->framework->tt_addToJavascriptModuleObject("new_text", "Just a plain old string");
+$module->framework->tt_addToJavascriptModuleObject("new_boolean", false);
 $stuff = array ("There", "are", 5, "elements", "here");
-$module->tt_addToJavascriptModuleObject("new_array", $stuff);
+$module->framework->tt_addToJavascriptModuleObject("new_array", $stuff);
 ```
 
 To access the transferred strings (or other data), the `tt()` function of the _JavaScript Module Object_ is used. Consider this example:
 
 ```php
 <?php
-$this->initializeJavascriptModuleObject();
+$this->framework->initializeJavascriptModuleObject();
 // greeting = "Hello from {0}!"
-$this->tt_transferToJavascriptModuleObject("greeting");
+$this->framework->tt_transferToJavascriptModuleObject("greeting");
 ?>
 <script>
     $(function(){
