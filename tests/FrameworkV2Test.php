@@ -3,18 +3,6 @@ namespace ExternalModules;
 
 class FrameworkV2Test extends FrameworkBaseTest
 {
-	function testQuery_noParameters(){
-		$value = (string)rand();
-		$result = $this->query("select $value");
-		$row = $result->fetch_row();
-		$this->assertSame($value, $row[0]);
-		
-		$value = (string)rand();
-		$result = $this->query("select $value", []);
-		$row = $result->fetch_row();
-		$this->assertSame($value, $row[0]);
-	}
-
 	function testQuery_trueReturnForDatalessQueries(){
 		$r = $this->query('update redcap_ip_banned set time_of_ban=now() where ?=?', [1,2]);
         $this->assertTrue($r);

@@ -850,7 +850,13 @@ class AbstractExternalModule
 		return $dictionary[$fieldName]['field_label'];
 	}
 
-	public function query($sql, $parameters = []){
+	public function query($sql, $parameters = null){
+		$frameworkVersion = ExternalModules::getFrameworkVersion($this);
+		if($parameters === null && $frameworkVersion < 4){
+			// Allow queries without parameters.
+			$parameters = [];
+		}
+
 		return ExternalModules::query($sql, $parameters);
 	}
 
