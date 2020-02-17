@@ -1,7 +1,5 @@
 <?php
-namespace ExternalModules\FrameworkVersion2;
-
-use ExternalModules\ExternalModules;
+namespace ExternalModules;
 
 class Records
 {

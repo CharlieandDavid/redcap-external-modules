@@ -1,5 +1,5 @@
 <?php
-namespace ExternalModules\FrameworkVersion2;
+namespace ExternalModules;
 
 class Project
 {

@@ -1,14 +1,13 @@
 <?php
 namespace ExternalModules;
 
-use ExternalModules\FrameworkVersion2;
-
 // Uncomment this line to quickly disable all External Module hooks (for troubleshooting).
 //define('EXTERNAL_MODULES_KILL_SWITCH', '');
 
 require_once __DIR__ . "/AbstractExternalModule.php";
 require_once __DIR__ . "/Query.php";
 require_once __DIR__ . "/StatementResult.php";
+require_once __DIR__ . "/framework/Framework.php";
 
 if(PHP_SAPI == 'cli'){
 	// This is required for redcap when running on the command line (including unit testing).
@@ -4943,24 +4942,7 @@ class ExternalModules
 			return;
 		}
 
-		$path = __DIR__ . "/framework/v$version/Framework.php";
-
-		global $redcap_version;
-		if($version === 3 && version_compare($redcap_version, '9.0.3', '<')){
-			// This line and surrounding 'if' can be removed once the LTS release is greater than 9.0.3.
-			$path = null;
-		}
-
-		if(!file_exists($path)) {
-			//= The {0} module requires framework version '{1}', which is not available on your REDCap instance.
-			throw new Exception(self::tt("em_errors_59", 
-				$module->getModuleName(), 
-				$version));
-		}
-
-		require_once $path;
-		$className = "\\ExternalModules\\FrameworkVersion$version\\Framework";
-		$module->framework = new $className($module);
+		$module->framework = new Framework($module, $version);
 	}
 
 	public static function getFrameworkVersion($module)

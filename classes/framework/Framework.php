@@ -1,13 +1,11 @@
 <?php
-namespace ExternalModules\FrameworkVersion2;
+namespace ExternalModules;
 
 require_once __DIR__ . '/Project.php';
 require_once __DIR__ . '/Records.php';
 require_once __DIR__ . '/User.php';
 
 use Exception;
-use ExternalModules\AbstractExternalModule;
-use ExternalModules\ExternalModules;
 
 class Framework
 {
@@ -15,12 +13,13 @@ class Framework
 	 * Constructor
 	 * @param AbstractExternalModule $module The module for which the framework is initialized.
 	 */
-	function __construct($module){
+	function __construct($module, $frameworkVersion){
 		if(!($module instanceof AbstractExternalModule)){
 			throw new Exception(ExternalModules::tt("em_errors_70")); //= Initializing the framework requires a module instance.
 		}
 
-		$this->module = $module;
+        $this->module = $module;
+        $this->VERSION = $frameworkVersion;
 
 		// Initialize language support (parse language files etc.).
 		ExternalModules::initializeLocalizationSupport($module->PREFIX, $module->VERSION);
