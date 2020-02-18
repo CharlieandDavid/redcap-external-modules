@@ -79,6 +79,7 @@ Below is a *mostly* comprehensive list of all items that can be added to **confi
 * **documentation** can be used to provide a filename or URL for the "View Documentation" link in the module list.  If this setting is omitted, the first filename that starts with "README" will be used if it exists.  If a markdown file is used, it will be automatically rendered as HTML.
 * For module **authors**, enter their **name**,  **email**, and **institution**. At least one author is required to run the module.
 * Grant **permissions** for all of the operations, including hooks (e.g., **redcap_save_record**).
+* The **framework-version** version used by the module (see [framework documentation](framework/intro.md)).
 * **links** specify any links to show up on the left-hand toolbar. These include stand-alone webpages (substitutes for plugins) or links to outside websites. These are listable at the control-center level or at the project level.  A **link** consists of:
 	* A **name** to be displayed on the site
 	* An **icon**
@@ -500,6 +501,8 @@ For reference, below is a nearly comprehensive example of the types of things th
          "institution": "Vanderbilt University Medical Center"
       }
    ],
+
+   "framework-version": 2,
 
    "permissions": [
       "redcap_save_record",
