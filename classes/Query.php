@@ -32,12 +32,16 @@ class Query{
     function getParameters(){
         return $this->parameters;
     }
-
-    function getStatement(){
-        return $this->statement;
-    }
-
+    
     function setStatement($statement){
         $this->statement = $statement;
+    }
+
+    function __get($name){
+        if($name === 'affected_rows'){
+            return $this->statement->affected_rows;
+        }
+
+        throw new \Exception('Not yet implemented: ' . $name);
     }
 }

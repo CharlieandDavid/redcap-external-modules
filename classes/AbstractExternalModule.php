@@ -402,7 +402,7 @@ class AbstractExternalModule
 		list($q, $r) = ExternalModules::setRecordCompleteStatus($projectId, $recordId, $eventId, $surveyFormName, 0);
 
 		// Log the event (if value changed)
-		if ($r && $q->getStatement()->affected_rows > 0) {
+		if ($r && $q->affected_rows > 0) {
 			if(function_exists("log_event")) {
 				\log_event($sql,"redcap_data","UPDATE",$recordId,"{$surveyFormName}_complete = '0'","Update record");
 			}

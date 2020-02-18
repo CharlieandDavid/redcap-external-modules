@@ -85,21 +85,6 @@ abstract class FrameworkBaseTest extends BaseTest
 		$this->assertSame($value, $row[0]);
 	}
 
-	function testQuery_preparedStatementAffectedRows(){
-		$this->setProjectSetting(TEST_MODULE_PREFIX, TEST_SETTING_PID, TEST_SETTING_KEY, 1);
-
-		$q = $this->createQuery();
-		$q->add('update redcap_external_module_settings');
-		$q->add('set value = ?', 2);
-		$q->add('where external_module_id = ?', ExternalModules::getIdForPrefix(TEST_MODULE_PREFIX));
-		$q->add('and project_id = ?', TEST_SETTING_PID);
-		$q->add('and `key` = ?', TEST_SETTING_KEY);
-		
-		$q->execute();
-
-		$this->assertSame(1, $q->getStatement()->affected_rows);
-	}
-
 	function testGetSubSettings_complexNesting()
 	{
 		$m = $this->getInstance();

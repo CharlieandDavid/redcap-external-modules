@@ -1958,7 +1958,7 @@ class ExternalModules
 
 			$query->execute();
 
-			$affectedRows = $query->getStatement()->affected_rows;
+			$affectedRows = $query->affected_rows;
 
 			if ($affectedRows != 1) {
 				//= Unexpected number of affected rows ({0}) on External Module setting query: {1}
@@ -4849,7 +4849,7 @@ class ExternalModules
 				$query->add($sql, [$moduleId, ExternalModules::KEY_RESERVED_IS_CRON_RUNNING]);
 				$query->execute();
 
-				return $query->getStatement()->affected_rows;
+				return $query->affected_rows;
 			} else {
 				// "Could not find module ID for prefix '{0}'!"
 				throw new \Exception(self::tt("em_errors_118", $modulePrefix));

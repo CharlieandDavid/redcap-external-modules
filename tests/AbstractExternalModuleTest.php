@@ -1367,7 +1367,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$q->addInClause('record', $recordIds);
 		$q->execute();
 
-		$this->assertSame(count($recordIds), $q->getStatement()->affected_rows);
+		$this->assertSame(count($recordIds), $q->affected_rows);
 	}
 
 	function testUpdateRecordCount(){
