@@ -158,7 +158,11 @@ class Framework
 	}
 
 	function getSQLInClause($columnName, $values){
-		return ExternalModules::getSQLInClause($columnName, $values);
+        if($this->VERSION >= 4){
+            throw new Exception(ExternalModules::tt('em_errors_122'));
+        }
+        
+        return ExternalModules::getSQLInClause($columnName, $values);
 	}
 
 	function getUser($username = null){

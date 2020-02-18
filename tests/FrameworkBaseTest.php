@@ -395,5 +395,23 @@ abstract class FrameworkBaseTest extends BaseTest
 		}
 
 		$this->assertTrue(strpos($html, $expected) > 0, "Could not find '$expected' in '$html'");
-    }
+	}
+	
+	function testGetSQLInClause(){
+		// This method is tested more thoroughly in ExternalModulesTest.
+
+		$getSQLInClause = function(){
+			$clause = $this->getSQLInClause('a', [1]);
+			$this->assertSame("(a IN ('1'))", $clause);
+		};
+
+		if($this->getFrameworkVersion() < 4){
+			$getSQLInClause();
+		}
+		else{
+			$this->assertThrowsException(function() use ($getSQLInClause){
+				$getSQLInClause();
+			}, ExternalModules::tt('em_errors_122'));
+		}
+	}
 }
