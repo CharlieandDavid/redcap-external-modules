@@ -51,7 +51,7 @@ $result = $query->execute();
 
 Query objects can also be used to get the number of affected rows since the `db_affected_rows()` method will not work with parameters:
 ```php
-$query = $module->createQuery();
+$query = $module->framework->createQuery();
 $query->add('delete from redcap_data where record = ?', $record_id);
 $query->execute();
 $affected_rows = $query->getStatement()->affected_rows;
