@@ -63,7 +63,18 @@ class ExternalModulesTest extends BaseTest
 		ExternalModules::initializeSettingDefaults($m);
 		$this->assertNotEquals($defaultValue, $this->getSystemSetting());
 	}
-        function testCheckCronModifications() {
+
+	function testQuery()
+	{
+		// The query() method is more thoroughly tested in FrameworkBaseTest.
+		// We do a basic test here just to make sure any refactoring is caught.
+		$value = rand();
+		$r = ExternalModules::query('select ?', $value);
+		$this->assertSame($value, $r->fetch_row()[0]);
+	}
+
+	function testCheckCronModifications()
+	{
 		$prefix = self::getInstance()->PREFIX;
 		$cronAttr1 = array("cron_name" => "Test Cron 1", "cron_description" => "Test", "method" => "testMethod1", "cron_hour" => 1, "cron_minute" => 0);
 		$cronAttr2 = array("cron_name" => "Test Cron 2", "cron_description" => "Test", "method" => "testMethod2", "cron_hour" => 2, "cron_minute" => 0);
