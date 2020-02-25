@@ -27,18 +27,18 @@ $prefix = $_GET['prefix'];
 if(empty($prefix)){
 	$prefix = ExternalModules::getPrefixForID($_GET['id']);
 	if(empty($prefix)){
-		throw new Exception("A module prefix must be specified as a query parameter!");
+		throw new Exception(ExternalModules::tt('em_errors_123'));
 	}
 }
 
 $version = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_VERSION);
 if(empty($version)){
-	throw new Exception("The module with prefix '$prefix' is currently disabled systemwide.");
+	throw new Exception(ExternalModules::tt('em_errors_124', $prefix));
 }
 
 $config = ExternalModules::getConfig($prefix, $version);
 if($noAuth && !in_array($page, $config['no-auth-pages'])){
-	throw new Exception("The NOAUTH parameter is not allowed on this page.");
+	throw new Exception(ExternalModules::tt('em_errors_125'));
 }
 
 $getLink = function () use ($prefix, $version, $page) {
@@ -58,7 +58,7 @@ if($pid != null){
 	$enabledGlobal = ExternalModules::getSystemSetting($prefix,ExternalModules::KEY_ENABLED);
 	$enabled = ExternalModules::getProjectSetting($prefix, $pid, ExternalModules::KEY_ENABLED);
 	if(!$enabled && !$enabledGlobal){
-		throw new Exception("The '$prefix' module is not currently enabled on project $pid.");
+		throw new Exception(ExternalModules::tt('em_errors_126', $prefix, $pid));
 	}
 
 	$headerPath = 'ProjectGeneral/header.php';
@@ -76,7 +76,7 @@ $modulePath = ExternalModules::getModuleDirectoryPath($prefix, $version);
 $pagePath = ExternalModules::getSafePath($pagePath, $modulePath);
 
 if(!file_exists($pagePath)){
-	throw new Exception("The specified page does not exist for this module. $pagePath");
+	throw new Exception(ExternalModules::tt('em_errors_127', $pagePath));
 }
 
 $checkLinkPermission = function ($module) use ($link) {
@@ -87,7 +87,7 @@ $checkLinkPermission = function ($module) use ($link) {
 
 	$link = $module->redcap_module_link_check_display($_GET['pid'], $link);
 	if (!$link) {
-		die("You do not have permission to access this page.");
+		throw new Exception(ExternalModules::tt('em_errors_128'));
 	}
 };
 
