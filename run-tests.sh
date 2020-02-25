@@ -6,9 +6,11 @@ if hash composer 2>/dev/null; then
     composer install -q
 fi
 
+echo
 echo Running tests...
 vendor/bin/phpunit
 
+echo
 echo Checking code standards...
 vendor/bin/phpcs -p --standard=tests/phpcs --extensions=php --ignore=/vendor .
 
