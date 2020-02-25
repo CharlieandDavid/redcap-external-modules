@@ -2,11 +2,6 @@
 
 class StatementResultTest extends BaseTest
 {
-    protected function getReflectionClass()
-	{
-		return 'ExternalModules\ExternalModules';
-    }
-    
     function test_num_rows(){
         $r = $this->query('select ? union select ? union select ?', [1, 2, 3]);
         $this->assertSame(3, $r->num_rows);

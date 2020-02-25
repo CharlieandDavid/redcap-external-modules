@@ -34,7 +34,7 @@ class AbstractExternalModule
 	# constructor
 	function __construct()
 	{
-		// This if statement is only necessary for the BaseTestExternalModule.
+		// This if statement is only necessary for the TestModule.
 		if(!isset($this->PREFIX)){
 			list($prefix, $version) = ExternalModules::getParseModuleDirectoryPrefixAndVersion($this->getModuleDirectoryName());
 

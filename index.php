@@ -31,7 +31,14 @@ if(empty($prefix)){
 	}
 }
 
-$version = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_VERSION);
+if($prefix === ExternalModules::TEST_MODULE_PREFIX){
+	$version = TEST_MODULE_VERSION;
+}
+else{
+	// We don't call getEnabledVersion() here because there's no reason to cache data for all modules on single page loads.
+	$version = ExternalModules::getSystemSetting($prefix, ExternalModules::KEY_VERSION);
+}
+
 if(empty($version)){
 	throw new Exception(ExternalModules::tt('em_errors_124', $prefix));
 }

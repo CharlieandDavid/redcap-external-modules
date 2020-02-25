@@ -291,7 +291,7 @@ abstract class FrameworkBaseTest extends BaseTest
             // Get the actual value before manipulating the root for testing.
             $actual = call_user_func_array([$this, 'getSafePath'], func_get_args());
 
-            $moduleDirectory = $this->getInstance()->getModuleDirectoryName();
+			$moduleDirectory = ExternalModules::getModuleDirectoryPath(TEST_MODULE_PREFIX);
             if(!$root){
                 $root = $moduleDirectory;
             }
@@ -312,8 +312,8 @@ abstract class FrameworkBaseTest extends BaseTest
         $test('.');
         $test('non-existant-file.php');
         $test('test-subdirectory');
-        $test('test-file.php', 'test-subdirectory');
-        $test('test-file.php', __DIR__ . '/test-subdirectory');
+        $test('test-file.php', 'test-subdirectory'); // relative path
+        $test('test-file.php', ExternalModules::getTestModuleDirectoryPath() . '/test-subdirectory'); // absolute path
 
         $expectedExceptions = [
             'outside of your allowed parent directory' => [

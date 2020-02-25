@@ -799,11 +799,6 @@ class ExternalModulesTest extends BaseTest
 		return self::callPrivateMethod('getEnabledModuleVersionsForProject', TEST_SETTING_PID);
 	}
 
-	protected function getReflectionClass()
-	{
-		return 'ExternalModules\ExternalModules';
-	}
-
 	function testSaveSettings()
 	{
 		$settings = [];
@@ -990,7 +985,7 @@ class ExternalModulesTest extends BaseTest
 
 		$m = ExternalModules::getModuleInstance(TEST_MODULE_PREFIX);
 
-		$this->assertSame(BaseTestExternalModule::class, get_class($m));
+		$this->assertSame(TestModule::class, get_class($m));
 		$this->assertSame($prefix, $this->getPrivateVariable($variableName));
 
 		// Prevent issues in other tests.

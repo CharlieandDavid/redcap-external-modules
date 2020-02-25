@@ -9,17 +9,18 @@ if(!defined('PAGE')){
 }
 
 require_once __DIR__ . '/../classes/ExternalModules.php';
-require_once __DIR__ . '/BaseTestExternalModule.php';
 
 use PHPUnit\Framework\TestCase;
 use \Exception;
 use REDCap;
 
 const TEST_MODULE_PREFIX = ExternalModules::TEST_MODULE_PREFIX;
-const TEST_MODULE_VERSION = 'v1.0.0';
+const TEST_MODULE_VERSION = ExternalModules::TEST_MODULE_VERSION;
 const TEST_LOG_MESSAGE = 'This is a unit test log message';
 const TEST_SETTING_KEY = 'unit-test-setting-key';
 const FILE_SETTING_KEY = 'unit-test-file-setting-key';
+
+require_once ExternalModules::getTestModuleDirectoryPath() . '/TestModule.php';
 
 $testPIDs = ExternalModules::getTestPIDs();
 define('TEST_SETTING_PID', $testPIDs[0]);
@@ -34,7 +35,7 @@ abstract class BaseTest extends TestCase
 	public static function setUpBeforeClass(){
 		ExternalModules::initialize();
 
-		$m = new BaseTestExternalModule();
+		$m = new TestModule();
 		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
 		if(empty($surveyId)){
 			// TODO - tt
@@ -43,7 +44,7 @@ abstract class BaseTest extends TestCase
 	}
 
 	protected function setUp(){
-		self::$testModuleInstance = new BaseTestExternalModule();
+		self::$testModuleInstance = new TestModule();
 		
 		self::setExternalModulesProperty('instanceCache', [TEST_MODULE_PREFIX => [TEST_MODULE_VERSION => self::$testModuleInstance]]);
 		self::setExternalModulesProperty('systemwideEnabledVersions', [TEST_MODULE_PREFIX => TEST_MODULE_VERSION]);
@@ -149,7 +150,7 @@ abstract class BaseTest extends TestCase
 				throw new Exception('You must specify an exception excerpt!  Here\'s a hint: ' . $e->getMessage());
 			}
 			else if(strpos($e->getMessage(), $exceptionExcerpt) === false){
-				throw new Exception("Could not find the string '$exceptionExcerpt' in the following exception message: " . $e->getMessage());
+				throw new Exception("Could not find the string '$exceptionExcerpt' in the following exception message: " . $e->getMessage() . "\n\n" . $e->getTraceAsString());
 			}
 
 			$exceptionThrown = true;
@@ -204,7 +205,10 @@ abstract class BaseTest extends TestCase
 		return $property->setValue($this->getReflectionClass(), $value);
 	}
 
-	protected abstract function getReflectionClass();
+	protected function getReflectionClass()
+	{
+		return 'ExternalModules\ExternalModules';
+    }
 
 	protected function runConcurrentTestProcesses($functionName, $parentAction, $childAction)
 	{

@@ -87,7 +87,8 @@ class ExternalModules
 	const KEY_RESERVED_LAST_LONG_RUNNING_CRON_NOTIFICATION_TIME = 'reserved-last-long-running-cron-notification-time';
 	const KEY_RESERVED_CRON_MODIFICATION_NAME = "reserved-modification-name";
 
-	const TEST_MODULE_PREFIX = 'UNIT-TESTING-PREFIX';
+	const TEST_MODULE_PREFIX = 'unit_testing_prefix';
+	const TEST_MODULE_VERSION = 'v1.0.0';
 
 	const DISABLE_EXTERNAL_MODULE_HOOKS = 'disable-external-module-hooks';
 	const RICH_TEXT_UPLOADED_FILE_LIST = 'rich-text-uploaded-file-list';
@@ -166,7 +167,11 @@ class ExternalModules
 
 	// Holds module prefixes for which language strings have already been added to $lang.
 	private static $localizationInitialized = array();
-
+	
+	public static function getTestModuleDirectoryPath() {
+		return __DIR__ . '/../tests/' . self::TEST_MODULE_PREFIX . '_' . self::TEST_MODULE_VERSION;
+	}
+	
 	# two reserved settings that are there for each project
 	# KEY_VERSION, if present, denotes that the project is enabled system-wide
 	# KEY_ENABLED is present when enabled for each project
@@ -3535,8 +3540,8 @@ class ExternalModules
 
 	# formats directory name from $prefix and $version
 	static function getModuleDirectoryPath($prefix, $version = null){
-		if(self::isTesting() && $prefix == TEST_MODULE_PREFIX){
-			return true;
+		if(self::isTesting() && $prefix == self::TEST_MODULE_PREFIX){
+			return self::getTestModuleDirectoryPath();
 		}
 		
 		// If the modules path is not set, then there's nothing we can do here.

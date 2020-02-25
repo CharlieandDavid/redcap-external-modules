@@ -1,7 +1,7 @@
 <?php namespace ExternalModules;
 
 // move to own file, adding methods keeps confusing me
-class BaseTestExternalModule extends AbstractExternalModule {
+class TestModule extends AbstractExternalModule {
 
 	public $testHookArguments;
 	private $settingKeyPrefix;
@@ -69,5 +69,17 @@ class BaseTestExternalModule extends AbstractExternalModule {
 	function setSettingKeyPrefix($settingKeyPrefix)
 	{
 		$this->settingKeyPrefix = $settingKeyPrefix;
+	}
+
+	function redcap_module_link_check_display($project_id, $link){
+		if($this->linkCheckDisplayReturnValue !== null){
+			return $this->linkCheckDisplayReturnValue;
+		}
+
+		return parent::redcap_module_link_check_display($project_id, $link);
+	}
+
+	function setLinkCheckDisplayReturnValue($value){
+		$this->linkCheckDisplayReturnValue = $value;
 	}
 }

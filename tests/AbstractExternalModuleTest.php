@@ -243,7 +243,7 @@ class AbstractExternalModuleTest extends BaseTest
 		$this->setConfig($config);
 
 		// Attempt to make a new instance of the module (which throws an exception on any config issues).
-		new BaseTestExternalModule();
+		new TestModule();
 	}
 
 	function assertConfigInvalid($config, $exceptionExcerpt)
