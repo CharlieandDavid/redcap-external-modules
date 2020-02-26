@@ -3557,7 +3557,7 @@ class ExternalModules
 		// Look in the main modules dir and the example modules dir
 		$directoryToFind = $prefix . '_' . $version;
 		foreach(self::$MODULES_PATH as $pathDir) {
-			$modulePath = self::getSafePath($directoryToFind, $pathDir);
+			$modulePath = $pathDir . $directoryToFind;
 			if (is_dir($modulePath)) {
 				// If the module was downloaded from the central repo and then deleted via UI and still was found in the server,
 				// that means that load balancing is happening, so we need to delete the directory on this node too.
@@ -3580,7 +3580,7 @@ class ExternalModules
 				$status = self::downloadModule($moduleId, true);
 				if (!is_numeric($status)) {
 					// Return the modules directory path
-					return self::getSafePath($directoryToFind, dirname(APP_PATH_DOCROOT).DS.'modules');
+					return dirname(APP_PATH_DOCROOT).DS.'modules'.DS.$directoryToFind;
 				}
 			}
 		}		

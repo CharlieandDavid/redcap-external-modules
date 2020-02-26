@@ -1576,11 +1576,4 @@ class ExternalModulesTest extends BaseTest
 		$row = $r->fetch_assoc();
 		$this->assertSame($row['module_id'], ExternalModules::getRepoModuleId($row['module_name']));
 	}
-
-	function testGetModuleDirectoryPath_configurationExample(){
-		$prefix = 'vanderbilt_configurationExample';
-		$expected = realpath(__DIR__ . "/../example_modules/{$prefix}_v0.1");
-		$actual = ExternalModules::getModuleDirectoryPath($prefix);
-		$this->assertSame($expected, $actual);
-	}
 }
