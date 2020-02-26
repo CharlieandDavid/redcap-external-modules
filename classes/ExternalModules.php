@@ -2230,7 +2230,8 @@ class ExternalModules
 		$id = @self::$idsByPrefix[$prefix];
 		if($id == null){
 			self::query("INSERT INTO redcap_external_modules (directory_prefix) VALUES (?)", [$prefix]);
-			$id = db_insert_id();
+			// Cast to a string for consistency, since the select query above returns all existing ids as strings.
+			$id = (string) db_insert_id();
 			self::$idsByPrefix[$prefix] = $id;
 		}
 
