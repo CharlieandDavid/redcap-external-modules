@@ -774,7 +774,7 @@ class ExternalModules
 
 		// Get the string - if the key doesn't exist, provide a corresponding message to facilitate debugging.
 		$string = $lang[$key];
-		if ($string == null) {
+		if ($string === null) {
 			$string = self::getLanguageKeyNotDefinedMessage($original_key, $prefix);
 			// Clear interpolation values.
 			$values = array();
