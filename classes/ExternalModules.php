@@ -75,6 +75,17 @@ class ExternalModules
 	 * The prefix for fields in config.json that contain language file keys.
 	 */
 	const CONFIG_TRANSLATABLE_PREFIX = "tt_";
+	const CONFIG_TRANSLATABLE_KEYS = array (
+		"name", 
+		"description", 
+		"documentation", 
+		"icon", 
+		"url", 
+		"required", 
+		"hidden", 
+		"default", 
+		"cron_description"
+	);
 
 	/**
 	 * List of valid characters for a language key.
@@ -1206,7 +1217,7 @@ class ExternalModules
 			if (is_array($val)) {
 				$config[$key] = self::translateConfig($val, $prefix);
 			}
-			else {
+			else if (in_array($key, self::CONFIG_TRANSLATABLE_KEYS)) {
 				$tt_key = self::CONFIG_TRANSLATABLE_PREFIX.$key;
 				if (isset($config[$tt_key])) {
 					// Set the language key (in case of actual 'true', use the present value as key).
