@@ -23,7 +23,7 @@ Specifying a module framework version has implications for the minimum REDCap ve
 
 The frameworks were released in these REDCap versions:
 
-|Framework Versions|First Standard Release|First LTS Release|
+|Framework Version |First Standard Release|First LTS Release|
 |----------------- |------|-----|
 |[Version 4](v4.md)|?.?.? |?.?.?|
 |[Version 3](v3.md)|9.1.1 |9.1.3|
@@ -35,8 +35,8 @@ The following methods are available via the `framework` object (e.g. `$module->f
 
 We are working on an automated way to fill in the REDCap version numbers below.  It's not as easy as it sounds because the framework changes could be committed weeks before they make it into a REDCap release.
 
-Method  | Minimum Versions<br>`REDCap`<br>`Framework` | Description 
-------- | ------------------------- | ----------- 
+Method<br><br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+--- | --- | --- 
 addAutoNumberedRecord([$pid]) | `?.?.?`<br>`1` | Creates the next auto numbered record and returns the record id.  If the optional PID parameter is not specified, the current PID will be automatically detected.
 convertIntsToStrings($row) | `?.?.?`<br>`2` | Returns a copy of the specified array with any integer values cast to strings.  This method is intended to aid in converting queries to use parameters with minimal refactoring.
 createDAG($name) | `?.?.?`<br>`1` | Creates a DAG with the specified name, and returns it's ID.
@@ -102,18 +102,22 @@ tt_transferToJavascriptModuleObject(<br>&emsp;[$key[, $value[, ...]]]<br>) | `9.
 validateSettings($settings) | `?.?.?`<br>`1` | Override this method in order to validate settings at save time.  If a non-empty error message string is returned, it will be displayed to the user, and settings will NOT be saved.
 
 
-#### Project Methods
-The following methods are avaiable on the `Project` object returned by `$module->framework->getProject()`.
+#### Project Object
+The following fields and methods are avaiable on the `Project` object returned by `$module->framework->getProject()`.
 
-Method  | Description
-------- | -----------
+Field or<br>Method<br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+--- | --- | ---
+framework  | `?.?.?`<br>`2` | The `framework` object.
+project_id | `?.?.?`<br>`2` | The id of the project.
 getUsers() | `?.?.?`<br>`2` | Returns an array of `User` objects for each user with rights on the project.
 
-#### User Methods
-The following methods are avaiable on the `User` object returned by `$module->framework->getUser()`.
+#### User Object
+The following fields and methods are avaiable on the `User` object returned by `$module->framework->getUser()`.
 
-Method  | Description
-------- | -----------
+Field or<br>Method<br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+--- | --- | ---
+framework | `?.?.?`<br>`2` | The `framework` object.
+username | `?.?.?`<br>`2` | The username of the user.
 getEmail() | `?.?.?`<br>`2` | Returns the user's primary email address.
 getRights([$project_ids]) | `?.?.?`<br>`2` | Returns this user's rights on the specified project id(s).  If a single project id is specified, the rights for that project are returned.  If multiple project ids are specified, an array is returned with project id indexes pointing to rights arrays.  If no project ids are specified, rights for the current project are returned.
 hasDesignRights([$project_id]) | `?.?.?`<br>`2` | Returns true if the user has design rights on the specified project.  The current project is used if no project id is specified.
@@ -135,14 +139,14 @@ A JavaScript version of any module object can be initialized by including the Ja
 
 The _JavaScript Module Object_ provides the following methods framework version 2 and up:
 
-Method  | Description
-------- | -----------
-getUrlParameter(name) | Returns the value for the specified GET/URL parameter.
-getUrlParameters() | Returns an object containing all GET parameters for the current URL.
-isImportPage() | Returns true if the current page is a **Data Import Tool** page.
-isImportReviewPage() | Returns true if the current page is the **Data Import Tool** review page.
-isImportSuccessPage() | Returns true if the current page is the **Data Import Tool** success page.
-isRoute(routeName) | See the description for the PHP version of this method (above). 
-log(message[, parameters]) | See the description for the PHP version of this method (above).
-tt(key[, value[, ...]]) | Returns the string identified by `key` from the language store, optionally interpolated with the values passed as additional arguments (if the first such value is an array or object, its elements/members are used for interpolation and any further arguments are ignored). Refer to the [internationalization guide](../i18n-guide.md) for more details.
-tt_add(key, item) | Adds a (new) item (typically a string), identified by `key`, to the language store of the _JavaScript Module Object_. If an entry with the same name already exists in the store, it will be overwritten.
+Method<br><br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+--- | --- | ---
+getUrlParameter(name) | `?.?.?`<br>`?`| Returns the value for the specified GET/URL parameter.
+getUrlParameters() | `?.?.?`<br>`?`| Returns an object containing all GET parameters for the current URL.
+isImportPage() | `?.?.?`<br>`?`| Returns true if the current page is a **Data Import Tool** page.
+isImportReviewPage() | `?.?.?`<br>`?`| Returns true if the current page is the **Data Import Tool** review page.
+isImportSuccessPage() | `?.?.?`<br>`?`| Returns true if the current page is the **Data Import Tool** success page.
+isRoute(routeName) | `?.?.?`<br>`?`| See the description for the PHP version of this method (above). 
+log(message[, parameters]) | `?.?.?`<br>`?`| See the description for the PHP version of this method (above).
+tt(key[, value[, ...]]) | `9.5.0`<br>`2`| Returns the string identified by `key` from the language store, optionally interpolated with the values passed as additional arguments (if the first such value is an array or object, its elements/members are used for interpolation and any further arguments are ignored). Refer to the [internationalization guide](../i18n-guide.md) for more details.
+tt_add(key, item) | `9.5.0`<br>`2`| Adds a (new) item (typically a string), identified by `key`, to the language store of the _JavaScript Module Object_. If an entry with the same name already exists in the store, it will be overwritten.
