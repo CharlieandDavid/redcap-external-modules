@@ -1320,8 +1320,6 @@ class ExternalModulesTest extends BaseTest
 
 	function testTranslateConfig()
 	{
-		$this->markTestSkipped();
-
 		$settingOneTranslationKey = 'setting_one_name';
 		$settingTwoTranslationKey = 'setting_two_name';
 		$settingOneTranslatedName =  'Establecer Uno';
