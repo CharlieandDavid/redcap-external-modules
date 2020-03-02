@@ -103,21 +103,19 @@ validateSettings($settings) | `?.?.?`<br>`1` | Override this method in order to 
 
 
 #### Project Object
-The following fields and methods are avaiable on the `Project` object returned by `$module->framework->getProject()`.
+The following methods are avaiable on the `Project` object returned by `$module->framework->getProject()`.
 
-Field or<br>Method<br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+Method<br><br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
 --- | --- | ---
-framework  | `?.?.?`<br>`2` | The `framework` object.
-project_id | `?.?.?`<br>`2` | The id of the project.
+getProjectId() | `?.?.?`<br>`2` | Returns the project id.
 getUsers() | `?.?.?`<br>`2` | Returns an array of `User` objects for each user with rights on the project.
 
 #### User Object
 The following fields and methods are avaiable on the `User` object returned by `$module->framework->getUser()`.
 
-Field or<br>Method<br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
+Method<br><br>&nbsp; | Minimum&nbsp;Versions<br>`REDCap`<br>`Framework` | Description<br><br>&nbsp;
 --- | --- | ---
-framework | `?.?.?`<br>`2` | The `framework` object.
-username | `?.?.?`<br>`2` | The username of the user.
+getUsername() | `?.?.?`<br>`2` | Returns the username.
 getEmail() | `?.?.?`<br>`2` | Returns the user's primary email address.
 getRights([$project_ids]) | `?.?.?`<br>`2` | Returns this user's rights on the specified project id(s).  If a single project id is specified, the rights for that project are returned.  If multiple project ids are specified, an array is returned with project id indexes pointing to rights arrays.  If no project ids are specified, rights for the current project are returned.
 hasDesignRights([$project_id]) | `?.?.?`<br>`2` | Returns true if the user has design rights on the specified project.  The current project is used if no project id is specified.
