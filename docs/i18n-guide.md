@@ -52,6 +52,8 @@ Note that language strings can contain placeholders (an identifier enclosed by c
 
 To enable translation of the module's name, description, as well as configuration prompts and values, as displayed in a module's configuration dialog, module authors have to signal the EM Framework that translated strings are available by providing the corresponding language file key for each translatable item (basically anything that is a string). To do so, additional keys starting with `tt_` are added at the same level as the key that contains a translatable value. Thus, to provide the language key associated with the `description` of a module, add `tt_description` with a value corresponding to the key in `English.ini` that contains the description. The EM Framework will insert the appropriate translations into the configuration when displayed for the user.
 
+These keys in `config.json` can be translated: `name` (not within the _authors_ section), `description`, `documentation`, `icon`, `url`, `default`, `cron_description`, as well as `required` and `hidden`. 
+
 For readability of `config.json` (as well as for backward compatibility, see [here](https://github.com/grezniczek/localization_demo)), the actualy string can and probably should be duplicated from `English.ini`. Note that the string from the language file will take precedence.
 
 Here is an example of a config file supporting internationalization:
