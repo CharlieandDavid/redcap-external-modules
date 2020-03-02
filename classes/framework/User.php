@@ -39,6 +39,10 @@ class User
 		return $this->user_info;
 	}
 
+	function getUsername() {
+		return $this->username;
+	}
+
 	function isSuperUser(){
 		$userInfo = $this->getUserInfo();
 		return $userInfo['super_user'] === 1;
