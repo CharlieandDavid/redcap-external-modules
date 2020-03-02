@@ -1222,10 +1222,10 @@ class ExternalModules
 	private static function translateConfig(&$config, $prefix) {
 		// Recursively loop through all.
 		foreach ($config as $key => $val) {
-			if (is_array($val) && !in_array($key, self::CONFIG_NONTRANSLATABLE_SECTIONS)) {
+			if (is_array($val) && !in_array($key, self::CONFIG_NONTRANSLATABLE_SECTIONS, true)) {
 				$config[$key] = self::translateConfig($val, $prefix);
 			}
-			else if (in_array($key, self::CONFIG_TRANSLATABLE_KEYS)) {
+			else if (in_array($key, self::CONFIG_TRANSLATABLE_KEYS, true)) {
 				$tt_key = self::CONFIG_TRANSLATABLE_PREFIX.$key;
 				if (isset($config[$tt_key])) {
 					// Set the language key (in case of actual 'true', use the present value as key).
