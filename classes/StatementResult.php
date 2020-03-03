@@ -72,7 +72,7 @@ class StatementResult // extends \mysqli_result
 
     function fetch_array($resultType = MYSQLI_BOTH){
         if($this->closed){
-            return false;
+            return $this->getClosedReturnValue();
         }
 
         $s = $this->statement;
@@ -109,7 +109,7 @@ class StatementResult // extends \mysqli_result
 
     function fetch_fields(){
         if($this->closed){
-            return false;
+            return $this->getClosedReturnValue();
         }
 
         return $this->fields;
@@ -127,13 +127,15 @@ class StatementResult // extends \mysqli_result
         $this->statement->free_result();
         
         $this->closed = true;
-        
-        $this->current_field = false;
-        $this->field_count = false;
-        $this->lengths = false;
-        $this->num_rows = false;
 
-        return false;
+        $this->current_field = false;
+        $this->lengths = false;
+        
+        $returnValue = $this->getClosedReturnValue();
+        $this->field_count = $returnValue;
+        $this->num_rows = $returnValue;
+
+        return $returnValue;
     }
 
     function fetch_field(){
@@ -158,5 +160,14 @@ class StatementResult // extends \mysqli_result
 
     function __call($name, $args){
         $this->throwNotImplementedException($name);
+    }
+
+    private function getClosedReturnValue(){
+        if(PHP_MAJOR_VERSION === 5){
+            return null;
+        }
+        else{
+            return false;
+        }
     }
 }
