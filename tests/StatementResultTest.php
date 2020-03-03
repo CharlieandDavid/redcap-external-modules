@@ -1,18 +1,22 @@
 <?php namespace ExternalModules;
+require_once APP_PATH_DOCROOT . '/Tests/DBFunctionsTest.php';
 
-class StatementResultTest extends BaseTest
+// We extend the REDCap core DB function test class
+// so that those tests run whenever external module tests run.
+// They include some StatementResult assertions that this test doesn't.
+class StatementResultTest extends \DBFunctionsTest
 {
     function test_num_rows(){
-        $r = $this->query('select ? union select ? union select ?', [1, 2, 3]);
+        $r = ExternalModules::query('select ? union select ? union select ?', [1, 2, 3]);
         $this->assertSame(3, $r->num_rows);
 
         // empty result set
-        $r = $this->query('select ? from redcap_data where 2=3', [1]);
+        $r = ExternalModules::query('select ? from redcap_data where 2=3', [1]);
         $this->assertSame(0, $r->num_rows);
     }
 
     function test_current_field(){
-        $result = $this->query('select ?,?', [1,2]);
+        $result = ExternalModules::query('select ?,?', [1,2]);
         
         $this->assertSame(0, $result->current_field);
         $result->fetch_field();
@@ -22,12 +26,12 @@ class StatementResultTest extends BaseTest
     }
 
     function test_field_count(){
-        $result = $this->query('select ?,?,?,?,?', [1,2,3,4,5]);
+        $result = ExternalModules::query('select ?,?,?,?,?', [1,2,3,4,5]);
         $this->assertSame(5, $result->field_count);
     }
 
     function test_lengths(){
-        $result = $this->query("select ?,? union select ?,?", [1, 1.1, 'aa', null]);
+        $result = ExternalModules::query("select ?,? union select ?,?", [1, 1.1, 'aa', null]);
         
         $result->fetch_row();
         $this->assertSame([1,3], $result->lengths);
@@ -37,36 +41,36 @@ class StatementResultTest extends BaseTest
     }
 
     function test_fetch_field(){
-        $result = $this->query('select ? as a, ? as b', [1,2]);
+        $result = ExternalModules::query('select ? as a, ? as b', [1,2]);
         $this->assertSame('a', $result->fetch_field()->name);
         $this->assertSame('b', $result->fetch_field()->name);
         $this->assertNull($result->fetch_field());
     }
 
     function test_fetch_assoc(){
-        $r = $this->query('select ? as foo union select ?', [1, 2]);
+        $r = ExternalModules::query('select ? as foo union select ?', [1, 2]);
         $this->assertSame(['foo'=>1], $r->fetch_assoc());
         $this->assertSame(['foo'=>2], $r->fetch_assoc());
         $this->assertNull($r->fetch_assoc());
 
         // empty result set
-        $r = $this->query('select ? from redcap_data where 2=3', [1]);
+        $r = ExternalModules::query('select ? from redcap_data where 2=3', [1]);
         $this->assertNull($r->fetch_assoc());
     }
 
     function test_fetch_row(){
-        $r = $this->query('select ? union select ?', [1, 2]);
+        $r = ExternalModules::query('select ? union select ?', [1, 2]);
         $this->assertSame([0=>1], $r->fetch_row());
         $this->assertSame([0=>2], $r->fetch_row());
         $this->assertNull($r->fetch_row());
 
         // empty result set
-        $r = $this->query('select ? from redcap_data where 2=3', [1]);
+        $r = ExternalModules::query('select ? from redcap_data where 2=3', [1]);
         $this->assertNull($r->fetch_row());
     }
 
     function test_fetch_array(){
-        $r = $this->query('select ? union select ? union select ? union select ?', [1, 2, 3, 4]);
+        $r = ExternalModules::query('select ? union select ? union select ? union select ?', [1, 2, 3, 4]);
         $this->assertSame([0=>1, '?'=>1], $r->fetch_array());
         $this->assertSame([0=>2, '?'=>2], $r->fetch_array(MYSQLI_BOTH));
         $this->assertSame([0=>3], $r->fetch_array(MYSQLI_NUM));
@@ -74,13 +78,13 @@ class StatementResultTest extends BaseTest
         $this->assertNull($r->fetch_array());
 
         // empty result set
-        $r = $this->query('select ? from redcap_data where 2=3', [1]);
+        $r = ExternalModules::query('select ? from redcap_data where 2=3', [1]);
         $this->assertNull($r->fetch_array());
     }
 
     function test_db_fetch_field_direct(){
         $fetchField = function($sql, $params){
-            $result = $this->query($sql, $params);
+            $result = ExternalModules::query($sql, $params);
             $field = $result->fetch_field_direct(0);
 
             $this->normalizeField($field);
@@ -97,7 +101,7 @@ class StatementResultTest extends BaseTest
 
     function test_fetch_fields(){
         $fetchFields = function($sql, $params){
-            $result = $this->query($sql, $params);
+            $result = ExternalModules::query($sql, $params);
             $fields = $result->fetch_fields();
 
             foreach($fields as $field){
@@ -115,17 +119,17 @@ class StatementResultTest extends BaseTest
     }
 
     function test_data_seek(){
-        $r = $this->query('select ? as a', [1]);
+        $r = ExternalModules::query('select ? as a', [1]);
         $this->assertSame([0=>1], $r->fetch_row());
         $r->data_seek(0);
         $this->assertSame([0=>1], $r->fetch_row());
     }
 
     function test_fetch_object(){
-        $r = $this->query("select 'a' as b", []);
+        $r = ExternalModules::query("select 'a' as b", []);
         $expected = $r->fetch_object();
         
-        $r = $this->query('select ? as b', ['a']);
+        $r = ExternalModules::query('select ? as b', ['a']);
         $actual = $r->fetch_object();
 
         $this->assertEquals($expected, $actual);
@@ -136,10 +140,10 @@ class StatementResultTest extends BaseTest
         $class = FetchObject::class;
         $constructorArgs = [rand(), rand(), rand()];
 
-        $r = $this->query("select 'a' as b", []);
+        $r = ExternalModules::query("select 'a' as b", []);
         $expected = $r->fetch_object($class, $constructorArgs);
         
-        $r = $this->query('select ? as b', ['a']);
+        $r = ExternalModules::query('select ? as b', ['a']);
         $actual = $r->fetch_object($class, $constructorArgs);
         
         $this->assertEquals($expected, $actual);
@@ -152,7 +156,7 @@ class StatementResultTest extends BaseTest
     }
 
     function test_free_result(){
-        $result = $this->query('select ?', 1);
+        $result = ExternalModules::query('select ?', 1);
 
         // Just make sure they run without exception.
         $result->free();
