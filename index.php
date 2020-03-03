@@ -9,6 +9,8 @@ if($noAuth){
 	define('NOAUTH', true);
 }
 
+// test addition
+
 // We call redcap_connect.php before loading any classes to make sure redirections from previous REDCap
 // version URLs happen first.  We don't want to try to load old and new versions of the same class.
 require_once __DIR__ . '/redcap_connect.php';
