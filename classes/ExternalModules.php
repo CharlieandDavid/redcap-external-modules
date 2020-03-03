@@ -1351,13 +1351,6 @@ class ExternalModules
 			return;
 		}
 
-		if(self::isVanderbilt() && in_array(gethostname(), ['ori1007lt', 'ori1007lr', 'ori1007lp', 'ori1008lp', 'ori3007lp', 'ori3008lp'])){
-			// This is one of the new Vandy REDCap servers that are just being tested currently.
-			// Log errors on these servers for now instead of emailing (until they're stable).
-			error_log("ExternalModules - sendAdminEmail() - $subject - $prefix - $message");
-			return;
-		}
-
 		$email = self::getAdminEmailMessage($subject, $message, $prefix);
 		$email->send();
 	}
