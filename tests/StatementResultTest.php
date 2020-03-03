@@ -4,7 +4,7 @@ require_once APP_PATH_DOCROOT . '/Tests/DBFunctionsTest.php';
 // We extend the REDCap core DB function test class
 // so that those tests run whenever external module tests run.
 // They include some StatementResult assertions that this test doesn't.
-class StatementResultTest extends \DBFunctionsTest
+class StatementResultTest extends BaseTest
 {
     function test_num_rows(){
         $r = ExternalModules::query('select ? union select ? union select ?', [1, 2, 3]);
