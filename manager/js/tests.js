@@ -38,63 +38,105 @@ var ExternalModuleTests = {
         })
 
         this.assertDoBranching(true, 1, {
-            value: 2,
-            op: '<',
+            value: 1,
+            op: '='
         })
 
-        this.assertDoBranching(false, 2, {
+        this.assertDoBranching(false, 1, {
             value: 2,
-            op: '<',
+            op: '='
         })
 
         this.assertDoBranching(true, 1, {
             value: 2,
-            op: '<=',
+            op: '<'
+        })
+
+        this.assertDoBranching(false, 2, {
+            value: 2,
+            op: '<'
+        })
+
+        this.assertDoBranching(true, 1, {
+            value: 2,
+            op: '<='
         })
 
         this.assertDoBranching(true, 2, {
             value: 2,
-            op: '<=',
+            op: '<='
         })
 
         this.assertDoBranching(true, 2, {
             value: 1,
-            op: '>',
+            op: '>'
         })
 
         this.assertDoBranching(false, 2, {
             value: 2,
-            op: '>',
+            op: '>'
         })
 
         this.assertDoBranching(true, 2, {
             value: 1,
-            op: '>=',
+            op: '>='
         })
 
         this.assertDoBranching(true, 2, {
             value: 2,
-            op: '>=',
+            op: '>='
         })
 
         this.assertDoBranching(true, 1, {
             value: 2,
-            op: '<>',
+            op: '<>'
         })
 
         this.assertDoBranching(false, 2, {
             value: 2,
-            op: '<>',
+            op: '<>'
         })
 
         this.assertDoBranching(true, 1, {
             value: 2,
-            op: '!=',
+            op: '!='
         })
 
         this.assertDoBranching(false, 2, {
             value: 2,
-            op: '!=',
+            op: '!='
+        })
+
+        this.assertDoBranching(true, 1, {
+            type: "or",
+            conditions: [
+                { value: 1 },
+                { value: 2 }
+            ]
+        })
+
+        this.assertDoBranching(false, 1, {
+            type: "or",
+            conditions: [
+                { value: 2 },
+                { value: 3 }
+            ]
+        })
+
+        this.assertDoBranching(true, 1, {
+            type: "and",
+            conditions: [
+                { value: 1 },
+                { value: 1 }
+            ]
+        })
+
+        this.assertDoBranching(false, 1, {
+            type: "and",
+            conditions: [
+                { value: 1 },
+                { value: 2 }
+            ]
         })
     },
 
@@ -102,7 +144,14 @@ var ExternalModuleTests = {
         var fieldName1 = 'some_field_1'
         var fieldName2 = 'some_other_field'
 
-        branchingLogic.field = fieldName1
+        var conditions = branchingLogic.conditions
+        if(conditions === undefined){
+            conditions = [branchingLogic]
+        }
+        
+        conditions.forEach(function(condition){
+            condition.field = fieldName1
+        })
 
         var settings = [
             {
