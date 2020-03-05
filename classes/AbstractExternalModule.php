@@ -224,7 +224,9 @@ class AbstractExternalModule
 	function setProjectSettings($settings, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
-		ExternalModules::saveSettings($this->PREFIX, $pid, json_encode($settings));
+		// As this was broken and did nothing, we simply do nothing 
+		// (except for leaving the pid-check intact).
+		// Framework v4 provides a working version.
 	}
 
 	# Remove the value stored for this project and the specified key.
