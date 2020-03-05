@@ -36,6 +36,66 @@ var ExternalModuleTests = {
         this.assertDoBranching(false, 1, {
             value: 2
         })
+
+        this.assertDoBranching(true, 1, {
+            value: 2,
+            op: '<',
+        })
+
+        this.assertDoBranching(false, 2, {
+            value: 2,
+            op: '<',
+        })
+
+        this.assertDoBranching(true, 1, {
+            value: 2,
+            op: '<=',
+        })
+
+        this.assertDoBranching(true, 2, {
+            value: 2,
+            op: '<=',
+        })
+
+        this.assertDoBranching(true, 2, {
+            value: 1,
+            op: '>',
+        })
+
+        this.assertDoBranching(false, 2, {
+            value: 2,
+            op: '>',
+        })
+
+        this.assertDoBranching(true, 2, {
+            value: 1,
+            op: '>=',
+        })
+
+        this.assertDoBranching(true, 2, {
+            value: 2,
+            op: '>=',
+        })
+
+        this.assertDoBranching(true, 1, {
+            value: 2,
+            op: '<>',
+        })
+
+        this.assertDoBranching(false, 2, {
+            value: 2,
+            op: '<>',
+        })
+
+        this.assertDoBranching(true, 1, {
+            value: 2,
+            op: '!=',
+        })
+
+        this.assertDoBranching(false, 2, {
+            value: 2,
+            op: '!=',
+        })
     },
 
     assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
@@ -64,13 +124,14 @@ var ExternalModuleTests = {
         
         var modal = $('#external-modules-configure-modal')
         settings.forEach(function(setting){
+            modal.find('input[name=' + setting.key + ']').remove() // remove inputs from other assertions
             modal.append('<input field="' + setting.key + '" name="' + setting.key + '" value="' + setting.value + '">')
         })
         
         ExternalModules.Settings.prototype.doBranching()
 
         var style = modal.find('[field='+fieldName2+']').attr('style')
-        var actuallyVisible = style === undefined
+        var actuallyVisible = style !== 'display: none;'
 
         this.assert(actuallyVisible === expectedVisible)
 	},
