@@ -228,4 +228,7 @@ var ExternalModuleTests = {
 	}
 }
 
-ExternalModuleTests.run($(document.currentScript.parentElement))
+if(document.currentScript){
+    // This is a modern browser.  Run tests.
+    ExternalModuleTests.run($(document.currentScript.parentElement))
+}
