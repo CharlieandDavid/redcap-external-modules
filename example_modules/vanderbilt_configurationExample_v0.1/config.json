@@ -96,6 +96,11 @@
 
 	"project-settings": [
 		{
+			"key": "descriptive-field",
+			"name": "This is just a descriptive field with only static text and no input field.",
+			"type": "descriptive"
+		},
+		{
 			"key": "custom-field1",
 			"name": "Custom Field 1",
 			"type": "custom",
