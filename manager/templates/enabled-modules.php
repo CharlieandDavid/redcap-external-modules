@@ -98,6 +98,10 @@ $pid = $_GET['pid'];
 	<?=ExternalModules::tt("em_manage_44")?>
 </p>
 
+<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px; display: none;">
+	<?php ExternalModules::addResource('js/tests.js'); ?>
+</p>
+
 <?php 
 // Display alert message in Control Center if any modules have updates in the REDCap Repo
 ExternalModules::renderREDCapRepoUpdatesAlert();
