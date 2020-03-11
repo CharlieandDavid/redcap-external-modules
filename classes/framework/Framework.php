@@ -92,7 +92,7 @@ class Framework
 	 */
 	function getProjectSettings($pid = null)
 	{
-		if ($this->VERSION < 4) {
+		if ($this->VERSION < 5) {
 			return $this->module->getProjectSettings($pid);
 		}
 		$pid = self::requireProjectId($pid);
@@ -116,7 +116,7 @@ class Framework
 	function setProjectSettings($settings, $pid = null)
 	{
 		$pid = self::requireProjectId($pid);
-		if ($this->VERSION >= 4) {
+		if ($this->VERSION >= 5) {
 			ExternalModules::saveProjectSettings($this->module->PREFIX, $pid, $settings);
 		}
 	}
