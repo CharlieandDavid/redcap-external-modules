@@ -226,7 +226,7 @@ class AbstractExternalModule
 		$pid = self::requireProjectId($pid);
 		// As this was broken and did nothing, we simply do nothing 
 		// (except for leaving the pid-check intact).
-		// Framework v4 provides a working version.
+		// Framework v5 provides a working version.
 	}
 
 	# Remove the value stored for this project and the specified key.

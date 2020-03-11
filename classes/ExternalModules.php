@@ -315,7 +315,7 @@ class ExternalModules
 		return $settings;
 	}
 
-	// This is called from framework[v4]::setProjectSettings()
+	// This is called from framework[v5]::setProjectSettings()
 	static function saveProjectSettings($moduleDirectoryPrefix, $pid, $settings)
 	{
 		self::setSettings($moduleDirectoryPrefix, $pid, $settings);
