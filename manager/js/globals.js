@@ -461,25 +461,9 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		key = this.getInstanceName(key, instance);
 	}
 
-	var selectAttrs = {
-		class: ''
-	}
-
-	if (
-		type === 'project-id'
-		||
-		typeof setting.autocomplete !== 'undefined' && setting.autocomplete == true
-	){
-		selectAttrs.class += " external-modules-autocomplete-dropdown";
-	}
-
-	if(type == 'project-id'){
-		this.addSelectedProjectIdChoiceIfNeeded(setting, value)
-	}
-
 	var inputHtml;
 	if(['dropdown', 'field-list', 'form-list', 'event-list', 'arm-list', 'user-list', 'user-role-list', 'dag-list', 'project-id'].includes(type)){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
+		inputHtml = this.getSelectElement(key, setting, value);
 	}
 	else if(type == 'textarea'){
 		inputHtml = this.getTextareaElement(key, value, {"rows" : "6"});
@@ -552,7 +536,26 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	return outputHtml;
 };
 
-ExternalModules.Settings.prototype.getSelectElement = function(name, choices, selectedValue, selectAttributes){
+ExternalModules.Settings.prototype.getSelectElement = function(name, setting, selectedValue){
+	var choices = setting.choices
+	var isProjectId = setting.type === 'project-id'
+	
+	var selectAttributes = {
+		class: ''
+	}
+
+	if (
+		isProjectId
+		||
+		typeof setting.autocomplete !== 'undefined' && setting.autocomplete == true
+	){
+		selectAttributes.class += " external-modules-autocomplete-dropdown";
+	}
+
+	if(isProjectId){
+		this.addSelectedProjectIdChoiceIfNeeded(setting, selectedValue)
+	}
+
 	var optionsHtml = '';
 	var choiceHasBlankValue = false;
 	for(var i in choices ){
