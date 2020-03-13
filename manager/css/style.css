@@ -90,7 +90,7 @@
 }
 
 #external-modules-configure-modal select {
-	max-width: 275px;
+	max-width: 100%;
 }
 
 .external-modules-use-system-setting {
@@ -122,6 +122,10 @@
 	display: block; /* force buttons onto separate lines when descriptions don't take up the whole width, like when searching for a single module */
 	margin-left: auto;
 	margin-bottom: 5px;
+}
+
+.external-modules-input-td {
+	max-width: 275px;
 }
 
 .external-modules-input-td .mce-statusbar {

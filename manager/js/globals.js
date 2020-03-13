@@ -240,25 +240,6 @@ ExternalModules.Settings.prototype.getSettingColumns = function(setting,savedSet
 	return rowsHtml;
 };
 
-// Function to use javascript to finish setting up configuration
-// This is called twice from two different ajax calls when first loading a configuration, so we wait until
-// both are done before actually configuring the settings
-ExternalModules.Settings.prototype.configureSettings = function() {
-	if($('#external-modules-configure-modal').find('tbody').html() == "" || (typeof ExternalModules.Settings.projectList === "undefined")) {
-		return;
-	}
-
-	// Loop through every project_id_textbox to add the project label to the select
-	$(".project_id_textbox").each(function() {
-		var selectedOption = $(this).find("option:selected");
-		if(selectedOption.val() in ExternalModules.Settings.projectList) {
-			selectedOption.html(ExternalModules.Settings.projectList[selectedOption.val()]);
-		}
-	});
-
-	this.initializeSettingsFields();
-}
-
 ExternalModules.Settings.prototype.processBranchingLogicCondition = function(condition) {
 	if (typeof condition.field === 'undefined' || typeof condition.value === 'undefined') {
 		return false;
@@ -464,6 +445,27 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		selectAttrs["class"] = "external-modules-autocomplete-dropdown";
 	}
 
+	var addSelectedProjectIdChoiceIfNeeded = function(){
+		if(value == "") {
+			return
+		}
+
+		for(var i=0; i<setting.choices.length; i++){
+			var choiceValue = setting.choices[i].value
+			if(choiceValue == value){
+				// The current user has design rights for the selected project, so it will already appear in their dropdown list.
+				return
+			}
+		}
+
+		// The current user does not have design rights for the selected project.
+		// Add it to the list so it can be selected and displayed correctly in the config dialog.
+		setting.choices.splice(1, 0, {
+			value: value,
+			name: '(' + value + ') You do not have design rights for the selected project'
+		});
+	}
+
 	var inputHtml;
 	if(type == 'dropdown'){
 		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
@@ -490,11 +492,8 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
 	}
 	else if(type == 'project-id'){
-		// Set up an option to store the saved value (setting.choice will be blank otherwise)
-		if(value != "") {
-			setting.choices = [{"value" : value, "name" : value}];
-		}
-		inputHtml = "<div style='width:200px'>" + this.getSelectElement(key, setting.choices, value, {"class":"project_id_textbox"}) + "</div>";
+		addSelectedProjectIdChoiceIfNeeded()
+		inputHtml = this.getSelectElement(key, setting.choices, value, {"class":"project_id_textbox"});
 	}
 	else if(type == 'textarea'){
 		inputHtml = this.getTextareaElement(key, value, {"rows" : "6"});
@@ -887,17 +886,7 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 
 ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
-	$(".project_id_textbox").select2({
-		width: '100%',
-		ajax: {
-			url: 'ajax/get-project-list.php',
-			dataType: 'json',
-			delay: 250,
-			data: function(params) { return {'parameters':params.term }; },
-			method: 'GET',
-			cache: true
-		}
-	});
+	$(".project_id_textbox").select2();
 
 	$(".external-modules-autocomplete-dropdown").select2();
 
@@ -1076,32 +1065,6 @@ $(function(){
 			params['pid'] = pidString;
 		}
 
-		var getProjectList = function(callback){
-			// Just in case there are any project-id lists, we need to get a full project list
-			if(typeof ExternalModules.Settings.projectList === "undefined") {
-				$.ajax({
-					url:'ajax/get-project-list.php',
-					dataType: 'json'
-				}).always(function(data) {
-					if(data["results"]){
-						ExternalModules.Settings.projectList = [];
-						data["results"].forEach(function(projectDetails) {
-							ExternalModules.Settings.projectList[projectDetails["id"]] = projectDetails["text"];
-						});
-					}
-					else{
-						//= An error occurred while loading the project list!
-						alert(ExternalModules.$lang.tt('em_errors_93'))
-						ExternalModules.Settings.projectList = []
-					}
-					callback()
-				});
-			}
-			else{
-				callback()
-			}
-		}
-
 		var getSettings = function(callback){
 			// Get the existing values for this module through ajax
 			$.post('ajax/get-settings.php', params, function(data){
@@ -1133,11 +1096,8 @@ $(function(){
 		configureModal.on('shown.bs.modal', function () {
 			configureModal.off('shown.bs.modal')
 
-			async.parallel([
-				getProjectList,
-				getSettings
-			], function(){
-				settings.configureSettings();
+			getSettings(function(){
+				settings.initializeSettingsFields();
 				settings.doBranching();
 			})
 		})

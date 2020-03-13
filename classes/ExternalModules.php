@@ -3356,7 +3356,7 @@ class ExternalModules
 	}
 
 	# specialty field lists include: user-role-list, user-list, dag-list, field-list, and form-list
-	public static function getAdditionalFieldChoices($configRow,$pid) {
+	private static function getAdditionalFieldChoices($configRow,$pid) {
 		if ($configRow['type'] == 'user-role-list') {
 				$choices = [];
 
@@ -3493,9 +3493,9 @@ class ExternalModules
 
 			$matchingProjects = [
 				[
-					"id" => "",
+					"value" => "",
 					//= --- None ---
-					"text" => self::tt("em_config_6") 
+					"name" => self::tt("em_config_6") 
 				]
 			];
 
@@ -3506,8 +3506,8 @@ class ExternalModules
 				$projectName = htmlspecialchars_decode($projectName, ENT_QUOTES);
 
 				$matchingProjects[] = [
-					"id" => $row["project_id"],
-					"text" => "(" . $row["project_id"] . ") " . $projectName,
+					"value" => $row["project_id"],
+					"name" => "(" . $row["project_id"] . ") " . $projectName,
 				];
 			}
 			$configRow['choices'] = $matchingProjects;
