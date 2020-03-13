@@ -1848,28 +1848,7 @@ class ExternalModules
 			ExternalModules::query("SELECT RELEASE_LOCK(?)", [$lockName]);
 		};
 
-		// If module is being enabled for a project and users can activate this module on their own, then skip the user-based permissions check
-        // (Not sure if this is the best insertion point for this check, but it works well enough.)
-		$skipUserBasedPermissionsCheck = ($key == self::KEY_ENABLED && is_numeric($projectId)
-                && ExternalModules::getSystemSetting($moduleDirectoryPrefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true && ExternalModules::hasDesignRights());
-
 		try{
-			if (!$skipUserBasedPermissionsCheck && self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
-				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up the the module's code.
-				$errorMessageSuffix = self::tt("em_errors_18"); 
-
-				if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
-					if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
-						//= You don't have permission to save system settings! {0} 
-						throw new Exception(self::tt("em_errors_19", $errorMessageSuffix)); 
-					}
-				}
-				else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
-					//= You don't have permission to save project settings! {0}
-					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
-				}
-			}
-
 			$oldValue = self::getSetting($moduleDirectoryPrefix, $projectId, $key);
 			
 			$oldType = gettype($oldValue);
@@ -1895,6 +1874,27 @@ class ExternalModules
 				// Nothing changed, so we don't need to do anything.
 				$releaseLock();
 				return;
+			}
+
+			// If module is being enabled for a project and users can activate this module on their own, then skip the user-based permissions check
+			// (Not sure if this is the best insertion point for this check, but it works well enough.)
+			$skipUserBasedPermissionsCheck = ($key == self::KEY_ENABLED && is_numeric($projectId)
+				&& ExternalModules::getSystemSetting($moduleDirectoryPrefix, ExternalModules::KEY_USER_ACTIVATE_PERMISSION) == true && ExternalModules::hasDesignRights());
+
+			if (!$skipUserBasedPermissionsCheck && self::areSettingPermissionsUserBased($moduleDirectoryPrefix, $key)) {
+				//= You may want to use the disableUserBasedSettingPermissions() method to disable this check and leave permissions up to the module's code.
+				$errorMessageSuffix = self::tt("em_errors_18"); 
+
+				if ($projectId == self::SYSTEM_SETTING_PROJECT_ID) {
+					if (!defined("CRON") && !self::hasSystemSettingsSavePermission($moduleDirectoryPrefix)) {
+						//= You don't have permission to save system settings! {0} 
+						throw new Exception(self::tt("em_errors_19", $errorMessageSuffix)); 
+					}
+				}
+				else if (!defined("CRON") && !self::hasProjectSettingSavePermission($moduleDirectoryPrefix, $key)) {
+					//= You don't have permission to save project settings! {0}
+					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
+				}
 			}
 
 			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
