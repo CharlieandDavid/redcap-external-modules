@@ -400,6 +400,27 @@ ExternalModules.Settings.prototype.doBranching = function(settings) {
 	});
 }
 
+ExternalModules.Settings.prototype.addSelectedProjectIdChoiceIfNeeded = function(setting, value){
+	if(value == "") {
+		return
+	}
+
+	for(var i=0; i<setting.choices.length; i++){
+		var choiceValue = setting.choices[i].value
+		if(choiceValue == value){
+			// The current user has design rights for the selected project, so it will already appear in their dropdown list.
+			return
+		}
+	}
+
+	// The current user does not have design rights for the selected project.
+	// Add it to the list so it can be selected and displayed correctly in the config dialog.
+	setting.choices.splice(1, 0, {
+		value: value,
+		name: '(' + value + ') You do not have design rights for the selected project'
+	});
+}
+
 ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,className){
 	var type = setting.type;
 	var key = setting.key;
@@ -440,30 +461,20 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		key = this.getInstanceName(key, instance);
 	}
 
-	var selectAttrs = [];
-	if (typeof setting.autocomplete !== 'undefined' && setting.autocomplete == true) {
-		selectAttrs["class"] = "external-modules-autocomplete-dropdown";
+	var selectAttrs = {
+		class: ''
 	}
 
-	var addSelectedProjectIdChoiceIfNeeded = function(){
-		if(value == "") {
-			return
-		}
+	if (
+		type === 'project-id'
+		||
+		typeof setting.autocomplete !== 'undefined' && setting.autocomplete == true
+	){
+		selectAttrs.class += " external-modules-autocomplete-dropdown";
+	}
 
-		for(var i=0; i<setting.choices.length; i++){
-			var choiceValue = setting.choices[i].value
-			if(choiceValue == value){
-				// The current user has design rights for the selected project, so it will already appear in their dropdown list.
-				return
-			}
-		}
-
-		// The current user does not have design rights for the selected project.
-		// Add it to the list so it can be selected and displayed correctly in the config dialog.
-		setting.choices.splice(1, 0, {
-			value: value,
-			name: '(' + value + ') You do not have design rights for the selected project'
-		});
+	if(type == 'project-id'){
+		this.addSelectedProjectIdChoiceIfNeeded(setting, value)
 	}
 
 	var inputHtml;
@@ -492,8 +503,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
 	}
 	else if(type == 'project-id'){
-		addSelectedProjectIdChoiceIfNeeded()
-		inputHtml = this.getSelectElement(key, setting.choices, value, {"class":"project_id_textbox"});
+		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
 	}
 	else if(type == 'textarea'){
 		inputHtml = this.getTextareaElement(key, value, {"rows" : "6"});
@@ -567,10 +577,6 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 };
 
 ExternalModules.Settings.prototype.getSelectElement = function(name, choices, selectedValue, selectAttributes){
-	if(!selectAttributes){
-		selectAttributes = [];
-	}
-
 	var optionsHtml = '';
 	var choiceHasBlankValue = false;
 	for(var i in choices ){
@@ -885,9 +891,6 @@ ExternalModules.Settings.prototype.resetConfigInstances = function() {
 };
 
 ExternalModules.Settings.prototype.initializeRichTextFields = function(){
-
-	$(".project_id_textbox").select2();
-
 	$(".external-modules-autocomplete-dropdown").select2();
 
 	$('.external-modules-rich-text-field').each(function(index, textarea){
