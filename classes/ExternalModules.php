@@ -1822,6 +1822,14 @@ class ExternalModules
 		return "external-module-setting-$moduleId-$projectId";
 	}
 
+	private static function checkProjectIdSettingPermissions($prefix, $key, $value)
+	{
+		$settingDetails = self::getSettingDetails($prefix, $key);
+		if($settingDetails['type'] === 'project-id' && !self::hasDesignRights($value)){
+			throw new Exception(self::tt('em_errors_129', $value, $key));
+		}
+	}
+
 	# this is a helper method
 	# call set [System,Project] Setting instead of calling this method
 	private static function setSetting($moduleDirectoryPrefix, $projectId, $key, $value, $type = "")
@@ -1895,6 +1903,8 @@ class ExternalModules
 					//= You don't have permission to save project settings! {0}
 					throw new Exception(self::tt("em_errors_20", $errorMessageSuffix)); 
 				}
+
+				self::checkProjectIdSettingPermissions($moduleDirectoryPrefix, $key, $value);
 			}
 
 			if (!$projectId || $projectId == "" || strtoupper($projectId) === 'NULL') {
