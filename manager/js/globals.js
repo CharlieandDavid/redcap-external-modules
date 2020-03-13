@@ -478,31 +478,7 @@ ExternalModules.Settings.prototype.getColumnHtml = function(setting,value,classN
 	}
 
 	var inputHtml;
-	if(type == 'dropdown'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'field-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'form-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'event-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'arm-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'user-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'user-role-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'dag-list'){
-		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
-	}
-	else if(type == 'project-id'){
+	if(['dropdown', 'field-list', 'form-list', 'event-list', 'arm-list', 'user-list', 'user-role-list', 'dag-list', 'project-id'].includes(type)){
 		inputHtml = this.getSelectElement(key, setting.choices, value, selectAttrs);
 	}
 	else if(type == 'textarea'){
