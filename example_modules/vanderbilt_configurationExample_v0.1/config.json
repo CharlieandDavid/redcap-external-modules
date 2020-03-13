@@ -212,6 +212,37 @@
 			"repeatable": false
 		},
 		{
+			"key": "dropdown",
+			"name": "Dropdown",
+			"type": "dropdown",
+			"choices":[
+				{
+					"name" : "Option 1",
+					"value" : "1"
+				},
+				{
+					"name" : "Option 2",
+					"value" : "2"
+				}
+			]
+		},
+		{
+			"key": "dropdown-autocomplete",
+			"name": "Dropdown With Autocomplete",
+			"type": "dropdown",
+			"autocomplete": true,
+			"choices":[
+				{
+					"name" : "Option 1",
+					"value" : "1"
+				},
+				{
+					"name" : "Option 2",
+					"value" : "2"
+				}
+			]
+		},
+		{
 			"key": "radio",
 			"name": "Test Radio",
 			"required": false,
