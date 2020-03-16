@@ -147,6 +147,10 @@ var ExternalModuleTests = {
     assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
         this.assertDoBranching_topLevel(expectedVisible, fieldValue, branchingLogic)
         this.assertDoBranching_subSettingLevel1(expectedVisible, fieldValue, branchingLogic)
+        this.assertDoBranching_subSettingLevel2(expectedVisible, fieldValue, branchingLogic)
+
+        // This test should work once PR #275 is complete.
+        // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
 
     assertDoBranching_topLevel: function(expectedVisible, fieldValue, branchingLogic){
@@ -186,6 +190,61 @@ var ExternalModuleTests = {
         this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, true)
     },
 
+    assertDoBranching_subSettingLevel2: function(expectedVisible, fieldValue, branchingLogic){
+        var settings = [
+            {
+                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+                name: "Field 1"
+            },
+            {
+                type: 'sub_settings',
+                sub_settings: [
+                    {
+                        type: 'sub_settings',
+                        sub_settings: [
+                            {
+                                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
+                                name: "Field 2",
+                                branchingLogic: branchingLogic
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, true)
+    },
+
+    assertDoBranching_parentAlwaysHidden: function(expectedVisible, fieldValue, branchingLogic){
+        var settings = [
+            {
+                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+                name: "Field 1"
+            },
+            {
+                type: 'sub_settings',
+                branchingLogic: {
+                    value: null,
+                },
+                sub_settings: [
+                    {
+                        type: 'sub_settings',
+                        sub_settings: [
+                            {
+                                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
+                                name: "Field 3",
+                                branchingLogic: branchingLogic
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+
+        this.assertDoBranchingForSettings(false, fieldValue, settings, true)
+    },
+
     addFieldNameToConditions: function(branchingLogic){
        var conditions = branchingLogic.conditions
         if(conditions === undefined){
@@ -198,16 +257,15 @@ var ExternalModuleTests = {
     },
 
     addFieldNameToAllBranchingLogic: function(settings){
-        for(var key in settings){
-            var setting = settings[key]
+        $.each(settings, function(index, setting){
             if(setting.branchingLogic){
-                this.addFieldNameToConditions(setting.branchingLogic)
+                ExternalModuleTests.addFieldNameToConditions(setting.branchingLogic)
             }
 
             if(setting.type === 'sub_settings'){
-                this.addFieldNameToAllBranchingLogic(setting.sub_settings)
+                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings)
             }
-        }
+        })
     },
 
     assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings, isSubSetting){
