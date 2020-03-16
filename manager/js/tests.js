@@ -166,7 +166,7 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, false)
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
     },
 
     assertDoBranching_subSettingLevel1: function(expectedVisible, fieldValue, branchingLogic){
@@ -187,7 +187,7 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, true)
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
     },
 
     assertDoBranching_subSettingLevel2: function(expectedVisible, fieldValue, branchingLogic){
@@ -213,7 +213,7 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, true)
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
     },
 
     assertDoBranching_parentAlwaysHidden: function(expectedVisible, fieldValue, branchingLogic){
@@ -242,7 +242,7 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(false, fieldValue, settings, true)
+        this.assertDoBranchingForSettings(false, fieldValue, settings)
     },
 
     addFieldNameToConditions: function(branchingLogic){
@@ -257,7 +257,12 @@ var ExternalModuleTests = {
     },
 
     addFieldNameToAllBranchingLogic: function(settings){
+        var affectedFieldFound = false
         $.each(settings, function(index, setting){
+            if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
+                affectedFieldFound = true
+            }
+
             if(setting.branchingLogic){
                 ExternalModuleTests.addFieldNameToConditions(setting.branchingLogic)
             }
@@ -266,23 +271,16 @@ var ExternalModuleTests = {
                 ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings)
             }
         })
+
+        return !affectedFieldFound
     },
 
-    assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings, isSubSetting){
+    assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings){
         var getInstanceInputName = function(field, instance){
             return field + '____' + instance
         }
 
-        var fieldNames = []
-        if(isSubSetting){
-            fieldNames.push(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 1))
-            fieldNames.push(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 2))
-        }
-        else{
-            fieldNames.push(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
-        }
-
-        this.addFieldNameToAllBranchingLogic(settings)
+        var isAffectedFieldInSubSetting = this.addFieldNameToAllBranchingLogic(settings)
         
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
             // We're not defining ExternalModules.PID, so it's easier to test with system settings.
@@ -301,9 +299,13 @@ var ExternalModuleTests = {
         }
         
         setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
-        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
-        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 1)
-        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 2)
+        if(isAffectedFieldInSubSetting){
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 1)
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 2)
+        }
+        else{
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+        }
         
         ExternalModules.Settings.prototype.doBranching()
 
@@ -314,9 +316,13 @@ var ExternalModuleTests = {
             ExternalModuleTests.assert(actuallyVisible === expectedVisible)
         }
 
-        $.each(fieldNames, function(index, fieldName){
-            assert(fieldName)
-        })
+        if(isAffectedFieldInSubSetting){
+            assert(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 1))
+            assert(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 2))
+        }
+        else{
+            assert(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+        }
 	},
 
 	assert: function(assertion){
