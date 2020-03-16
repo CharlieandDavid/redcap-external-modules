@@ -162,7 +162,7 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, branchingLogic, settings, false)
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, false)
     },
 
     assertDoBranching_subSettingLevel1: function(expectedVisible, fieldValue, branchingLogic){
@@ -183,10 +183,34 @@ var ExternalModuleTests = {
             }
         ]
 
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, branchingLogic, settings, true)
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings, true)
     },
 
-    assertDoBranchingForSettings: function(expectedVisible, fieldValue, branchingLogic, settings, isSubSetting){
+    addFieldNameToConditions: function(branchingLogic){
+       var conditions = branchingLogic.conditions
+        if(conditions === undefined){
+            conditions = [branchingLogic]
+        }
+        
+        conditions.forEach(function(condition){
+            condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
+        })
+    },
+
+    addFieldNameToAllBranchingLogic: function(settings){
+        for(var key in settings){
+            var setting = settings[key]
+            if(setting.branchingLogic){
+                this.addFieldNameToConditions(setting.branchingLogic)
+            }
+
+            if(setting.type === 'sub_settings'){
+                this.addFieldNameToAllBranchingLogic(setting.sub_settings)
+            }
+        }
+    },
+
+    assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings, isSubSetting){
         var getInstanceInputName = function(field, instance){
             return field + '____' + instance
         }
@@ -200,15 +224,8 @@ var ExternalModuleTests = {
             fieldNames.push(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
         }
 
-        var conditions = branchingLogic.conditions
-        if(conditions === undefined){
-            conditions = [branchingLogic]
-        }
+        this.addFieldNameToAllBranchingLogic(settings)
         
-        conditions.forEach(function(condition){
-            condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
-        })
-
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
             // We're not defining ExternalModules.PID, so it's easier to test with system settings.
             'system-settings': settings
