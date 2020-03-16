@@ -154,7 +154,7 @@ var ExternalModuleTests = {
     },
 
     assertDoBranching_topLevel: function(expectedVisible, fieldValue, branchingLogic){
-        var settings = [
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -164,13 +164,11 @@ var ExternalModuleTests = {
                 name: "Some Other Field",
                 branchingLogic: branchingLogic
             }
-        ]
-
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
+        ])
     },
 
     assertDoBranching_subSettingLevel1: function(expectedVisible, fieldValue, branchingLogic){
-        var settings = [
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -185,13 +183,11 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ]
-
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
+        ])
     },
 
     assertDoBranching_subSettingLevel2: function(expectedVisible, fieldValue, branchingLogic){
-        var settings = [
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
@@ -211,13 +207,11 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ]
-
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, settings)
+        ])
     },
 
     assertDoBranching_parentAlwaysHidden: function(expectedVisible, fieldValue, branchingLogic){
-        var settings = [
+        this.assertDoBranchingForSettings(false, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
@@ -240,9 +234,7 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ]
-
-        this.assertDoBranchingForSettings(false, fieldValue, settings)
+        ])
     },
 
     addFieldNameToConditions: function(branchingLogic){
