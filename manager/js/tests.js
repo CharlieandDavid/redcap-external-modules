@@ -1,5 +1,8 @@
 var ExternalModuleTests = {
     JS_UNIT_TESTING_PREFIX: 'js_unit_testing_prefix',
+    BRANCHING_LOGIC_CHECK_FIELD_NAME: 'branching-logic-check-field-name',
+    BRANCHING_LOGIC_AFFECTED_FIELD_NAME: 'branching-logic-affected-field-name',
+    assertions: 0,
 
     run: function(outputElement){
         if(!window.ExternalModules || !ExternalModules.configsByPrefix){
@@ -13,6 +16,7 @@ var ExternalModuleTests = {
 
         try{
             this.testDoBranching()
+            console.log('External Modules Framework JS Unit Tests completed successfully with ' + this.assertions + ' assertions')
 		}
 		catch(e){
 			console.log('Unit Test', e)
@@ -141,17 +145,60 @@ var ExternalModuleTests = {
     },
 
     assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
-        var fieldName1 = 'some_field'
-        var fieldName2 = 'some_other_field'
-        var fieldName3 = 'some_sub_field'
-        var subSettingsParentFieldName = 'sub_settings_parent'
+        this.assertDoBranching_topLevel(expectedVisible, fieldValue, branchingLogic)
+        this.assertDoBranching_subSettingLevel1(expectedVisible, fieldValue, branchingLogic)
+    },
 
+    assertDoBranching_topLevel: function(expectedVisible, fieldValue, branchingLogic){
+        var settings = [
+            {
+                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+                name: "Some Field"
+            },
+            {
+                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
+                name: "Some Other Field",
+                branchingLogic: branchingLogic
+            }
+        ]
+
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, branchingLogic, settings, false)
+    },
+
+    assertDoBranching_subSettingLevel1: function(expectedVisible, fieldValue, branchingLogic){
+        var settings = [
+            {
+                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+                name: "Some Field"
+            },
+            {
+                type: 'sub_settings',
+                sub_settings: [
+                    {
+                        key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
+                        name: "Some Sub-Field",
+                        branchingLogic: branchingLogic
+                    }
+                ]
+            }
+        ]
+
+        this.assertDoBranchingForSettings(expectedVisible, fieldValue, branchingLogic, settings, true)
+    },
+
+    assertDoBranchingForSettings: function(expectedVisible, fieldValue, branchingLogic, settings, isSubSetting){
         var getInstanceInputName = function(field, instance){
             return field + '____' + instance
         }
 
-        var fieldName3instance1 = getInstanceInputName(fieldName3, 1)
-        var fieldName3instance2 = getInstanceInputName(fieldName3, 2)
+        var fieldNames = []
+        if(isSubSetting){
+            fieldNames.push(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 1))
+            fieldNames.push(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 2))
+        }
+        else{
+            fieldNames.push(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+        }
 
         var conditions = branchingLogic.conditions
         if(conditions === undefined){
@@ -159,31 +206,8 @@ var ExternalModuleTests = {
         }
         
         conditions.forEach(function(condition){
-            condition.field = fieldName1
+            condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
         })
-
-        var settings = [
-            {
-                key: fieldName1,
-                name: "Some Field"
-            },
-            {
-                key: fieldName2,
-                name: "Some Other Field",
-                branchingLogic: branchingLogic
-            },
-            {
-                key: subSettingsParentFieldName,
-                type: 'sub_settings',
-                sub_settings: [
-                    {
-                        key: fieldName3,
-                        name: "Some Sub-Field",
-                        branchingLogic: branchingLogic
-                    }
-                ]
-            }
-        ]
 
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
             // We're not defining ExternalModules.PID, so it's easier to test with system settings.
@@ -201,11 +225,10 @@ var ExternalModuleTests = {
             modal.append('<input field="' + field + '" name="' + name + '" value="' + value + '">\n')
         }
         
-        setupSetting(fieldName1, fieldValue)
-        setupSetting(fieldName2)
-        setupSetting(subSettingsParentFieldName)
-        setupSetting(fieldName3, null, 1)
-        setupSetting(fieldName3, null, 2)
+        setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
+        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 1)
+        setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 2)
         
         ExternalModules.Settings.prototype.doBranching()
 
@@ -216,15 +239,17 @@ var ExternalModuleTests = {
             ExternalModuleTests.assert(actuallyVisible === expectedVisible)
         }
 
-        assert(fieldName2)
-        assert(fieldName3instance1)
-        assert(fieldName3instance2)
+        $.each(fieldNames, function(index, fieldName){
+            assert(fieldName)
+        })
 	},
 
 	assert: function(assertion){
+        this.assertions++
+
 		if(!assertion){
 			throw new Error('Assertion failed!')
-		}
+        }
 	}
 }
 
