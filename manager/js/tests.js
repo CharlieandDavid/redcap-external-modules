@@ -201,6 +201,7 @@ var ExternalModuleTests = {
         
         // These tests should work once PR #275 is complete.
         // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
+        // subToSubLevel2 (need to write this one)
         // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
 
