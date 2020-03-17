@@ -183,7 +183,7 @@ var ExternalModuleTests = {
 
     assertDoBranching: function(type, expectedVisible, fieldValue, branchingLogic){
         var assertDoBranchingForSettings = function(settings){
-            ExternalModuleTests.assertDoBranchingForSettings(type, expectedVisible, fieldValue, settings)
+            ExternalModuleTests.assertDoBranchingForSettings(type, expectedVisible, fieldValue, branchingLogic, settings)
         }
         
         assertDoBranchingForSettings(this.getTopLevelSettings(branchingLogic))
@@ -320,7 +320,7 @@ var ExternalModuleTests = {
         })
     },
 
-    addFieldNameToAllBranchingLogic: function(settings, type){
+    addFieldNameToAllBranchingLogic: function(settings, type, branchingLogic){
         var checkFieldFound = false
         var affectedFieldFound = false
 
@@ -330,6 +330,8 @@ var ExternalModuleTests = {
             }
             else if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
                 affectedFieldFound = true
+                ExternalModuleTests.addFieldNameToConditions(branchingLogic)
+                setting.branchingLogic = branchingLogic
             }
 
             if(!setting.type){
@@ -346,15 +348,11 @@ var ExternalModuleTests = {
                 }
             }
 
-            if(setting.branchingLogic){
-                ExternalModuleTests.addFieldNameToConditions(setting.branchingLogic)
-            }
-
             if(setting.type === 'sub_settings'){
                 // Run all tests against repeatable subsettings (the more complex case).
                 setting.repeatable = true
 
-                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings, type)
+                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings, type, branchingLogic)
             }
         })
 
@@ -365,7 +363,7 @@ var ExternalModuleTests = {
         return $('#external-modules-configure-modal')
     },
 
-    assertDoBranchingForSettings: function(type, expectedVisible, fieldValue, settings){
+    assertDoBranchingForSettings: function(type, expectedVisible, fieldValue, branchingLogic, settings){
         // Clone the settings object, since we'll be modifying it and don't want to affect other tests.
         settings = JSON.parse(JSON.stringify(settings));
 
@@ -380,7 +378,7 @@ var ExternalModuleTests = {
         var modal = this.getModal()
 
         // A const is OK here because we don't run tests in IE currently.
-        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings, type)
+        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings, type, branchingLogic)
 
         modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
         ExternalModules.Settings.prototype.initializeSettingsFields()
