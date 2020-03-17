@@ -23,8 +23,7 @@ var ExternalModuleTests = {
         modal.show() // Required for the ':visible' checks to work
 
         try{
-            // TODO - These types need to be fixed: 'button', 'checkbox'
-            ;['dropdown', 'textarea', 'rich-text', 'radio', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+            ;['dropdown', 'textarea', 'rich-text', 'radio', 'button', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
                 ExternalModuleTests.testDoBranching(type)
             })
 
@@ -337,6 +336,9 @@ var ExternalModuleTests = {
                         name: "Some choice",
                         value: "Doesn't matter, will get overwritten"
                     }]
+                }
+                else if(type === 'button'){
+                    setting.url = "Doesn't matter"
                 }
             }
 
