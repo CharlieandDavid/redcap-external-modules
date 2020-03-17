@@ -18,3 +18,7 @@ vendor/bin/phpcs -p --runtime-set testVersion 5.5- --standard=vendor/phpcompatib
 
 echo Ensuring JavaScript browser compatibility...
 node_modules/.bin/eslint .
+echo
+
+echo All tests completed successfully!
+echo
