@@ -23,8 +23,8 @@ var ExternalModuleTests = {
         modal.show() // Required for the ':visible' checks to work
 
         try{
-            // TODO - These types need to be fixed: 'radio', 'button', 'checkbox'
-            ;['dropdown', 'textarea', 'rich-text', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+            // TODO - These types need to be fixed: 'button', 'checkbox'
+            ;['dropdown', 'textarea', 'rich-text', 'radio', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
                 ExternalModuleTests.testDoBranching(type)
             })
 
@@ -53,6 +53,14 @@ var ExternalModuleTests = {
             assertDoBranching(true, false, {
                 value: false
             })
+
+            assertDoBranching(false, true, {
+                value: false
+            })
+
+            assertDoBranching(false, false, {
+                value: true
+            })
     
             // Other assertions don't work on checkboxes
             return
@@ -74,66 +82,6 @@ var ExternalModuleTests = {
         assertDoBranching(false, 1, {
             value: 2,
             op: '='
-        })
-
-        assertDoBranching(true, 1, {
-            value: 2,
-            op: '<'
-        })
-
-        assertDoBranching(false, 2, {
-            value: 2,
-            op: '<'
-        })
-
-        assertDoBranching(true, 1, {
-            value: 2,
-            op: '<='
-        })
-
-        assertDoBranching(true, 2, {
-            value: 2,
-            op: '<='
-        })
-
-        assertDoBranching(true, 2, {
-            value: 1,
-            op: '>'
-        })
-
-        assertDoBranching(false, 2, {
-            value: 2,
-            op: '>'
-        })
-
-        assertDoBranching(true, 2, {
-            value: 1,
-            op: '>='
-        })
-
-        assertDoBranching(true, 2, {
-            value: 2,
-            op: '>='
-        })
-
-        assertDoBranching(true, 1, {
-            value: 2,
-            op: '<>'
-        })
-
-        assertDoBranching(false, 2, {
-            value: 2,
-            op: '<>'
-        })
-
-        assertDoBranching(true, 1, {
-            value: 2,
-            op: '!='
-        })
-
-        assertDoBranching(false, 2, {
-            value: 2,
-            op: '!='
         })
 
         assertDoBranching(true, 1, {
@@ -166,6 +114,71 @@ var ExternalModuleTests = {
                 { value: 1 },
                 { value: 2 }
             ]
+        })
+
+        if(type === 'radio'){
+            // All assertions below this point don't work on radio buttons.
+            return
+        }
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '!='
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '!='
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '<'
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 2,
+            op: '<='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 1,
+            op: '>'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '>'
+        })
+
+        assertDoBranching(true, 2, {
+            value: 1,
+            op: '>='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 2,
+            op: '>='
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<>'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '<>'
         })
     },
 
@@ -318,6 +331,13 @@ var ExternalModuleTests = {
 
             if(!setting.type){
                 setting.type = type
+                
+                if(type === 'radio'){
+                    setting.choices = [{
+                        name: "Some choice",
+                        value: "Doesn't matter, will get overwritten"
+                    }]
+                }
             }
 
             if(setting.branchingLogic){
@@ -392,6 +412,9 @@ var ExternalModuleTests = {
                 else{
                     field.prop('checked', false)
                 }
+            }
+            else if(type === 'radio'){
+                field.prop('checked', true)
             }
             else if(value !== undefined && field.val() != value){
                 throw new Error('Expected field value of "' + value + '" but found "' + field.val() + '"!')
