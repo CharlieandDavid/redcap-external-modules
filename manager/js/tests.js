@@ -14,11 +14,20 @@ var ExternalModuleTests = {
             return
         }
 
+        if(ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX]){
+            throw Error('The js unit testing prefix is conflicting with an actual module!!!')
+        }
+
         var modal = this.getModal()
+        modal.data('module', this.JS_UNIT_TESTING_PREFIX)
         modal.show() // Required for the ':visible' checks to work
 
         try{
-            this.testDoBranching()
+            // TODO - These types need to be fixed: 'dropdown', 'radio', 'button', 'checkbox'
+            ;['textarea', 'rich-text', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+                ExternalModuleTests.testDoBranching(type)
+            })
+
             console.log('External Modules Framework JS Unit Tests completed successfully with ' + this.assertions + ' assertions')
 		}
 		catch(e){
@@ -31,92 +40,103 @@ var ExternalModuleTests = {
         modal.hide()
     },
 
-    testDoBranching: function(){
-        if(ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX]){
-            throw Error('The js unit testing prefix is conflicting with an actual module!!!')
+    testDoBranching: function(type){
+        var assertDoBranching = function(expectedVisible, fieldValue, branchingLogic){
+            ExternalModuleTests.assertDoBranching(type, expectedVisible, fieldValue, branchingLogic)
+        }
+        
+        if(type === 'checkbox'){
+            assertDoBranching(true, true, {
+                value: true
+            })
+    
+            assertDoBranching(true, false, {
+                value: false
+            })
+    
+            // Other assertions don't work on checkboxes
+            return
         }
 
-        $('#external-modules-configure-modal').data('module', this.JS_UNIT_TESTING_PREFIX)
-
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 1
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             value: 2
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 1,
             op: '='
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             value: 2,
             op: '='
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 2,
             op: '<'
         })
 
-        this.assertDoBranching(false, 2, {
+        assertDoBranching(false, 2, {
             value: 2,
             op: '<'
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 2,
             op: '<='
         })
 
-        this.assertDoBranching(true, 2, {
+        assertDoBranching(true, 2, {
             value: 2,
             op: '<='
         })
 
-        this.assertDoBranching(true, 2, {
+        assertDoBranching(true, 2, {
             value: 1,
             op: '>'
         })
 
-        this.assertDoBranching(false, 2, {
+        assertDoBranching(false, 2, {
             value: 2,
             op: '>'
         })
 
-        this.assertDoBranching(true, 2, {
+        assertDoBranching(true, 2, {
             value: 1,
             op: '>='
         })
 
-        this.assertDoBranching(true, 2, {
+        assertDoBranching(true, 2, {
             value: 2,
             op: '>='
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 2,
             op: '<>'
         })
 
-        this.assertDoBranching(false, 2, {
+        assertDoBranching(false, 2, {
             value: 2,
             op: '<>'
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 2,
             op: '!='
         })
 
-        this.assertDoBranching(false, 2, {
+        assertDoBranching(false, 2, {
             value: 2,
             op: '!='
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             type: "or",
             conditions: [
                 { value: 1 },
@@ -124,7 +144,7 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             type: "or",
             conditions: [
                 { value: 2 },
@@ -132,7 +152,7 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             type: "and",
             conditions: [
                 { value: 1 },
@@ -140,7 +160,7 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             type: "and",
             conditions: [
                 { value: 1 },
@@ -149,18 +169,18 @@ var ExternalModuleTests = {
         })
     },
 
-    assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranching_topLevel(expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_topToSubLevel1(expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_topToSubLevel2(expectedVisible, fieldValue, branchingLogic)
+    assertDoBranching: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranching_topLevel(type, expectedVisible, fieldValue, branchingLogic)
+        this.assertDoBranching_topToSubLevel1(type, expectedVisible, fieldValue, branchingLogic)
+        this.assertDoBranching_topToSubLevel2(type, expectedVisible, fieldValue, branchingLogic)
         
         // These tests should work once PR #275 is complete.
         // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
         // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
 
-    assertDoBranching_topLevel: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
+    assertDoBranching_topLevel: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -173,8 +193,8 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_topToSubLevel1: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
+    assertDoBranching_topToSubLevel1: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -193,8 +213,8 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_topToSubLevel2: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
+    assertDoBranching_topToSubLevel2: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
@@ -218,8 +238,8 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_subToSubLevel1: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
+    assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
             {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
@@ -244,8 +264,8 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_parentAlwaysHidden: function(expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(false, fieldValue, [
+    assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue, branchingLogic){
+        this.assertDoBranchingForSettings(type, false, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
@@ -319,14 +339,7 @@ var ExternalModuleTests = {
         return $('#external-modules-configure-modal')
     },
 
-    assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings){
-        // TODO - These types need to be fixed: 'dropdown', 'radio', 'button', 'checkbox'
-        ;['textarea', 'rich-text', 'custom', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
-            ExternalModuleTests.assertDoBranchingForSettingsAndType(expectedVisible, fieldValue, settings, type)
-        })
-    },
-
-    assertDoBranchingForSettingsAndType: function(expectedVisible, fieldValue, settings, type){
+    assertDoBranchingForSettings: function(type, expectedVisible, fieldValue, settings){
         // Clone the settings object, since we'll be modifying it and don't want to affect other tests.
         settings = JSON.parse(JSON.stringify(settings));
 
@@ -364,7 +377,20 @@ var ExternalModuleTests = {
         }
 
         var setupSetting = function(name, value, instance){
-            getField(name, instance).val(value)
+            var field = getField(name, instance)
+            field.val(value)
+
+            if(type === 'checkbox'){
+                if(value){
+                    field.prop('checked', true)
+                }
+                else{
+                    field.prop('checked', false)
+                }
+            }
+            else if(value !== undefined && field.val() != value){
+                throw new Error('Expected field value of "' + value + '" but found "' + field.val() + '"!')
+            }
         }
         
         if(isCheckedFieldInSubSetting){
@@ -376,8 +402,8 @@ var ExternalModuleTests = {
         }
         
         if(isAffectedFieldInSubSetting){
-            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 1)
-            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 2)
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, undefined, 1)
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, undefined, 2)
         }
         else{
             setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
