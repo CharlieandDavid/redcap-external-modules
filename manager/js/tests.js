@@ -207,31 +207,19 @@ var ExternalModuleTests = {
 
     getTopLevelSettings: function(){
         return [
-            {
-                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
-                name: "Some Field"
-            },
-            {
-                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                name: "Some Other Field"
-            }
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
         ]
     },
 
     getTopToSubLevel1Settings: function(){
         return [
-            {
-                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
-                name: "Some Field"
-            },
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
                 sub_settings: [
-                    {
-                        key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                        name: "Some Sub-Field"
-                    }
+                    this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
                 ]
             }
         ]
@@ -239,10 +227,7 @@ var ExternalModuleTests = {
 
     getTopToSubLevel2Settings: function(){
         return [
-            {
-                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
-                name: "Field 1"
-            },
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
@@ -250,10 +235,7 @@ var ExternalModuleTests = {
                     {
                         type: 'sub_settings',
                         sub_settings: [
-                            {
-                                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 2"
-                            }
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
                         ]
                     }
                 ]
@@ -267,18 +249,12 @@ var ExternalModuleTests = {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
                 sub_settings: [
-                    {
-                        key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
-                        name: "Field 1"
-                    },
+                    this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                     {
                         key: 'sub_settings_2',
                         type: 'sub_settings',
                         sub_settings: [
-                            {
-                                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 2"
-                            }
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
                         ]
                     }
                 ]
@@ -288,10 +264,7 @@ var ExternalModuleTests = {
 
     assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue){
         this.assertDoBranchingForSettings(type, false, fieldValue, [
-            {
-                key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
-                name: "Field 1"
-            },
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
@@ -303,10 +276,7 @@ var ExternalModuleTests = {
                         key: 'sub_settings_2',
                         type: 'sub_settings',
                         sub_settings: [
-                            {
-                                key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 3"
-                            }
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
                         ]
                     }
                 ]
@@ -314,11 +284,16 @@ var ExternalModuleTests = {
         ])
     },
 
-    addFieldNameToAllBranchingLogic: function(settings, type, branchingLogic){
+    processSettings: function(settings, type, branchingLogic){
         var checkFieldFound = false
         var affectedFieldFound = false
 
         $.each(settings, function(index, setting){
+            if(typeof setting === 'string'){
+                // We use setting keys as placeholders, and round them with with an actual setting object here.
+                settings[index] = setting = { key: setting }
+            }
+
             if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME){
                 checkFieldFound = true
             }
@@ -345,7 +320,7 @@ var ExternalModuleTests = {
                 // Run all tests against repeatable subsettings (the more complex case).
                 setting.repeatable = true
 
-                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings, type, branchingLogic)
+                ExternalModuleTests.processSettings(setting.sub_settings, type, branchingLogic)
             }
         })
 
@@ -371,7 +346,7 @@ var ExternalModuleTests = {
         var modal = this.getModal()
 
         // A const is OK here because we don't run tests in IE currently.
-        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings, type, branchingLogic)
+        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.processSettings(settings, type, branchingLogic)
 
         modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
         ExternalModules.Settings.prototype.initializeSettingsFields()
