@@ -429,7 +429,7 @@ var ExternalModuleTests = {
         
         if(isCheckedFieldInSubSetting){
             setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue, 1)
-            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, null, 2)
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, undefined, 2)
         }
         else{
             setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
