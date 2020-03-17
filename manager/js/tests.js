@@ -23,8 +23,8 @@ var ExternalModuleTests = {
         modal.show() // Required for the ':visible' checks to work
 
         try{
-            // TODO - These types need to be fixed: 'dropdown', 'radio', 'button', 'checkbox'
-            ;['textarea', 'rich-text', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+            // TODO - These types need to be fixed: 'radio', 'button', 'checkbox'
+            ;['dropdown', 'textarea', 'rich-text', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
                 ExternalModuleTests.testDoBranching(type)
             })
 
@@ -378,6 +378,11 @@ var ExternalModuleTests = {
 
         var setupSetting = function(name, value, instance){
             var field = getField(name, instance)
+
+            if(type === 'dropdown'){
+                field.append('<option value="' + value + '" selected>')
+            }
+
             field.val(value)
 
             if(type === 'checkbox'){
