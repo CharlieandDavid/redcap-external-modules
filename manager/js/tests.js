@@ -41,6 +41,15 @@ var ExternalModuleTests = {
 
     testDoBranching: function(type){
         var assertDoBranching = function(expectedVisible, fieldValue, branchingLogic){
+            var conditions = branchingLogic.conditions
+            if(conditions === undefined){
+                conditions = [branchingLogic]
+            }
+            
+            conditions.forEach(function(condition){
+                condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
+            })
+
             ExternalModuleTests.assertDoBranching(type, expectedVisible, fieldValue, branchingLogic)
         }
         
@@ -304,17 +313,6 @@ var ExternalModuleTests = {
         ])
     },
 
-    addFieldNameToConditions: function(branchingLogic){
-       var conditions = branchingLogic.conditions
-        if(conditions === undefined){
-            conditions = [branchingLogic]
-        }
-        
-        conditions.forEach(function(condition){
-            condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
-        })
-    },
-
     addFieldNameToAllBranchingLogic: function(settings, type, branchingLogic){
         var checkFieldFound = false
         var affectedFieldFound = false
@@ -325,7 +323,6 @@ var ExternalModuleTests = {
             }
             else if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
                 affectedFieldFound = true
-                ExternalModuleTests.addFieldNameToConditions(branchingLogic)
                 setting.branchingLogic = branchingLogic
             }
 
