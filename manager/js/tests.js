@@ -284,7 +284,7 @@ var ExternalModuleTests = {
         })
     },
 
-    addFieldNameToAllBranchingLogic: function(settings){
+    addFieldNameToAllBranchingLogic: function(settings, type){
         var checkFieldFound = false
         var affectedFieldFound = false
 
@@ -296,6 +296,10 @@ var ExternalModuleTests = {
                 affectedFieldFound = true
             }
 
+            if(!setting.type){
+                setting.type = type
+            }
+
             if(setting.branchingLogic){
                 ExternalModuleTests.addFieldNameToConditions(setting.branchingLogic)
             }
@@ -304,7 +308,7 @@ var ExternalModuleTests = {
                 // Run all tests against repeatable subsettings (the more complex case).
                 setting.repeatable = true
 
-                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings)
+                ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings, type)
             }
         })
 
@@ -316,6 +320,13 @@ var ExternalModuleTests = {
     },
 
     assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings){
+        // TODO - These types need to be fixed: 'dropdown', 'radio', 'button', 'checkbox'
+        ;['textarea', 'rich-text', 'custom', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+            ExternalModuleTests.assertDoBranchingForSettingsAndType(expectedVisible, fieldValue, settings, type)
+        })
+    },
+
+    assertDoBranchingForSettingsAndType: function(expectedVisible, fieldValue, settings, type){
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
             // Project settings are expected even if they're empty.
             'project-settings': [],
@@ -327,7 +338,7 @@ var ExternalModuleTests = {
         var modal = this.getModal()
 
         // A const is OK here because we don't run tests in IE currently.
-        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings)
+        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings, type)
 
         modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
         ExternalModules.Settings.prototype.initializeSettingsFields()
@@ -400,7 +411,7 @@ var ExternalModuleTests = {
 	}
 }
 
-if(document.currentScript){
+if(location.hostname === 'localhost' && document.currentScript){
     // This is a modern browser.  Run tests.
     ExternalModuleTests.run($(document.currentScript.parentElement))
 }
