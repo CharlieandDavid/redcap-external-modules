@@ -182,17 +182,21 @@ var ExternalModuleTests = {
     },
 
     assertDoBranching: function(type, expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranching_topLevel(type, expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_topToSubLevel1(type, expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_topToSubLevel2(type, expectedVisible, fieldValue, branchingLogic)
+        var assertDoBranchingForSettings = function(settings){
+            ExternalModuleTests.assertDoBranchingForSettings(type, expectedVisible, fieldValue, settings)
+        }
+        
+        assertDoBranchingForSettings(this.getTopLevelSettings(branchingLogic))
+        assertDoBranchingForSettings(this.getTopToSubLevel1Settings(branchingLogic))
+        assertDoBranchingForSettings(this.getTopToSubLevel2Settings(branchingLogic))
         
         // These tests should work once PR #275 is complete.
         // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
         // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
 
-    assertDoBranching_topLevel: function(type, expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
+    getTopLevelSettings: function(branchingLogic){
+        return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -202,11 +206,11 @@ var ExternalModuleTests = {
                 name: "Some Other Field",
                 branchingLogic: branchingLogic
             }
-        ])
+        ]
     },
 
-    assertDoBranching_topToSubLevel1: function(type, expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
+    getTopToSubLevel1Settings: function(branchingLogic){
+        return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
@@ -222,11 +226,11 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ])
+        ]
     },
 
-    assertDoBranching_topToSubLevel2: function(type, expectedVisible, fieldValue, branchingLogic){
-        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
+    getTopToSubLevel2Settings: function(branchingLogic){
+        return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
@@ -247,7 +251,7 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ])
+        ]
     },
 
     assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue, branchingLogic){
