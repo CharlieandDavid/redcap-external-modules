@@ -327,6 +327,9 @@ var ExternalModuleTests = {
     },
 
     assertDoBranchingForSettingsAndType: function(expectedVisible, fieldValue, settings, type){
+        // Clone the settings object, since we'll be modifying it and don't want to affect other tests.
+        settings = JSON.parse(JSON.stringify(settings));
+
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
             // Project settings are expected even if they're empty.
             'project-settings': [],
