@@ -345,8 +345,9 @@ var ExternalModuleTests = {
 
         var modal = this.getModal()
 
-        // A const is OK here because we don't run tests in IE currently.
-        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.processSettings(settings, type, branchingLogic)
+        var processResults = this.processSettings(settings, type, branchingLogic)
+        var isCheckedFieldInSubSetting = processResults[0]
+        var isAffectedFieldInSubSetting = processResults[1]
 
         modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
         ExternalModules.Settings.prototype.initializeSettingsFields()
@@ -440,7 +441,8 @@ var ExternalModuleTests = {
 	}
 }
 
-if(location.hostname === 'localhost' && document.currentScript){
+// Bracket & string syntax is used to retrieve the current script to avoid an eslint error.
+if(location.hostname === 'localhost' && document['currentScript']){
     // This is a modern browser.  Run tests.
-    ExternalModuleTests.run($(document.currentScript.parentElement))
+    ExternalModuleTests.run($(document['currentScript'].parentElement))
 }
