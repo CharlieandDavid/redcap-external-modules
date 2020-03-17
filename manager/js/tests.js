@@ -14,6 +14,9 @@ var ExternalModuleTests = {
             return
         }
 
+        var modal = this.getModal()
+        modal.show() // Required for the ':visible' checks to work
+
         try{
             this.testDoBranching()
             console.log('External Modules Framework JS Unit Tests completed successfully with ' + this.assertions + ' assertions')
@@ -23,7 +26,9 @@ var ExternalModuleTests = {
 			outputElement
 				.html('<h3>A unit test failed! Use the stack trace in the browser console to find the line for the assertion that failed.</h3>')
 				.show()
-		}
+        }
+        
+        modal.hide()
     },
 
     testDoBranching: function(){
@@ -146,9 +151,9 @@ var ExternalModuleTests = {
 
     assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
         this.assertDoBranching_topLevel(expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_subSettingLevel1(expectedVisible, fieldValue, branchingLogic)
-        this.assertDoBranching_subSettingLevel2(expectedVisible, fieldValue, branchingLogic)
-
+        this.assertDoBranching_topToSubLevel1(expectedVisible, fieldValue, branchingLogic)
+        this.assertDoBranching_topToSubLevel2(expectedVisible, fieldValue, branchingLogic)
+        
         // This test should work once PR #275 is complete.
         // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
@@ -167,13 +172,14 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_subSettingLevel1: function(expectedVisible, fieldValue, branchingLogic){
+    assertDoBranching_topToSubLevel1: function(expectedVisible, fieldValue, branchingLogic){
         this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Some Field"
             },
             {
+                key: 'sub_settings_1',
                 type: 'sub_settings',
                 sub_settings: [
                     {
@@ -186,13 +192,14 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_subSettingLevel2: function(expectedVisible, fieldValue, branchingLogic){
+    assertDoBranching_topToSubLevel2: function(expectedVisible, fieldValue, branchingLogic){
         this.assertDoBranchingForSettings(expectedVisible, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
                 name: "Field 1"
             },
             {
+                key: 'sub_settings_1',
                 type: 'sub_settings',
                 sub_settings: [
                     {
@@ -217,12 +224,14 @@ var ExternalModuleTests = {
                 name: "Field 1"
             },
             {
+                key: 'sub_settings_1',
                 type: 'sub_settings',
                 branchingLogic: {
                     value: null,
                 },
                 sub_settings: [
                     {
+                        key: 'sub_settings_2',
                         type: 'sub_settings',
                         sub_settings: [
                             {
@@ -249,9 +258,14 @@ var ExternalModuleTests = {
     },
 
     addFieldNameToAllBranchingLogic: function(settings){
+        var checkFieldFound = false
         var affectedFieldFound = false
+
         $.each(settings, function(index, setting){
-            if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
+            if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME){
+                checkFieldFound = true
+            }
+            else if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
                 affectedFieldFound = true
             }
 
@@ -260,37 +274,66 @@ var ExternalModuleTests = {
             }
 
             if(setting.type === 'sub_settings'){
+                // Run all tests against repeatable subsettings (the more complex case).
+                setting.repeatable = true
+
                 ExternalModuleTests.addFieldNameToAllBranchingLogic(setting.sub_settings)
             }
         })
 
-        return !affectedFieldFound
+        return [!checkFieldFound, !affectedFieldFound]
+    },
+
+    getModal: function(){
+        return $('#external-modules-configure-modal')
     },
 
     assertDoBranchingForSettings: function(expectedVisible, fieldValue, settings){
-        var getInstanceInputName = function(field, instance){
-            return field + '____' + instance
-        }
-
-        var isAffectedFieldInSubSetting = this.addFieldNameToAllBranchingLogic(settings)
-        
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
+            // Project settings are expected even if they're empty.
+            'project-settings': [],
+
             // We're not defining ExternalModules.PID, so it's easier to test with system settings.
             'system-settings': settings
         }
 
-        var modal = $('#external-modules-configure-modal')
-        var setupSetting = function(field, value, instance){
-            var name = field
-            if(instance !== undefined){
-                name = getInstanceInputName(field, instance)
+        var modal = this.getModal()
+
+        // A const is OK here because we don't run tests in IE currently.
+        const [isCheckedFieldInSubSetting, isAffectedFieldInSubSetting] = this.addFieldNameToAllBranchingLogic(settings)
+
+        modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
+        ExternalModules.Settings.prototype.initializeSettingsFields()
+
+        // Add a second instance to all repeatables
+        modal.find('button.external-modules-add-instance').click()
+        
+        var getField = function(name, instance){
+            if(!instance){
+                instance = 1
             }
 
-            modal.find('input[name=' + name + ']').remove() // remove inputs from other assertions
-            modal.append('<input field="' + field + '" name="' + name + '" value="' + value + '">\n')
+            var field = modal.find('[name^=' + name + ']')[instance-1]
+
+            if(!field){
+                throw new Error('Instance ' + instance + ' of the "' + name + '" field was not found!')
+            }
+
+            return $(field)
+        }
+
+        var setupSetting = function(name, value, instance){
+            getField(name, instance).val(value)
         }
         
-        setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
+        if(isCheckedFieldInSubSetting){
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue, 1)
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, null, 2)
+        }
+        else{
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
+        }
+        
         if(isAffectedFieldInSubSetting){
             setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 1)
             setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, null, 2)
@@ -301,19 +344,23 @@ var ExternalModuleTests = {
         
         ExternalModules.Settings.prototype.doBranching()
 
-        var assert = function(fieldName){
-            var style = modal.find('[name='+fieldName+']').attr('style')
-            var actuallyVisible = style !== 'display: none;'
-    
+        var assert = function(expectedVisible, instance){
+            var actuallyVisible = getField(ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, instance).is(':visible')
             ExternalModuleTests.assert(actuallyVisible === expectedVisible)
         }
 
         if(isAffectedFieldInSubSetting){
-            assert(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 1))
-            assert(getInstanceInputName(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, 2))
+            assert(expectedVisible, 1)
+
+            if(isCheckedFieldInSubSetting){
+                assert(false, 2)
+            }
+            else{
+                assert(expectedVisible, 2)
+            }
         }
         else{
-            assert(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+            assert(expectedVisible)
         }
 	},
 
