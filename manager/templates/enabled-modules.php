@@ -98,10 +98,6 @@ $pid = $_GET['pid'];
 	<?=ExternalModules::tt("em_manage_44")?>
 </p>
 
-<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px; display: none;">
-	<?php ExternalModules::addResource('js/tests.js'); ?>
-</p>
-
 <?php 
 // Display alert message in Control Center if any modules have updates in the REDCap Repo
 ExternalModules::renderREDCapRepoUpdatesAlert();
@@ -123,14 +119,26 @@ ExternalModules::renderREDCapRepoUpdatesAlert();
 	}
 
 }
+else{
+	// Control Center
 
-if (!isVanderbilt() && !isset($_GET['pid']) && defined("EXTMOD_EXTERNAL_INSTALL") && EXTMOD_EXTERNAL_INSTALL) { 
-	?>
-	<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px;">
-		<!--= NOTICE: It has been detected that you have a development version of External Modules installed at <code><?=APP_PATH_EXTMOD?></code>. As such, please note that REDCap will use that version of External Modules rather than the one bundled in this REDCap version. -->
-		<?=ExternalModules::tt("em_manage_46", APP_PATH_EXTMOD)?>
-	</p>
-	<?php 
+	if (ExternalModules::isLocalHost()){
+		?>
+		<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px">
+			<?php ExternalModules::addResource('js/tests.js'); ?>
+			<a href="#" onclick="ExternalModuleTests.run(this); return false">Click here to run JS Unit Tests.</a>
+		</p>
+		<?php
+	}
+
+	if (!isVanderbilt() && defined("EXTMOD_EXTERNAL_INSTALL") && EXTMOD_EXTERNAL_INSTALL) { 
+		?>
+		<p class="yellow" style="max-width:600px;color:#800000;font-size:11px;line-height:13px;">
+			<!--= NOTICE: It has been detected that you have a development version of External Modules installed at <code><?=APP_PATH_EXTMOD?></code>. As such, please note that REDCap will use that version of External Modules rather than the one bundled in this REDCap version. -->
+			<?=ExternalModules::tt("em_manage_46", APP_PATH_EXTMOD)?>
+		</p>
+		<?php
+	}
 }
 
 $displayModuleDialogBtn = (SUPER_USER || ExternalModules::hasDiscoverableModules());

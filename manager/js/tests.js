@@ -4,11 +4,11 @@ var ExternalModuleTests = {
     BRANCHING_LOGIC_AFFECTED_FIELD_NAME: 'branching-logic-affected-field-name',
     assertions: 0,
 
-    run: function(outputElement){
+    run: function(link){
         if(!window.ExternalModules || !ExternalModules.configsByPrefix){
             // Wait for them to be defined.
             $(function(){
-                ExternalModuleTests.run(outputElement)
+                ExternalModuleTests.run(link)
             })
 
             return
@@ -18,6 +18,16 @@ var ExternalModuleTests = {
             throw Error('The js unit testing prefix is conflicting with an actual module!!!')
         }
 
+        var outputElement = $(link.parentElement)
+        outputElement.html('Running JS Unit Tests...')
+
+        // Set a timeout to allow the "Running..." message to appear before the tests overload the browser's UI thread.
+        setTimeout(function(){
+            ExternalModuleTests.runAllTests(outputElement)
+        }, 0)
+    },
+    
+    runAllTests: function(outputElement){
         var modal = this.getModal()
         modal.data('module', this.JS_UNIT_TESTING_PREFIX)
         modal.show() // Required for the ':visible' checks to work
@@ -27,13 +37,11 @@ var ExternalModuleTests = {
                 ExternalModuleTests.testDoBranching(type)
             })
 
-            console.log('External Modules Framework JS Unit Tests completed successfully with ' + this.assertions + ' assertions')
+            outputElement.replaceWith('<div class="green">JS Unit Tests completed successfully with ' + this.assertions + ' assertions.</div>')
 		}
 		catch(e){
 			console.log('Unit Test', e)
-			outputElement
-				.html('<h3>A unit test failed! Use the stack trace in the browser console to find the line for the assertion that failed.</h3>')
-				.show()
+			outputElement.replaceWith('<div class="red">A unit test failed! Use the stack trace in the browser console to find the line for the assertion that failed.</div>')
         }
         
         modal.hide()
@@ -439,10 +447,4 @@ var ExternalModuleTests = {
 			throw new Error('Assertion failed!')
         }
 	}
-}
-
-// Bracket & string syntax is used to retrieve the current script to avoid an eslint error.
-if(location.hostname === 'localhost' && document['currentScript']){
-    // This is a modern browser.  Run tests.
-    ExternalModuleTests.run($(document['currentScript'].parentElement))
 }
