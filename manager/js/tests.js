@@ -186,16 +186,16 @@ var ExternalModuleTests = {
             ExternalModuleTests.assertDoBranchingForSettings(type, expectedVisible, fieldValue, branchingLogic, settings)
         }
         
-        assertDoBranchingForSettings(this.getTopLevelSettings(branchingLogic))
-        assertDoBranchingForSettings(this.getTopToSubLevel1Settings(branchingLogic))
-        assertDoBranchingForSettings(this.getTopToSubLevel2Settings(branchingLogic))
+        assertDoBranchingForSettings(this.getTopLevelSettings())
+        assertDoBranchingForSettings(this.getTopToSubLevel1Settings())
+        assertDoBranchingForSettings(this.getTopToSubLevel2Settings())
         
         // These tests should work once PR #275 is complete.
         // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
         // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
     },
 
-    getTopLevelSettings: function(branchingLogic){
+    getTopLevelSettings: function(){
         return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
@@ -203,13 +203,12 @@ var ExternalModuleTests = {
             },
             {
                 key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                name: "Some Other Field",
-                branchingLogic: branchingLogic
+                name: "Some Other Field"
             }
         ]
     },
 
-    getTopToSubLevel1Settings: function(branchingLogic){
+    getTopToSubLevel1Settings: function(){
         return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
@@ -221,15 +220,14 @@ var ExternalModuleTests = {
                 sub_settings: [
                     {
                         key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                        name: "Some Sub-Field",
-                        branchingLogic: branchingLogic
+                        name: "Some Sub-Field"
                     }
                 ]
             }
         ]
     },
 
-    getTopToSubLevel2Settings: function(branchingLogic){
+    getTopToSubLevel2Settings: function(){
         return [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
@@ -244,8 +242,7 @@ var ExternalModuleTests = {
                         sub_settings: [
                             {
                                 key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 2",
-                                branchingLogic: branchingLogic
+                                name: "Field 2"
                             }
                         ]
                     }
@@ -254,7 +251,7 @@ var ExternalModuleTests = {
         ]
     },
 
-    assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue, branchingLogic){
+    assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue){
         this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
             {
                 key: 'sub_settings_1',
@@ -270,8 +267,7 @@ var ExternalModuleTests = {
                         sub_settings: [
                             {
                                 key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 2",
-                                branchingLogic: branchingLogic
+                                name: "Field 2"
                             }
                         ]
                     }
@@ -280,7 +276,7 @@ var ExternalModuleTests = {
         ])
     },
 
-    assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue, branchingLogic){
+    assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue){
         this.assertDoBranchingForSettings(type, false, fieldValue, [
             {
                 key: this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
@@ -299,8 +295,7 @@ var ExternalModuleTests = {
                         sub_settings: [
                             {
                                 key: this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME,
-                                name: "Field 3",
-                                branchingLogic: branchingLogic
+                                name: "Field 3"
                             }
                         ]
                     }
