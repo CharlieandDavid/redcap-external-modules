@@ -901,22 +901,6 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 
 	$(".external-modules-autocomplete-dropdown").select2();
 
-	$('.external-modules-rich-text-field').each(function(index, textarea){
-		textarea = $(textarea)
-		var expectedId = 'external-modules-rich-text-field_' + textarea.attr('name')
-		if(expectedId != textarea.attr('id')){
-			// This textarea must have just been added by clicking the repeatable plus button.
-			// We need to fix it's id.
-			textarea.attr('id', expectedId)
-
-			// Remove the cloned TinyMCE elements (always the previous sibling), so they can be reinitialized.
-			textarea.prev().remove()
-
-			// Show the textarea (so TinyMCE will reinitialize it).
-			textarea.show()
-		}
-	})
-
 	var settingsObject = this;
 
 	// The decision to use TinyMCE was not taken lightly.  We tried integrating Quill, Trix, and Summernote as well, but they either
