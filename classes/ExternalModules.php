@@ -316,19 +316,26 @@ class ExternalModules
 		return $settings;
 	}
 
+	// This is called from framework[v5]::setProjectSettings()
+	static function saveProjectSettings($moduleDirectoryPrefix, $pid, $settings)
+	{
+		self::setSettings($moduleDirectoryPrefix, $pid, $settings);
+	}
+
 	static function saveSettings($moduleDirectoryPrefix, $pid, $rawSettings)
 	{
 		$settings = self::formatRawSettings($moduleDirectoryPrefix, $pid, $rawSettings);
+		return self::setSettings($moduleDirectoryPrefix, $pid, $settings);
+	}
 
+	private static function setSettings($moduleDirectoryPrefix, $pid, $settings) {
 		$saveSqlByField = [];
 		foreach($settings as $key => $values) {
 			$sql = self::setSetting($moduleDirectoryPrefix, $pid, $key, $values);
-
 			if(!empty($sql)){
 				$saveSqlByField[$key] = $sql;
 			}
 		}
-
 		return $saveSqlByField;
 	}
 

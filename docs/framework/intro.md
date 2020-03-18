@@ -59,7 +59,7 @@ getProject([$project_id]) | `?.?.?`<br>`2` | Returns a `Project` object for the 
 getProjectId() | `?.?.?`<br>`1` | A convenience method for returning the current project id.
 getProjectsWithModuleEnabled() | `?.?.?`<br>`2` | Returns an array of project ids for which the  current module is enabled (especially useful in cron jobs). 
 getProjectSetting($key&nbsp;[,&nbsp;$pid]) | `?.?.?`<br>`1` | Returns the value stored for the specified key for the current project if it exists.  For non-repeatable settings, `null` is returned if no value is set.  For repeatable settings, an array with a single `null` value is returned if no value is set.  In most cases the project id can be detected automatically, but it can optionally be specified as a parameter instead.
-getProjectSettings([$pid]) | `?.?.?`<br>`1` | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project.
+getProjectSettings([$pid]) | `?.?.?`<br>`1` | Gets all project settings as an array.  Useful for cases when you may be creating a custom config page for the external module in a project. **Breaking change in framework v5.**
 getPublicSurveyUrl() | `?.?.?`<br>`1` | Returns the public survey url for the current project.
 getQueryLogsSql($sql) | `?.?.?`<br>`1` | Returns the raw SQL that would run if the supplied parameter was passed into **queryLogs()**. 
 getRecordId() | `?.?.?`<br>`1` | Returns the current record id if called from within a hook that includes the record id.
@@ -93,7 +93,7 @@ saveFile($filePath[, $pid]) | `?.?.?`<br>`1` | Saves a file and returns the new 
 setDAG($record, $dagId) | `?.?.?`<br>`1` | Sets the DAG for the given record ID to given DAG ID.
 setData($record, $fieldName, $values) | `?.?.?`<br>`1` | Sets the data for the given record and field name to the specified value or array of values.
 setProjectSetting($key,&nbsp;$value&nbsp;[,&nbsp;$pid]) | `?.?.?`<br>`1` | Sets the setting specified by the key to the specified value for this project.  In most cases the project id can be detected automatically, but it can optionally be specified as a parameter instead.
-setProjectSettings($settings[, $pid]) | `?.?.?`<br>`1` | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module.
+setProjectSettings($settings[, $pid]) | `?.?.?`<br>`1` | Saves all project settings (to be used with getProjectSettings).  Useful for cases when you may create a custom config page or need to overwrite all project settings for an external module. Note: Due to a bug, this method was broken (did nothing) in framework versions <5.
 setSystemSetting($key,&nbsp;$value) | `?.?.?`<br>`1` | Set the setting specified by the key to the specified value systemwide (shared by all projects).
 setUserSetting($key, $value) | `?.?.?`<br>`1` |  Sets the setting specified by the key to the given value for the current user and project.  This method does nothing on surveys and NOAUTH pages.  
 tt($key[, $value, ...]) | `9.5.0`<br>`2` | Returns the language string identified by `$key`, optionally interpolated using the values supplied as further arguments (if the first value argument is an array, its elements will be used for interpolation and any further arguments ignored). Refer to the [internationalization guide](../i18n-guide.md) for more details.

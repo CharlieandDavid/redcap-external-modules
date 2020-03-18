@@ -10,6 +10,16 @@ use Exception;
 class Framework
 {
 	/**
+	 * The framework version
+	 */
+	private $VERSION;
+
+	/**
+	 * The module for which the framework is initialized
+	 */
+	private $module;
+
+	/**
 	 * Constructor
 	 * @param AbstractExternalModule $module The module for which the framework is initialized.
 	 */
@@ -18,8 +28,8 @@ class Framework
 			throw new Exception(ExternalModules::tt("em_errors_70")); //= Initializing the framework requires a module instance.
 		}
 
-        $this->module = $module;
-        $this->VERSION = $frameworkVersion;
+		$this->module = $module;
+		$this->VERSION = $frameworkVersion;
 
 		// Initialize language support (parse language files etc.).
 		ExternalModules::initializeLocalizationSupport($module->PREFIX, $module->VERSION);
@@ -67,6 +77,49 @@ class Framework
 	}
 
 	//endregion
+
+	/**
+	 * Gets all project settings as an array. Useful for cases when you may
+	 * be creating a custom config page for the external module in a project. 
+	 * Each setting is formatted as: [ 'yourkey' => 'value' ]
+	 * (in case of repeating settings, value will be an array).
+	 * This return value can be used as input for setProjectSettings().
+	 * 
+	 * Note: BREAKING CHANGE in v4 of the framework
+	 * 
+	 * @param int|null $pid
+	 * @return array containing settings
+	 */
+	function getProjectSettings($pid = null)
+	{
+		if ($this->VERSION < 5) {
+			return $this->module->getProjectSettings($pid);
+		}
+		$pid = self::requireProjectId($pid);
+		$vSettings = ExternalModules::getProjectSettingsAsArray($this->module->PREFIX, $pid, false);
+		// Transform settings to match the output from ExternalModules::formatRawSettings,
+		// i.e. remove 'value' keys, preserving the project values "one level up"
+		$settings = array();
+		foreach ($vSettings as $key => $values) {
+			$settings[$key] = $values["value"];
+		}
+		return $settings;
+	}
+
+	/**
+	 * Saves all project settings (to be used with getProjectSettings). Useful
+	 * for cases when you may create a custom config page or need to overwrite all
+	 * project settings for an external module.
+	 * @param array $settings Array of project-specific settings
+	 * @param int|null $pid
+	 */
+	function setProjectSettings($settings, $pid = null)
+	{
+		$pid = self::requireProjectId($pid);
+		if ($this->VERSION >= 5) {
+			ExternalModules::saveProjectSettings($this->module->PREFIX, $pid, $settings);
+		}
+	}
 
 	function getProjectsWithModuleEnabled(){
 		$results = $this->query("
