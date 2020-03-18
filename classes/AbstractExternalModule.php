@@ -1510,7 +1510,12 @@ class AbstractExternalModule
 			global $participant_id;
 			\Survey::setSurveyVals($surveyHash);
 
-			$responseId = \Survey::decryptResponseHash($responseHash, $participant_id);
+			if(method_exists('Survey', 'decryptResponseHash')){
+				$responseId = \Survey::decryptResponseHash($responseHash, $participant_id);
+			}
+			else{
+				$responseId = decryptResponseHash($responseHash, $participant_id);
+			}
 
 			$result = $this->query("select record from redcap_surveys_response where response_id = ?", [$responseId]);
 			$row = $result->fetch_assoc();
