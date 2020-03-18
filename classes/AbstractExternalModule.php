@@ -1518,6 +1518,7 @@ class AbstractExternalModule
 			}
 			else{
 				// REDCap < 9.8.0
+				require_once APP_PATH_DOCROOT . "/Surveys/survey_functions.php";
 				$responseId = decryptResponseHash($responseHash, $participant_id);
 			}
 
