@@ -4,7 +4,8 @@
     "RFLAGS": "--exclude 'deploy.json' --delete -avzcO -e ssh",
     "EXCLUDES": [
         ".idea",
-        ".git*"
+        ".git*",
+        "node_modules"
     ],
     "DEFAULTS": {
         "run_tests": true,
