@@ -924,7 +924,7 @@ ExternalModules.Settings.prototype.initializeRichTextFields = function(){
 	var tinyLang = ExternalModules.$lang.tt('em_tinymce_language');
 	if (tinyLang == null) tinyLang = 'en_US';
 	// Since the corresponding en_US.js is missing in the 'tinymce/langs' directory, unset if en_US.
-	if (tinyLang == "en_US") tinyLang = '';
+	if (tinyLang == "en_US") tinyLang = undefined;
 	tinymce.init({
 		mode: 'specific_textareas',
 		editor_selector: 'external-modules-rich-text-field',
