@@ -1511,9 +1511,12 @@ class AbstractExternalModule
 			\Survey::setSurveyVals($surveyHash);
 
 			if(method_exists('Survey', 'decryptResponseHash')){
+				// REDCap >= 9.8.0
 				$responseId = \Survey::decryptResponseHash($responseHash, $participant_id);
 			}
 			else{
+				// REDCap < 9.8.0
+				require_once APP_PATH_DOCROOT . "/Surveys/survey_functions.php";
 				$responseId = decryptResponseHash($responseHash, $participant_id);
 			}
 
