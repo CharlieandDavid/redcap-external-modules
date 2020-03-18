@@ -172,7 +172,6 @@ class ExternalModules
 
 	private static $initialized = false;
 	private static $activeModulePrefix;
-	private static $shuttingDown = false;
 	private static $instanceCache = array();
 	private static $idsByPrefix;
 
@@ -452,8 +451,6 @@ class ExternalModules
 
 		# runs whenever a cron/hook functions
 		register_shutdown_function(function () {
-			self::$shuttingDown = true;
-
 			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
 			$error = error_get_last();
 
@@ -2610,6 +2607,34 @@ class ExternalModules
 		return $pid;
 	}
 
+	private static function isHookCallAllowed($newHook)
+	{
+		if(!empty(self::$hookBeingExecuted)){
+			// A hook was called from within another hook.
+
+			$emailHook = 'hook_email';
+			if($newHook === $emailHook){
+				if(self::$hookBeingExecuted === $emailHook){
+					// The email hooks is being called recursively.
+					// We assume we're in an infinite loop and prevent additional module hooks from running to hopefully escape it.
+					// This fixes an actual issue we encountered caused by an exception inside a module's redcap_email hook.
+					// When that exception was caught and sendAdminEmail() was called, the module's redcap_email hook
+					// was triggered again, causing an infinite loop, and preventing framework error emails from sending.
+
+					return false;
+				}
+				else{
+					// The email hook is currently allowed to fire inside other hooks.
+				}
+			}
+			else{
+				error_log("A call to '$newHook' was made from within '" . self::$hookBeingExecuted . "'.  Please review the following stack trace and consider whether this scenario should be allowed: " . json_encode(debug_backtrace(), JSON_PRETTY_PRINT));
+			}
+		}
+
+		return true;
+	}
+
 	# calls a hook via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
@@ -2617,11 +2642,6 @@ class ExternalModules
 			isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS])
 			||
 			defined('EXTERNAL_MODULES_KILL_SWITCH')
-			||
-			// We don't want to process any more hooks if we're shutting down.  We ran into an actual issue where a module's 
-			// redcap_email hook was firing inside the shutdown function and causing a secondary exception due to the closed DB connection.
-			// This was preventing framework error emails from going out.
-			self::$shuttingDown
 		){
 			return;
 		}
@@ -2661,7 +2681,13 @@ class ExternalModules
 			$pid = self::getProjectIdFromHookArguments($arguments);
 
 			self::$hookStartTime = time();
-			self::$hookBeingExecuted = "hook_$name";
+
+			$newHook= "hook_$name";
+			if(!self::isHookCallAllowed($newHook)){
+				return;
+			}
+			
+			self::$hookBeingExecuted = $newHook;
 	
 			if (!self::$delayed) {
 				self::$delayed = array();
