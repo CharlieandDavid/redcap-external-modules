@@ -1508,13 +1508,18 @@ class AbstractExternalModule
 			// We shouldn't pass the record id directly because it would be easy to spoof.
 			// Instead, we determine the record id from the response hash.
 
-			require_once APP_PATH_DOCROOT . "/Surveys/survey_functions.php";
-
 			// This method is called to set the $participant_id global;
 			global $participant_id;
 			\Survey::setSurveyVals($surveyHash);
 
-			$responseId = \decryptResponseHash($responseHash, $participant_id);
+			if(method_exists('Survey', 'decryptResponseHash')){
+				// REDCap >= 9.8.0
+				$responseId = \Survey::decryptResponseHash($responseHash, $participant_id);
+			}
+			else{
+				// REDCap < 9.8.0
+				$responseId = decryptResponseHash($responseHash, $participant_id);
+			}
 
 			$result = $this->query("select record from redcap_surveys_response where response_id = ?", [$responseId]);
 			$row = $result->fetch_assoc();

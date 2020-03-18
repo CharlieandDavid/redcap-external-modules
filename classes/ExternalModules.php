@@ -172,6 +172,7 @@ class ExternalModules
 
 	private static $initialized = false;
 	private static $activeModulePrefix;
+	private static $shuttingDown = false;
 	private static $instanceCache = array();
 	private static $idsByPrefix;
 
@@ -451,6 +452,8 @@ class ExternalModules
 
 		# runs whenever a cron/hook functions
 		register_shutdown_function(function () {
+			self::$shuttingDown = true;
+
 			// Get the error before doing anything else, since it would be overwritten by any potential errors/warnings in this function.
 			$error = error_get_last();
 
@@ -2610,7 +2613,16 @@ class ExternalModules
 	# calls a hook via startHook
 	static function callHook($name, $arguments, $prefix = null)
 	{
-		if (isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS]) || defined('EXTERNAL_MODULES_KILL_SWITCH')) {
+		if (
+			isset($_GET[self::DISABLE_EXTERNAL_MODULE_HOOKS])
+			||
+			defined('EXTERNAL_MODULES_KILL_SWITCH')
+			||
+			// We don't want to process any more hooks if we're shutting down.  We ran into an actual issue where a module's 
+			// redcap_email hook was firing inside the shutdown function and causing a secondary exception due to the closed DB connection.
+			// This was preventing framework error emails from going out.
+			self::$shuttingDown
+		){
 			return;
 		}
 

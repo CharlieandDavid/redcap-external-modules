@@ -1,113 +1,106 @@
 var ExternalModuleTests = {
     JS_UNIT_TESTING_PREFIX: 'js_unit_testing_prefix',
+    BRANCHING_LOGIC_CHECK_FIELD_NAME: 'branching-logic-check-field-name',
+    BRANCHING_LOGIC_AFFECTED_FIELD_NAME: 'branching-logic-affected-field-name',
+    assertions: 0,
 
-    run: function(outputElement){
+    run: function(link){
         if(!window.ExternalModules || !ExternalModules.configsByPrefix){
             // Wait for them to be defined.
             $(function(){
-                ExternalModuleTests.run(outputElement)
+                ExternalModuleTests.run(link)
             })
 
             return
         }
 
-        try{
-            this.testDoBranching()
-		}
-		catch(e){
-			console.log('Unit Test', e)
-			outputElement
-				.html('<h3>A unit test failed! Use the stack trace in the browser console to find the line for the assertion that failed.</h3>')
-				.show()
-		}
-    },
-
-    testDoBranching: function(){
         if(ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX]){
             throw Error('The js unit testing prefix is conflicting with an actual module!!!')
         }
 
-        $('#external-modules-configure-modal').data('module', this.JS_UNIT_TESTING_PREFIX)
+        var outputElement = $(link.parentElement)
+        outputElement.html('Running JS Unit Tests...')
 
-        this.assertDoBranching(true, 1, {
+        // Set a timeout to allow the "Running..." message to appear before the tests overload the browser's UI thread.
+        setTimeout(function(){
+            ExternalModuleTests.runAllTests(outputElement)
+        }, 0)
+    },
+    
+    runAllTests: function(outputElement){
+        var modal = this.getModal()
+        modal.data('module', this.JS_UNIT_TESTING_PREFIX)
+        modal.show() // Required for the ':visible' checks to work
+
+        try{
+            ;['dropdown', 'textarea', 'rich-text', 'radio', 'button', 'custom', 'checkbox', 'text', 'some-invalid-type-that-defaults-to-text'].forEach(function(type){
+                ExternalModuleTests.testDoBranching(type)
+            })
+
+            outputElement.replaceWith('<div class="green">JS Unit Tests completed successfully with ' + this.assertions + ' assertions.</div>')
+		}
+		catch(e){
+			console.log('Unit Test', e)
+			outputElement.replaceWith('<div class="red">A unit test failed! Use the stack trace in the browser console to find the line for the assertion that failed.</div>')
+        }
+        
+        modal.hide()
+    },
+
+    testDoBranching: function(type){
+        var assertDoBranching = function(expectedVisible, fieldValue, branchingLogic){
+            var conditions = branchingLogic.conditions
+            if(conditions === undefined){
+                conditions = [branchingLogic]
+            }
+            
+            conditions.forEach(function(condition){
+                condition.field = ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME
+            })
+
+            ExternalModuleTests.assertDoBranching(type, expectedVisible, fieldValue, branchingLogic)
+        }
+        
+        if(type === 'checkbox'){
+            assertDoBranching(true, true, {
+                value: true
+            })
+    
+            assertDoBranching(true, false, {
+                value: false
+            })
+
+            assertDoBranching(false, true, {
+                value: false
+            })
+
+            assertDoBranching(false, false, {
+                value: true
+            })
+    
+            // Other assertions don't work on checkboxes
+            return
+        }
+
+        assertDoBranching(true, 1, {
             value: 1
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             value: 2
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             value: 1,
             op: '='
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             value: 2,
             op: '='
         })
 
-        this.assertDoBranching(true, 1, {
-            value: 2,
-            op: '<'
-        })
-
-        this.assertDoBranching(false, 2, {
-            value: 2,
-            op: '<'
-        })
-
-        this.assertDoBranching(true, 1, {
-            value: 2,
-            op: '<='
-        })
-
-        this.assertDoBranching(true, 2, {
-            value: 2,
-            op: '<='
-        })
-
-        this.assertDoBranching(true, 2, {
-            value: 1,
-            op: '>'
-        })
-
-        this.assertDoBranching(false, 2, {
-            value: 2,
-            op: '>'
-        })
-
-        this.assertDoBranching(true, 2, {
-            value: 1,
-            op: '>='
-        })
-
-        this.assertDoBranching(true, 2, {
-            value: 2,
-            op: '>='
-        })
-
-        this.assertDoBranching(true, 1, {
-            value: 2,
-            op: '<>'
-        })
-
-        this.assertDoBranching(false, 2, {
-            value: 2,
-            op: '<>'
-        })
-
-        this.assertDoBranching(true, 1, {
-            value: 2,
-            op: '!='
-        })
-
-        this.assertDoBranching(false, 2, {
-            value: 2,
-            op: '!='
-        })
-
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             type: "or",
             conditions: [
                 { value: 1 },
@@ -115,7 +108,7 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             type: "or",
             conditions: [
                 { value: 2 },
@@ -123,7 +116,7 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(true, 1, {
+        assertDoBranching(true, 1, {
             type: "and",
             conditions: [
                 { value: 1 },
@@ -131,104 +124,327 @@ var ExternalModuleTests = {
             ]
         })
 
-        this.assertDoBranching(false, 1, {
+        assertDoBranching(false, 1, {
             type: "and",
             conditions: [
                 { value: 1 },
                 { value: 2 }
             ]
         })
-    },
 
-    assertDoBranching: function(expectedVisible, fieldValue, branchingLogic){
-        var fieldName1 = 'some_field'
-        var fieldName2 = 'some_other_field'
-        var fieldName3 = 'some_sub_field'
-        var subSettingsParentFieldName = 'sub_settings_parent'
-
-        var getInstanceInputName = function(field, instance){
-            return field + '____' + instance
+        if(type === 'radio'){
+            // All assertions below this point don't work on radio buttons.
+            return
         }
 
-        var fieldName3instance1 = getInstanceInputName(fieldName3, 1)
-        var fieldName3instance2 = getInstanceInputName(fieldName3, 2)
-
-        var conditions = branchingLogic.conditions
-        if(conditions === undefined){
-            conditions = [branchingLogic]
-        }
-        
-        conditions.forEach(function(condition){
-            condition.field = fieldName1
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '!='
         })
 
-        var settings = [
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '!='
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '<'
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 2,
+            op: '<='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 1,
+            op: '>'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '>'
+        })
+
+        assertDoBranching(true, 2, {
+            value: 1,
+            op: '>='
+        })
+
+        assertDoBranching(true, 2, {
+            value: 2,
+            op: '>='
+        })
+
+        assertDoBranching(true, 1, {
+            value: 2,
+            op: '<>'
+        })
+
+        assertDoBranching(false, 2, {
+            value: 2,
+            op: '<>'
+        })
+    },
+
+    assertDoBranching: function(type, expectedVisible, fieldValue, branchingLogic){
+        var assertDoBranchingForSettings = function(settings){
+            ExternalModuleTests.assertDoBranchingForSettings(type, expectedVisible, fieldValue, branchingLogic, settings)
+        }
+        
+        assertDoBranchingForSettings(this.getTopLevelSettings())
+        assertDoBranchingForSettings(this.getTopToSubLevel1Settings())
+        assertDoBranchingForSettings(this.getTopToSubLevel2Settings())
+        
+        // These tests should work once PR #275 is complete.
+        // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
+        // subToSubLevel2 (need to write this one)
+        // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
+    },
+
+    getTopLevelSettings: function(){
+        return [
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
+        ]
+    },
+
+    getTopToSubLevel1Settings: function(){
+        return [
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
-                key: fieldName1,
-                name: "Some Field"
-            },
+                key: 'sub_settings_1',
+                type: 'sub_settings',
+                sub_settings: [
+                    this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
+                ]
+            }
+        ]
+    },
+
+    getTopToSubLevel2Settings: function(){
+        return [
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
-                key: fieldName2,
-                name: "Some Other Field",
-                branchingLogic: branchingLogic
-            },
-            {
-                key: subSettingsParentFieldName,
+                key: 'sub_settings_1',
                 type: 'sub_settings',
                 sub_settings: [
                     {
-                        key: fieldName3,
-                        name: "Some Sub-Field",
-                        branchingLogic: branchingLogic
+                        type: 'sub_settings',
+                        sub_settings: [
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
+                        ]
                     }
                 ]
             }
         ]
+    },
+
+    assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue){
+        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
+            {
+                key: 'sub_settings_1',
+                type: 'sub_settings',
+                sub_settings: [
+                    this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+                    {
+                        key: 'sub_settings_2',
+                        type: 'sub_settings',
+                        sub_settings: [
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
+                        ]
+                    }
+                ]
+            }
+        ])
+    },
+
+    assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue){
+        this.assertDoBranchingForSettings(type, false, fieldValue, [
+            this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
+            {
+                key: 'sub_settings_1',
+                type: 'sub_settings',
+                branchingLogic: {
+                    value: null,
+                },
+                sub_settings: [
+                    {
+                        key: 'sub_settings_2',
+                        type: 'sub_settings',
+                        sub_settings: [
+                            this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME
+                        ]
+                    }
+                ]
+            }
+        ])
+    },
+
+    processSettings: function(settings, type, branchingLogic){
+        var checkFieldFound = false
+        var affectedFieldFound = false
+
+        $.each(settings, function(index, setting){
+            if(typeof setting === 'string'){
+                // We use setting keys as placeholders, and round them with with an actual setting object here.
+                settings[index] = setting = { key: setting }
+            }
+
+            if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_CHECK_FIELD_NAME){
+                checkFieldFound = true
+            }
+            else if(setting.key === ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME){
+                affectedFieldFound = true
+                setting.branchingLogic = branchingLogic
+            }
+
+            if(!setting.type){
+                setting.type = type
+                
+                if(type === 'radio'){
+                    setting.choices = [{
+                        name: "Some choice",
+                        value: "Doesn't matter, will get overwritten"
+                    }]
+                }
+                else if(type === 'button'){
+                    setting.url = "Doesn't matter"
+                }
+            }
+
+            if(setting.type === 'sub_settings'){
+                // Run all tests against repeatable subsettings (the more complex case).
+                setting.repeatable = true
+
+                ExternalModuleTests.processSettings(setting.sub_settings, type, branchingLogic)
+            }
+        })
+
+        return [!checkFieldFound, !affectedFieldFound]
+    },
+
+    getModal: function(){
+        return $('#external-modules-configure-modal')
+    },
+
+    assertDoBranchingForSettings: function(type, expectedVisible, fieldValue, branchingLogic, settings){
+        // Clone the settings object, since we'll be modifying it and don't want to affect other tests.
+        settings = JSON.parse(JSON.stringify(settings));
 
         ExternalModules.configsByPrefix[this.JS_UNIT_TESTING_PREFIX] = {
+            // Project settings are expected even if they're empty.
+            'project-settings': [],
+
             // We're not defining ExternalModules.PID, so it's easier to test with system settings.
             'system-settings': settings
         }
 
-        var modal = $('#external-modules-configure-modal')
-        var setupSetting = function(field, value, instance){
-            var name = field
-            if(instance !== undefined){
-                name = getInstanceInputName(field, instance)
+        var modal = this.getModal()
+
+        var processResults = this.processSettings(settings, type, branchingLogic)
+        var isCheckedFieldInSubSetting = processResults[0]
+        var isAffectedFieldInSubSetting = processResults[1]
+
+        modal.find('tbody').html(ExternalModules.Settings.prototype.getSettingRows(settings, {}))
+        ExternalModules.Settings.prototype.initializeSettingsFields()
+
+        // Add a second instance to all repeatables
+        modal.find('button.external-modules-add-instance').click()
+        
+        var getField = function(name, instance){
+            if(!instance){
+                instance = 1
             }
 
-            modal.find('input[name=' + name + ']').remove() // remove inputs from other assertions
-            modal.append('<input field="' + field + '" name="' + name + '" value="' + value + '">\n')
+            var field = modal.find('[name^=' + name + ']')[instance-1]
+
+            if(!field){
+                throw new Error('Instance ' + instance + ' of the "' + name + '" field was not found!')
+            }
+
+            return $(field)
+        }
+
+        var setupSetting = function(name, value, instance){
+            var field = getField(name, instance)
+
+            if(type === 'dropdown'){
+                field.append('<option value="' + value + '" selected>')
+            }
+
+            field.val(value)
+
+            if(type === 'checkbox'){
+                if(value){
+                    field.prop('checked', true)
+                }
+                else{
+                    field.prop('checked', false)
+                }
+            }
+            else if(type === 'radio'){
+                field.prop('checked', true)
+            }
+            else if(value !== undefined && field.val() != value){
+                throw new Error('Expected field value of "' + value + '" but found "' + field.val() + '"!')
+            }
         }
         
-        setupSetting(fieldName1, fieldValue)
-        setupSetting(fieldName2)
-        setupSetting(subSettingsParentFieldName)
-        setupSetting(fieldName3, null, 1)
-        setupSetting(fieldName3, null, 2)
+        if(isCheckedFieldInSubSetting){
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue, 1)
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, undefined, 2)
+        }
+        else{
+            setupSetting(this.BRANCHING_LOGIC_CHECK_FIELD_NAME, fieldValue)
+        }
+        
+        if(isAffectedFieldInSubSetting){
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, undefined, 1)
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, undefined, 2)
+        }
+        else{
+            setupSetting(this.BRANCHING_LOGIC_AFFECTED_FIELD_NAME)
+        }
         
         ExternalModules.Settings.prototype.doBranching()
 
-        var assert = function(fieldName){
-            var style = modal.find('[name='+fieldName+']').attr('style')
-            var actuallyVisible = style !== 'display: none;'
-    
+        var assert = function(expectedVisible, instance){
+            var actuallyVisible = getField(ExternalModuleTests.BRANCHING_LOGIC_AFFECTED_FIELD_NAME, instance).is(':visible')
             ExternalModuleTests.assert(actuallyVisible === expectedVisible)
         }
 
-        assert(fieldName2)
-        assert(fieldName3instance1)
-        assert(fieldName3instance2)
+        if(isAffectedFieldInSubSetting){
+            assert(expectedVisible, 1)
+
+            if(isCheckedFieldInSubSetting){
+                assert(false, 2)
+            }
+            else{
+                assert(expectedVisible, 2)
+            }
+        }
+        else{
+            assert(expectedVisible)
+        }
 	},
 
 	assert: function(assertion){
+        this.assertions++
+
 		if(!assertion){
 			throw new Error('Assertion failed!')
-		}
+        }
 	}
-}
-
-if(document.currentScript){
-    // This is a modern browser.  Run tests.
-    ExternalModuleTests.run($(document.currentScript.parentElement))
 }

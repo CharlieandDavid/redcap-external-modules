@@ -1034,7 +1034,7 @@ $(function(){
 		startTr.remove();
 
 		tinymce.editors.forEach(function(editor, index){
-			if(!document.contains(editor.getElement())){
+			if(!document.body.contains(editor.getElement())){
 				// The element for this editor was removed from the DOM.  Destroy the editor.
 				editor.remove()
 			}
