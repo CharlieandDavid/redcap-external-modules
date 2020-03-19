@@ -3311,9 +3311,10 @@ class ExternalModules
 			$version = self::getEnabledVersion($prefix);
 		}
 
-		$configFilePath = self::getModuleDirectoryPath($prefix, $version)."/config.json";
 		$config = @self::$configs[$prefix][$version];
 		if($config === null){
+			$configFilePath = self::getModuleDirectoryPath($prefix, $version)."/config.json";
+
 			$fileTesting = file_get_contents($configFilePath);
 			$config = json_decode($fileTesting, true);
 
