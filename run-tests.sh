@@ -3,7 +3,7 @@
 set -e
 
 composer install -q
-# npm install > /dev/null
+npm install > /dev/null
 
 echo
 echo Running tests...
