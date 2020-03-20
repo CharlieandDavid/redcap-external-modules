@@ -2628,6 +2628,7 @@ class ExternalModules
 				}
 			}
 			else{
+				// phpcs:ignore PHPCompatibility.FunctionUse.ArgumentFunctionsReportCurrentValue.NeedsInspection
 				error_log("A call to '$newHook' was made from within '" . self::$hookBeingExecuted . "'.  Please review the following stack trace and consider whether this scenario should be allowed: " . json_encode(debug_backtrace(), JSON_PRETTY_PRINT));
 			}
 		}
