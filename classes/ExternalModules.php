@@ -5062,14 +5062,33 @@ class ExternalModules
 		};
 
 		if(ExternalModules::getFrameworkVersion($module) >= 3){
-			$iconPath = $module->framework->getModulePath() . '/' . $icon;
-			if(file_exists($iconPath)){
-				$iconElement = $getImageIconElement($module->getUrl($icon));
-			}
-			else{
-				// Assume it is a font awesome class.
+			do {
+				// 1: Try inside the module first
+				$iconPath = $module->framework->getModulePath() . '/' . $icon;
+				if(file_exists($iconPath)) {
+				    $iconElement = $getImageIconElement($module->getUrl($icon));
+				    break;
+				}
+
+				// 2: Try the EM built-in icons
+				$iconPathSuffix = 'images/' . $icon . '.png';
+				if(file_exists(ExternalModules::$BASE_PATH . $iconPathSuffix )) {
+				    $iconUrl     = ExternalModules::$BASE_URL . $iconPathSuffix;
+				    $iconElement = $getImageIconElement($iconUrl);
+				    break;
+				}
+
+				// 3: Try the built-in REDCap icons
+				global $redcap_version;
+				if(file_exists(APP_PATH_DOCROOT.DS."/Resources/".$iconPathSuffix)) {
+				    $iconUrl     = APP_PATH_WEBROOT . 'Resources/' . $iconPathSuffix;
+				    $iconElement = $getImageIconElement($iconUrl);
+				    break;
+				}
+
+				// 4: Assume it is a font awesome class.
 				$iconElement = "<i class='$icon' style='$style'></i>";
-			}
+			} while(0);
 		}
 		else{
 			$iconPathSuffix = 'images/' . $icon . '.png';
