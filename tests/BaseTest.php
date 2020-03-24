@@ -38,8 +38,12 @@ abstract class BaseTest extends TestCase
 		$m = new TestModule();
 		list($surveyId, $formName) = $m->getSurveyId(TEST_SETTING_PID);
 		if(empty($surveyId)){
-			// TODO - tt
-			throw new Exception('Please add a survey to project ' . TEST_SETTING_PID . ' to allow all tests to run.');
+			ExternalModules::query("
+				insert into redcap_surveys (project_id, form_name)
+				values (?, (
+					select form_name from redcap_metadata where project_id = ? limit 1
+				))	
+			", [TEST_SETTING_PID, TEST_SETTING_PID]);
 		}
 	}
 
