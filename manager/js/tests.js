@@ -208,9 +208,9 @@ var ExternalModuleTests = {
         assertDoBranchingForSettings(this.getTopToSubLevel2Settings())
         
         // These tests should work once PR #275 is complete.
-        // this.assertDoBranching_subToSubLevel1(expectedVisible, fieldValue, branchingLogic)
+        // assertDoBranchingForSettings(this.getSubToSubLevel1Settings())
         // subToSubLevel2 (need to write this one)
-        // this.assertDoBranching_parentAlwaysHidden(expectedVisible, fieldValue, branchingLogic)
+        // assertDoBranchingForSettings(this.getParentAlwaysHiddenSettings())
     },
 
     getTopLevelSettings: function(){
@@ -251,8 +251,8 @@ var ExternalModuleTests = {
         ]
     },
 
-    assertDoBranching_subToSubLevel1: function(type, expectedVisible, fieldValue){
-        this.assertDoBranchingForSettings(type, expectedVisible, fieldValue, [
+    getSubToSubLevel1Settings: function(type, expectedVisible, fieldValue){
+        return [
             {
                 key: 'sub_settings_1',
                 type: 'sub_settings',
@@ -267,11 +267,11 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ])
+        ]
     },
 
-    assertDoBranching_parentAlwaysHidden: function(type, expectedVisible, fieldValue){
-        this.assertDoBranchingForSettings(type, false, fieldValue, [
+    getParentAlwaysHiddenSettings: function(type, expectedVisible, fieldValue){
+        return [
             this.BRANCHING_LOGIC_CHECK_FIELD_NAME,
             {
                 key: 'sub_settings_1',
@@ -289,7 +289,7 @@ var ExternalModuleTests = {
                     }
                 ]
             }
-        ])
+        ]
     },
 
     processSettings: function(settings, type, branchingLogic){
