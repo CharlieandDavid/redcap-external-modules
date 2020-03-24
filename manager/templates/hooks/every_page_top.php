@@ -48,6 +48,12 @@ $menu_id = 'projMenuExternalModules';
 						<?php
 					}
 				}
+				catch(\Throwable $e){
+					ExternalModules::sendAdminEmail(
+						//= An exception was thrown when generating links
+						ExternalModules::tt("em_errors_77"), 
+						$e->__toString(), $prefix);
+				}
 				catch(\Exception $e){
 					ExternalModules::sendAdminEmail(
 						//= An exception was thrown when generating links

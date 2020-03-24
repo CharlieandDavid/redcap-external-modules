@@ -32,6 +32,7 @@ if (class_exists('ExternalModules\ExternalModules')) {
 }
 
 use \Exception;
+use \Throwable;
 use \RecursiveDirectoryIterator;
 use \RecursiveIteratorIterator;
 
@@ -1321,6 +1322,8 @@ class ExternalModules
 
 					$message .= "Module Name: " . $config['name'] . " ($prefix)<br>";
 					$message .= "Module Author(s): " . implode(', ', $authorEmails) . "<br>";
+				} catch (Throwable $e) {
+					// The problem is likely due to loading the configuration.  Ignore this Exception.
 				} catch (Exception $e) {
 					// The problem is likely due to loading the configuration.  Ignore this Exception.
 				}
@@ -1456,6 +1459,10 @@ class ExternalModules
 	{
 		try {
 			self::enable($moduleDirectoryPrefix, $version);
+		} catch (Throwable $e) {
+			self::disable($moduleDirectoryPrefix, true); // Disable the module in case the exception occurred after it was enabled in the DB.
+			self::setActiveModulePrefix(null); // Unset the active module prefix, so an error email is not sent out.
+			return $e;
 		} catch (\Exception $e) {
 			self::disable($moduleDirectoryPrefix, true); // Disable the module in case the exception occurred after it was enabled in the DB.
 			self::setActiveModulePrefix(null); // Unset the active module prefix, so an error email is not sent out.
@@ -1635,6 +1642,16 @@ class ExternalModules
 						}
 					}
 				}
+			} catch (Throwable $e){
+				// Disable the module and send email to admin
+				self::disable($moduleDirectoryPrefix, true);
+				//= The '{0}' module was automatically disabled because of the following error:
+				$message = self::tt("em_errors_15", $moduleDirectoryPrefix) . "\n\n$e"; 
+				error_log($message);
+				ExternalModules::sendAdminEmail(
+					//= REDCap External Module Automatically Disabled - {0}
+					self::tt("em_errors_16", $moduleDirectoryPrefix), 
+					$message, $moduleDirectoryPrefix);
 			} catch (Exception $e){
 				// Disable the module and send email to admin
 				self::disable($moduleDirectoryPrefix, true);
@@ -1963,6 +1980,10 @@ class ExternalModules
 			$releaseLock();
 
 			return $query;
+		}
+		catch(Throwable $e){
+			$releaseLock();
+			throw $e;
 		}
 		catch(Exception $e){
 			$releaseLock();
@@ -2536,6 +2557,18 @@ class ExternalModules
 				try{
 					$result = call_user_func_array(array($instance,$thisHook), $arguments);
 				}
+				catch(Throwable $e){
+					//= The '{0}' module threw the following exception when calling the hook method '{1}':
+					$message = self::tt("em_errors_32", 
+						$prefix, 
+						$thisHook); 
+					$message .= "\n\n$e";
+					error_log($message);
+					ExternalModules::sendAdminEmail(
+						//= REDCap External Module Hook Exception - {0}
+						self::tt("em_errors_33", $prefix), 
+						$message, $prefix); 
+				}
 				catch(Exception $e){
 					//= The '{0}' module threw the following exception when calling the hook method '{1}':
 					$message = self::tt("em_errors_32", 
@@ -2677,6 +2710,10 @@ class ExternalModules
 			self::$hookBeingExecuted = "";
 			self::$versionBeingExecuted = "";
 		} catch(Exception $e) {
+			// This try/catch originally existed to identify cases where the framework itself
+			// was doing something unexpected.  Such cases are rare these days, but it
+			// doesn't hurt to leave this try/catch in place indefinitely just in case.
+
 			//= REDCap External Modules threw the following exception:
 			$message = self::tt("em_errors_34") . "\n\n$e";
 			error_log($message);
@@ -4708,6 +4745,12 @@ class ExternalModules
 						}
 					}
 				}
+			} catch(Throwable $e) {
+				$currentReturnMessage = "Timed Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
+				$emailMessage = "$currentReturnMessage with the following Exception: $e";
+
+				self::sendAdminEmail('External Module Exception in Timed Cron Job ', $emailMessage, $moduleDirectoryPrefix);
+				array_push($returnMessages, $currentReturnMessage);
 			} catch(Exception $e) {
 				$currentReturnMessage = "Timed Cron job \"$cronName\" failed for External Module \"{$moduleDirectoryPrefix}\"";
 				$emailMessage = "$currentReturnMessage with the following Exception: $e";
@@ -4773,6 +4816,16 @@ class ExternalModules
 					}
 				}
 			}
+		}
+		catch(Throwable $e){
+			//= Cron job '{0}' failed for External Module '{1}'.
+			$returnMessage = self::tt("em_errors_55", 
+				$cronName, 
+				$moduleDirectoryPrefix); 
+			$emailMessage = $returnMessage . "\n\nException: " . $e;
+			//= External Module Exception in Cron Job
+			$emailSubject = self::tt("em_errors_56"); 
+			self::sendAdminEmail($emailSubject, $emailMessage, $moduleDirectoryPrefix);
 		}
 		catch(Exception $e){
 			//= Cron job '{0}' failed for External Module '{1}'.
@@ -5469,9 +5522,11 @@ class ExternalModules
 					. \RCView::a(array('href' => $project_url), strip_tags($app_title)) . "\".";
 				$email = self::sendBasicEmail($from, $to, $subject, $message, $fromName);
 				return $email;
-			} catch (Exception $e) {
+			} catch (Throwable $e) {
 			    return false;
-            }
+			} catch (Exception $e) {
+				return false;
+			}
 		}
 		return true;
 	}

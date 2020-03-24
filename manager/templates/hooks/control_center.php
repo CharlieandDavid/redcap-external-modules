@@ -19,12 +19,17 @@ if (!empty($extModLinks)) {
                         $link = $new_link;
                     }
                 }
-            } catch(\Exception $e) {
+            } catch(\Throwable $e) {
                 ExternalModules::sendAdminEmail(
 					//= An exception was thrown when generating control center links
 					ExternalModules::tt("em_errors_78"),
 					$e->__toString(), $prefix);
-            }
+			} catch(\Exception $e) {
+				ExternalModules::sendAdminEmail(
+					//= An exception was thrown when generating control center links
+					ExternalModules::tt("em_errors_78"),
+					$e->__toString(), $prefix);
+			}
 
             ?>
 			items += <?=json_encode(ExternalModules::getLinkIconHtml($module_instance, $link))?>;

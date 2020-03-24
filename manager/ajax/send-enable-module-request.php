@@ -36,9 +36,12 @@ else {
 				$return_data['error_message'] .= "Mail delivery was unable to be completed.\n";
 			}
 		}
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // The problem is likely due to loading the configuration.  Ignore this Exception.
         $return_data['error_message'] .= "Failure loading external module configuration: " . $e->getMessage() . "\n";
-    }
+	} catch (Exception $e) {
+		// The problem is likely due to loading the configuration.  Ignore this Exception.
+		$return_data['error_message'] .= "Failure loading external module configuration: " . $e->getMessage() . "\n";
+	}
 }
 echo json_encode($return_data);
